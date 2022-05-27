@@ -189,3 +189,13 @@ void FEBasicApplication::getWindowSize(int* width, int* height)
 {
 	glfwGetWindowSize(window, width, height);
 }
+
+void FEBasicApplication::minimizeWindow()
+{
+	glfwIconifyWindow(window);
+}
+
+void FEBasicApplication::restoreWindow()
+{
+	glfwRestoreWindow(window);
+}

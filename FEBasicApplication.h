@@ -83,6 +83,9 @@ namespace FocalEngine
 		
 		void getWindowPosition(int* xpos, int* ypos);
 		void getWindowSize(int* width, int* height);
+
+		void minimizeWindow();
+		void restoreWindow();
 	private:
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 	};
