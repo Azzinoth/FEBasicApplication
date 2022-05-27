@@ -1,6 +1,7 @@
 #pragma once
 
 #include "string"
+#include <random>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -57,6 +58,8 @@ namespace FocalEngine
 
 		static void dropCallback(GLFWwindow* window, int count, const char** paths);
 		static void(*clientDropCallbackImpl)(int, const char**);
+
+		std::string getUniqueId();
 	public:
 		SINGLETON_PUBLIC_PART(FEBasicApplication)
 
@@ -86,6 +89,14 @@ namespace FocalEngine
 
 		void minimizeWindow();
 		void restoreWindow();
+
+		// This function can produce ID's that are "unique" with very rare collisions.
+		// For most purposes it can be considered unique.
+		// ID is a 24 long string.
+		std::string getUniqueHexID();
+
+		bool setClipboardText(std::string text);
+		std::string getClipboardText();
 	private:
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 	};
