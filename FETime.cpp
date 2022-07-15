@@ -1,39 +1,39 @@
 #include "FETime.h"
 using namespace FocalEngine;
 
-FETime* FETime::_instance = nullptr;
+FETime* FETime::Instance = nullptr;
 
 FETime::FETime()
 {
 
 }
 
-void FETime::beginTimeStamp(std::string label)
+void FETime::BeginTimeStamp(const std::string Label)
 {
-	timeStamps[label] = std::chrono::high_resolution_clock::now();
+	TimeStamps[Label] = std::chrono::high_resolution_clock::now();
 }
 
-double FETime::endTimeStamp(std::string label, FE_TIME_RESOLUTION timeResolution)
+double FETime::EndTimeStamp(const std::string Label, const FE_TIME_RESOLUTION TimeResolution)
 {
-	if (timeStamps.find(label) != timeStamps.end())
+	if (TimeStamps.find(Label) != TimeStamps.end())
 	{
-		chronoTimePoint endTimePoint = std::chrono::high_resolution_clock::now();
+		const FE_CHRONO_TIME_POINT EndTimePoint = std::chrono::high_resolution_clock::now();
 
-		auto startTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(timeStamps[label]).time_since_epoch();
-		auto endTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(endTimePoint).time_since_epoch();
+		const auto StartTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(TimeStamps[Label]).time_since_epoch();
+		const auto EndTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(EndTimePoint).time_since_epoch();
 
-		auto timeEscaped = endTime - startTime;
+		const auto TimeEscaped = EndTime - StartTime;
 
-		switch (timeResolution)
+		switch (TimeResolution)
 		{
 		case FocalEngine::FE_TIME_RESOLUTION_SECONDS:
-			return double(timeEscaped.count()) * 0.000000001;
+			return static_cast<double>(TimeEscaped.count()) * 0.000000001;
 		case FocalEngine::FE_TIME_RESOLUTION_MILLISECONDS:
-			return double(timeEscaped.count()) * 0.000001;
+			return static_cast<double>(TimeEscaped.count()) * 0.000001;
 		case FocalEngine::FE_TIME_RESOLUTION_MICROSECONS:
-			return double(timeEscaped.count()) * 0.001;
+			return static_cast<double>(TimeEscaped.count()) * 0.001;
 		case FocalEngine::FE_TIME_RESOLUTION_NANOSECONDS:
-			return double(timeEscaped.count());
+			return static_cast<double>(TimeEscaped.count());
 		default:
 			break;
 		}

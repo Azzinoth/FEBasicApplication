@@ -1,13 +1,13 @@
 #include "FEBasicApplication.h"
 using namespace FocalEngine;
 
-FEBasicApplication* FEBasicApplication::_instance = nullptr;
-void(*FEBasicApplication::clientWindowCloseCallbackImpl)() = nullptr;
-void(*FEBasicApplication::clientWindowResizeCallbackImpl)(int, int) = nullptr;
-void(*FEBasicApplication::clientMouseButtonCallbackImpl)(int, int, int) = nullptr;
-void(*FEBasicApplication::clientMouseMoveCallbackImpl)(double, double) = nullptr;
-void(*FEBasicApplication::clientKeyButtonCallbackImpl)(int, int, int, int) = nullptr;
-void(*FEBasicApplication::clientDropCallbackImpl)(int, const char**) = nullptr;
+FEBasicApplication* FEBasicApplication::Instance = nullptr;
+void(*FEBasicApplication::ClientWindowCloseCallbackImpl)() = nullptr;
+void(*FEBasicApplication::ClientWindowResizeCallbackImpl)(int, int) = nullptr;
+void(*FEBasicApplication::ClientMouseButtonCallbackImpl)(int, int, int) = nullptr;
+void(*FEBasicApplication::ClientMouseMoveCallbackImpl)(double, double) = nullptr;
+void(*FEBasicApplication::ClientKeyButtonCallbackImpl)(int, int, int, int) = nullptr;
+void(*FEBasicApplication::ClientDropCallbackImpl)(int, const char**) = nullptr;
 
 FEBasicApplication::FEBasicApplication()
 {
@@ -16,50 +16,50 @@ FEBasicApplication::FEBasicApplication()
 
 FEBasicApplication::~FEBasicApplication()
 {
-	glfwDestroyWindow(window);
+	glfwDestroyWindow(Window);
 	glfwTerminate();
 }
 
-void FEBasicApplication::createWindow(int width, int height, std::string WindowTitle)
+void FEBasicApplication::InitWindow(const int Width, const int Height, std::string WindowTitle)
 {
-	windowW = width;
-	windowH = height;
-	windowTitle = WindowTitle;
+	WindowW = Width;
+	WindowH = Height;
+	this->WindowTitle = WindowTitle;
 
 	glfwInit();
 
-	window = glfwCreateWindow(windowW, windowH, windowTitle.c_str(), NULL, NULL);
-	if (!window)
+	Window = glfwCreateWindow(WindowW, WindowH, WindowTitle.c_str(), nullptr, nullptr);
+	if (!Window)
 		glfwTerminate();
 	
-	glfwMakeContextCurrent(window);
+	glfwMakeContextCurrent(Window);
 	glewInit();
 
-	glfwSetWindowCloseCallback(window, windowCloseCallback);
-	glfwSetWindowSizeCallback(window, windowResizeCallback);
-	glfwSetMouseButtonCallback(window, mouseButtonCallback);
-	glfwSetCursorPosCallback(window, mouseMoveCallback);
-	glfwSetKeyCallback(window, keyButtonCallback);
-	glfwSetDropCallback(window, dropCallback);
+	glfwSetWindowCloseCallback(Window, WindowCloseCallback);
+	glfwSetWindowSizeCallback(Window, WindowResizeCallback);
+	glfwSetMouseButtonCallback(Window, MouseButtonCallback);
+	glfwSetCursorPosCallback(Window, MouseMoveCallback);
+	glfwSetKeyCallback(Window, KeyButtonCallback);
+	glfwSetDropCallback(Window, DropCallback);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplGlfw_InitForOpenGL(Window, true);
 	ImGui_ImplOpenGL3_Init("#version 410");
 }
 
-void FEBasicApplication::setWindowCaption(std::string newCaption)
+void FEBasicApplication::SetWindowCaption(const std::string NewCaption) const
 {
-	glfwSetWindowTitle(window, newCaption.c_str());
+	glfwSetWindowTitle(Window, NewCaption.c_str());
 }
 
-GLFWwindow* FEBasicApplication::getGLFWWindow()
+GLFWwindow* FEBasicApplication::GetGlfwWindow() const
 {
-	return window;
+	return Window;
 }
 
-void FEBasicApplication::beginFrame()
+void FEBasicApplication::BeginFrame()
 {
 	ImGui::GetIO().DeltaTime = 1.0f / 60.0f;
 	ImGui_ImplOpenGL3_NewFrame();
@@ -67,166 +67,166 @@ void FEBasicApplication::beginFrame()
 	ImGui::NewFrame();
 }
 
-void FEBasicApplication::endFrame()
+void FEBasicApplication::EndFrame() const
 {
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	glfwSwapBuffers(window);
+	glfwSwapBuffers(Window);
 	glfwPollEvents();
 }
 
-bool FEBasicApplication::isWindowOpened()
+bool FEBasicApplication::IsWindowOpened() const
 {
-	return !glfwWindowShouldClose(window);
+	return !glfwWindowShouldClose(Window);
 }
 
-bool FEBasicApplication::isWindowInFocus()
+bool FEBasicApplication::IsWindowInFocus() const
 {
-	return glfwGetWindowAttrib(window, GLFW_FOCUSED);
+	return glfwGetWindowAttrib(Window, GLFW_FOCUSED);
 }
 
-void FEBasicApplication::terminate()
+void FEBasicApplication::Terminate() const
 {
-	glfwSetWindowShouldClose(window, true);
+	glfwSetWindowShouldClose(Window, true);
 }
 
-void FEBasicApplication::cancelTerination()
+void FEBasicApplication::CancelTerination() const
 {
-	glfwSetWindowShouldClose(window, false);
+	glfwSetWindowShouldClose(Window, false);
 }
 
-void FEBasicApplication::setWindowCloseCallback(void(*func)())
+void FEBasicApplication::SetWindowCloseCallback(void(*Func)())
 {
-	clientWindowCloseCallbackImpl = func;
+	ClientWindowCloseCallbackImpl = Func;
 }
 
-void FEBasicApplication::windowCloseCallback(GLFWwindow* window)
+void FEBasicApplication::WindowCloseCallback(GLFWwindow* Window)
 {
-	APPLICATION.cancelTerination();
+	APPLICATION.CancelTerination();
 
-	if (clientWindowCloseCallbackImpl != nullptr)
+	if (ClientWindowCloseCallbackImpl != nullptr)
 	{
-		clientWindowCloseCallbackImpl();
+		ClientWindowCloseCallbackImpl();
 	}
 	else
 	{
-		APPLICATION.terminate();
+		APPLICATION.Terminate();
 	}
 }
 
-void FEBasicApplication::setWindowResizeCallback(void(*func)(int, int))
+void FEBasicApplication::SetWindowResizeCallback(void(*Func)(int, int))
 {
-	clientWindowResizeCallbackImpl = func;
+	ClientWindowResizeCallbackImpl = Func;
 }
 
-void FEBasicApplication::windowResizeCallback(GLFWwindow* window, int width, int height)
+void FEBasicApplication::WindowResizeCallback(GLFWwindow* Window, int Width, int Height)
 {
-	int updatedWidth, updatedHeight;
-	glfwGetWindowSize(APPLICATION.getGLFWWindow(), &updatedWidth, &updatedHeight);
+	int UpdatedWidth, UpdatedHeight;
+	glfwGetWindowSize(APPLICATION.GetGlfwWindow(), &UpdatedWidth, &UpdatedHeight);
 
-	if (updatedWidth == 0 || updatedHeight == 0)
+	if (UpdatedWidth == 0 || UpdatedHeight == 0)
 		return;
 
-	APPLICATION.windowW = updatedWidth;
-	APPLICATION.windowH = updatedHeight;
+	APPLICATION.WindowW = UpdatedWidth;
+	APPLICATION.WindowH = UpdatedHeight;
 
-	ImGui::GetIO().DisplaySize = ImVec2(float(updatedWidth), float(updatedHeight));
+	ImGui::GetIO().DisplaySize = ImVec2(static_cast<float>(UpdatedWidth), static_cast<float>(UpdatedHeight));
 
-	if (clientWindowResizeCallbackImpl != nullptr)
-		clientWindowResizeCallbackImpl(updatedWidth, updatedHeight);
+	if (ClientWindowResizeCallbackImpl != nullptr)
+		ClientWindowResizeCallbackImpl(UpdatedWidth, UpdatedHeight);
 }
 
-void FEBasicApplication::setMouseButtonCallback(void(*func)(int, int, int))
+void FEBasicApplication::SetMouseButtonCallback(void(*Func)(int, int, int))
 {
-	clientMouseButtonCallbackImpl = func;
+	ClientMouseButtonCallbackImpl = Func;
 }
 
-void FEBasicApplication::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+void FEBasicApplication::MouseButtonCallback(GLFWwindow* Window, const int Button, const int Action, const int Mods)
 {
-	if (clientMouseButtonCallbackImpl != nullptr)
-		clientMouseButtonCallbackImpl(button, action, mods);
+	if (ClientMouseButtonCallbackImpl != nullptr)
+		ClientMouseButtonCallbackImpl(Button, Action, Mods);
 }
 
-void FEBasicApplication::setMouseMoveCallback(void(*func)(double, double))
+void FEBasicApplication::SetMouseMoveCallback(void(*Func)(double, double))
 {
-	clientMouseMoveCallbackImpl = func;
+	ClientMouseMoveCallbackImpl = Func;
 }
 
-void FEBasicApplication::mouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
+void FEBasicApplication::MouseMoveCallback(GLFWwindow* Window, const double Xpos, const double Ypos)
 {
-	if (clientMouseMoveCallbackImpl != nullptr)
-		clientMouseMoveCallbackImpl(xpos, ypos);
+	if (ClientMouseMoveCallbackImpl != nullptr)
+		ClientMouseMoveCallbackImpl(Xpos, Ypos);
 }
 
-void FEBasicApplication::setKeyCallback(void(*func)(int, int, int, int))
+void FEBasicApplication::SetKeyCallback(void(*Func)(int, int, int, int))
 {
-	clientKeyButtonCallbackImpl = func;
+	ClientKeyButtonCallbackImpl = Func;
 }
 
-void FEBasicApplication::keyButtonCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void FEBasicApplication::KeyButtonCallback(GLFWwindow* Window, const int Key, const int Scancode, const int Action, const int Mods)
 {
-	if (clientKeyButtonCallbackImpl != nullptr)
-		clientKeyButtonCallbackImpl(key, scancode, action, mods);
+	if (ClientKeyButtonCallbackImpl != nullptr)
+		ClientKeyButtonCallbackImpl(Key, Scancode, Action, Mods);
 }
 
-void FEBasicApplication::setDropCallback(void(*func)(int, const char**))
+void FEBasicApplication::SetDropCallback(void(*Func)(int, const char**))
 {
-	clientDropCallbackImpl = func;
+	ClientDropCallbackImpl = Func;
 }
 
-void FEBasicApplication::dropCallback(GLFWwindow* window, int count, const char** paths)
+void FEBasicApplication::DropCallback(GLFWwindow* Window, const int Count, const char** Paths)
 {
-	if (clientDropCallbackImpl != nullptr)
-		clientDropCallbackImpl(count, paths);
+	if (ClientDropCallbackImpl != nullptr)
+		ClientDropCallbackImpl(Count, Paths);
 }
 
-void FEBasicApplication::getWindowPosition(int* xpos, int* ypos)
+void FEBasicApplication::GetWindowPosition(int* Xpos, int* Ypos) const
 {
-	glfwGetWindowPos(window, xpos, ypos);
+	glfwGetWindowPos(Window, Xpos, Ypos);
 }
 
-void FEBasicApplication::getWindowSize(int* width, int* height)
+void FEBasicApplication::GetWindowSize(int* Width, int* Height) const
 {
-	glfwGetWindowSize(window, width, height);
+	glfwGetWindowSize(Window, Width, Height);
 }
 
-void FEBasicApplication::minimizeWindow()
+void FEBasicApplication::MinimizeWindow() const
 {
-	glfwIconifyWindow(window);
+	glfwIconifyWindow(Window);
 }
 
-void FEBasicApplication::restoreWindow()
+void FEBasicApplication::RestoreWindow() const
 {
-	glfwRestoreWindow(window);
+	glfwRestoreWindow(Window);
 }
 
-std::string FEBasicApplication::getUniqueId()
+std::string FEBasicApplication::GetUniqueId()
 {
-	static std::random_device randomDevice;
-	static std::mt19937 mt(randomDevice());
+	static std::random_device RandomDevice;
+	static std::mt19937 mt(RandomDevice());
 	static std::uniform_int_distribution<int> distribution(0, 128);
 
-	static bool firstInitialization = true;
-	if (firstInitialization)
+	static bool FirstInitialization = true;
+	if (FirstInitialization)
 	{
-		srand(unsigned int(time(NULL)));
-		firstInitialization = false;
+		srand(static_cast<unsigned>(time(nullptr)));
+		FirstInitialization = false;
 	}
 
-	std::string ID = "";
-	ID += char(distribution(mt));
+	std::string ID;
+	ID += static_cast<char>(distribution(mt));
 	for (size_t j = 0; j < 11; j++)
 	{
-		ID.insert(rand() % ID.size(), 1, char(distribution(mt)));
+		ID.insert(rand() % ID.size(), 1, static_cast<char>(distribution(mt)));
 	}
 
 	return ID;
 }
 
-std::string FEBasicApplication::getUniqueHexID()
+std::string FEBasicApplication::GetUniqueHexID()
 {
-	std::string ID = getUniqueId();
-	std::string IDinHex = "";
+	const std::string ID = GetUniqueId();
+	std::string IDinHex;
 
 	for (size_t i = 0; i < ID.size(); i++)
 	{
@@ -234,41 +234,41 @@ std::string FEBasicApplication::getUniqueHexID()
 		IDinHex.push_back("0123456789ABCDEF"[ID[i] & 15]);
 	}
 
-	std::string additionalRandomness = getUniqueId();
-	std::string additionalString = "";
+	const std::string AdditionalRandomness = GetUniqueId();
+	std::string AdditionalString;
 	for (size_t i = 0; i < ID.size(); i++)
 	{
-		additionalString.push_back("0123456789ABCDEF"[(additionalRandomness[i] >> 4) & 15]);
-		additionalString.push_back("0123456789ABCDEF"[additionalRandomness[i] & 15]);
+		AdditionalString.push_back("0123456789ABCDEF"[(AdditionalRandomness[i] >> 4) & 15]);
+		AdditionalString.push_back("0123456789ABCDEF"[AdditionalRandomness[i] & 15]);
 	}
-	std::string finalID = "";
+	std::string FinalID;
 
 	for (size_t i = 0; i < ID.size() * 2; i++)
 	{
 		if (rand() % 2 - 1)
 		{
-			finalID += IDinHex[i];
+			FinalID += IDinHex[i];
 		}
 		else
 		{
-			finalID += additionalString[i];
+			FinalID += AdditionalString[i];
 		}
 	}
 
-	return finalID;
+	return FinalID;
 }
 
-bool FEBasicApplication::setClipboardText(std::string text)
+bool FEBasicApplication::SetClipboardText(const std::string Text)
 {
-	if (OpenClipboard(0))
+	if (OpenClipboard(nullptr))
 	{
 		EmptyClipboard();
 
-		HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, text.size() + 1);
-		memcpy(GlobalLock(hMem), text.c_str(), text.size() + 1);
-		GlobalUnlock(hMem);
+		const HGLOBAL HMem = GlobalAlloc(GMEM_MOVEABLE, Text.size() + 1);
+		memcpy(GlobalLock(HMem), Text.c_str(), Text.size() + 1);
+		GlobalUnlock(HMem);
 
-		SetClipboardData(CF_TEXT, hMem);
+		SetClipboardData(CF_TEXT, HMem);
 
 		CloseClipboard();
 		return true;
@@ -277,19 +277,19 @@ bool FEBasicApplication::setClipboardText(std::string text)
 	return false;
 }
 
-std::string FEBasicApplication::getClipboardText()
+std::string FEBasicApplication::GetClipboardText()
 {
-	std::string text = "";
+	std::string text;
 
-	if (OpenClipboard(0))
+	if (OpenClipboard(nullptr))
 	{
 		HANDLE data = nullptr;
 		data = GetClipboardData(CF_TEXT);
 		if (data != nullptr)
 		{
-			char* pszText = static_cast<char*>(GlobalLock(data));
-			if (pszText != nullptr)
-				text = pszText;
+			const char* PszText = static_cast<char*>(GlobalLock(data));
+			if (PszText != nullptr)
+				text = PszText;
 		}
 
 		CloseClipboard();

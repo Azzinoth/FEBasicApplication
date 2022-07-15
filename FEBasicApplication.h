@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FETime.h"
+#include "FEThreadPool.h"
 
 #include <random>
 
@@ -20,68 +20,68 @@ namespace FocalEngine
 {
 	class FEBasicApplication
 	{
-		int windowW;
-		int windowH;
-		std::string windowTitle;
+		int WindowW;
+		int WindowH;
+		std::string WindowTitle;
 		
-		GLFWwindow* window;
+		GLFWwindow* Window;
 
-		static void windowCloseCallback(GLFWwindow* window);
-		static void(*clientWindowCloseCallbackImpl)();
+		static void WindowCloseCallback(GLFWwindow* Window);
+		static void(*ClientWindowCloseCallbackImpl)();
 
-		static void windowResizeCallback(GLFWwindow* window, int width, int height);
-		static void(*clientWindowResizeCallbackImpl)(int, int);
+		static void WindowResizeCallback(GLFWwindow* Window, int Width, int Height);
+		static void(*ClientWindowResizeCallbackImpl)(int, int);
 
-		static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
-		static void(*clientMouseButtonCallbackImpl)(int, int, int);
+		static void MouseButtonCallback(GLFWwindow* Window, int Button, int Action, int Mods);
+		static void(*ClientMouseButtonCallbackImpl)(int, int, int);
 
-		static void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos);
-		static void(*clientMouseMoveCallbackImpl)(double, double);
+		static void MouseMoveCallback(GLFWwindow* Window, double Xpos, double Ypos);
+		static void(*ClientMouseMoveCallbackImpl)(double, double);
 
-		static void keyButtonCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-		static void(*clientKeyButtonCallbackImpl)(int, int, int, int);
+		static void KeyButtonCallback(GLFWwindow* Window, int Key, int Scancode, int Action, int Mods);
+		static void(*ClientKeyButtonCallbackImpl)(int, int, int, int);
 
-		static void dropCallback(GLFWwindow* window, int count, const char** paths);
-		static void(*clientDropCallbackImpl)(int, const char**);
+		static void DropCallback(GLFWwindow* Window, int Count, const char** Paths);
+		static void(*ClientDropCallbackImpl)(int, const char**);
 
-		std::string getUniqueId();
+		std::string GetUniqueId();
 	public:
 		SINGLETON_PUBLIC_PART(FEBasicApplication)
 
-		GLFWwindow* getGLFWWindow();
+		GLFWwindow* GetGlfwWindow() const;
 
-		void createWindow(int width = 1920, int height = 1080, std::string WindowTitle = "FEBasicApplication");
-		void setWindowCaption(std::string newCaption);
-		bool isWindowOpened();
+		void InitWindow(int Width = 1920, int Height = 1080, std::string WindowTitle = "FEBasicApplication");
+		void SetWindowCaption(std::string NewCaption) const;
+		bool IsWindowOpened() const;
 
-		void terminate();
-		void cancelTerination();
+		void Terminate() const;
+		void CancelTerination() const;
 
-		void beginFrame();
-		void endFrame();
+		void BeginFrame();
+		void EndFrame() const;
 
-		bool isWindowInFocus();
+		bool IsWindowInFocus() const;
 
-		void setWindowCloseCallback(void(*func)());
-		void setWindowResizeCallback(void(*func)(int, int));
-		void setMouseButtonCallback(void(*func)(int, int, int));
-		void setKeyCallback(void(*func)(int, int, int, int));
-		void setMouseMoveCallback(void(*func)(double, double));
-		void setDropCallback(void(*func)(int, const char**));
+		void SetWindowCloseCallback(void(*Func)());
+		void SetWindowResizeCallback(void(*Func)(int, int));
+		void SetMouseButtonCallback(void(*Func)(int, int, int));
+		void SetKeyCallback(void(*Func)(int, int, int, int));
+		void SetMouseMoveCallback(void(*Func)(double, double));
+		void SetDropCallback(void(*Func)(int, const char**));
 		
-		void getWindowPosition(int* xpos, int* ypos);
-		void getWindowSize(int* width, int* height);
+		void GetWindowPosition(int* Xpos, int* Ypos) const;
+		void GetWindowSize(int* Width, int* Height) const;
 
-		void minimizeWindow();
-		void restoreWindow();
+		void MinimizeWindow() const;
+		void RestoreWindow() const;
 
 		// This function can produce ID's that are "unique" with very rare collisions.
 		// For most purposes it can be considered unique.
 		// ID is a 24 long string.
-		std::string getUniqueHexID();
+		std::string GetUniqueHexID();
 
-		bool setClipboardText(std::string text);
-		std::string getClipboardText();
+		bool SetClipboardText(std::string Text);
+		std::string GetClipboardText();
 	private:
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 	};

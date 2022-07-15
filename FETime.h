@@ -8,22 +8,22 @@
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)  \
 static CLASS_NAME& getInstance()           \
 {										   \
-	if (!_instance)                        \
-		_instance = new CLASS_NAME();      \
-	return *_instance;				       \
+	if (!Instance)                         \
+		Instance = new CLASS_NAME();       \
+	return *Instance;				       \
 }                                          \
 										   \
 ~CLASS_NAME();
 
 #define SINGLETON_PRIVATE_PART(CLASS_NAME) \
-static CLASS_NAME* _instance;              \
+static CLASS_NAME* Instance;               \
 CLASS_NAME();                              \
 CLASS_NAME(const CLASS_NAME &);            \
 void operator= (const CLASS_NAME &);
 
 namespace FocalEngine
 {
-#define chronoTimePoint std::chrono::time_point<std::chrono::high_resolution_clock>
+#define FE_CHRONO_TIME_POINT std::chrono::time_point<std::chrono::high_resolution_clock>
 
 	enum FE_TIME_RESOLUTION
 	{
@@ -35,14 +35,14 @@ namespace FocalEngine
 
 	class FETime
 	{
-		std::unordered_map<std::string, chronoTimePoint> timeStamps;
+		std::unordered_map<std::string, FE_CHRONO_TIME_POINT> TimeStamps;
 
 		SINGLETON_PRIVATE_PART(FETime)
 	public:
 		SINGLETON_PUBLIC_PART(FETime)
 
-		void beginTimeStamp(std::string label = "");
-		double endTimeStamp(std::string label = "", FE_TIME_RESOLUTION timeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
+		void BeginTimeStamp(std::string Label = "");
+		double EndTimeStamp(std::string Label = "", FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
 	};
 
 #define TIME FETime::getInstance()
