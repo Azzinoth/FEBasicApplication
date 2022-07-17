@@ -89,6 +89,34 @@ FEThreadPool::~FEThreadPool()
 	Threads.clear();
 }
 
+bool FEThreadPool::IsAnyThreadHaveActiveJob() const
+{
+	for (size_t i = 0; i < Threads.size(); i++)
+	{
+		if (!Threads[i]->IsJobCollected())
+			return true;
+	}
+
+	return false;
+}
+
+bool FEThreadPool::SetConcurrentThreadCount(size_t NewValue)
+{
+	if (NewValue > FE_MAX_CONCURRENT_THREADS)
+		NewValue = FE_MAX_CONCURRENT_THREADS;
+
+	if (NewValue <= Threads.size())
+		return false;
+
+	const size_t NewThreadsToAdd = NewValue - Threads.size();
+	for (size_t i = 0; i < NewThreadsToAdd; i++)
+	{
+		Threads.push_back(new JobThread());
+	}
+
+	return true;
+}
+
 void FEThreadPool::Execute(const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
 {
 	FEUnexecutedJob* NewJob = new FEUnexecutedJob();

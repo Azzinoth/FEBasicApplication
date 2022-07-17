@@ -61,6 +61,8 @@ GLFWwindow* FEBasicApplication::GetGlfwWindow() const
 
 void FEBasicApplication::BeginFrame()
 {
+	THREAD_POOL.Update();
+
 	ImGui::GetIO().DeltaTime = 1.0f / 60.0f;
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();

@@ -10,6 +10,7 @@ namespace FocalEngine
 {
 #define FE_THREAD_CALLBACK_FUNC std::function<void (void* OutputData)>
 #define FE_THREAD_JOB_FUNC std::function<void (void* InputData, void* OutputData)>
+#define FE_MAX_CONCURRENT_THREADS 1024
 
 	class JobThread;
 	class FEThreadPool;
@@ -56,8 +57,11 @@ namespace FocalEngine
 	public:
 		SINGLETON_PUBLIC_PART(FEThreadPool)
 
+		bool SetConcurrentThreadCount(size_t NewValue);
 		void Execute(FE_THREAD_JOB_FUNC Job, void* InputData = nullptr, void* OutputData = nullptr, FE_THREAD_CALLBACK_FUNC CallBack = nullptr);
 		void Update();
+
+		bool IsAnyThreadHaveActiveJob() const;
 	private:
 		SINGLETON_PRIVATE_PART(FEThreadPool)
 
