@@ -129,6 +129,8 @@ void FEBasicApplication::WindowResizeCallback(GLFWwindow* Window, int Width, int
 	if (UpdatedWidth == 0 || UpdatedHeight == 0)
 		return;
 
+	glViewport(0, 0, UpdatedWidth, UpdatedHeight);
+
 	APPLICATION.WindowW = UpdatedWidth;
 	APPLICATION.WindowH = UpdatedHeight;
 
