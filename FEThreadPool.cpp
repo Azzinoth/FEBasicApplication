@@ -162,3 +162,13 @@ void FEThreadPool::Update()
 		}
 	}
 }
+
+unsigned int FEThreadPool::GetLogicalCoreCount() const
+{
+	return std::thread::hardware_concurrency();
+}
+
+unsigned int FEThreadPool::GetThreadCount() const
+{
+	return Threads.size();
+}

@@ -62,6 +62,8 @@ namespace FocalEngine
 		void Update();
 
 		bool IsAnyThreadHaveActiveJob() const;
+		unsigned int GetLogicalCoreCount() const;
+		unsigned int GetThreadCount() const;
 	private:
 		SINGLETON_PRIVATE_PART(FEThreadPool)
 
