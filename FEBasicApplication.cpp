@@ -8,6 +8,7 @@ void(*FEBasicApplication::ClientMouseButtonCallbackImpl)(int, int, int) = nullpt
 void(*FEBasicApplication::ClientMouseMoveCallbackImpl)(double, double) = nullptr;
 void(*FEBasicApplication::ClientKeyButtonCallbackImpl)(int, int, int, int) = nullptr;
 void(*FEBasicApplication::ClientDropCallbackImpl)(int, const char**) = nullptr;
+void(*FEBasicApplication::ClientScrollCallbackImpl)(double, double) = nullptr;
 
 FEBasicApplication::FEBasicApplication()
 {
@@ -41,6 +42,7 @@ void FEBasicApplication::InitWindow(const int Width, const int Height, std::stri
 	glfwSetCursorPosCallback(Window, MouseMoveCallback);
 	glfwSetKeyCallback(Window, KeyButtonCallback);
 	glfwSetDropCallback(Window, DropCallback);
+	glfwSetScrollCallback(Window, ScrollCallback);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -182,6 +184,17 @@ void FEBasicApplication::DropCallback(GLFWwindow* Window, const int Count, const
 {
 	if (ClientDropCallbackImpl != nullptr)
 		ClientDropCallbackImpl(Count, Paths);
+}
+
+void FEBasicApplication::SetScrollCallback(void(*Func)(double, double))
+{
+	ClientScrollCallbackImpl = Func;
+}
+
+void FEBasicApplication::ScrollCallback(GLFWwindow* Window, const double Xoffset, const double Yoffset)
+{
+	if (ClientScrollCallbackImpl != nullptr)
+		ClientScrollCallbackImpl(Xoffset, Yoffset);
 }
 
 void FEBasicApplication::GetWindowPosition(int* Xpos, int* Ypos) const

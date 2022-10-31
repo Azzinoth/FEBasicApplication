@@ -44,6 +44,9 @@ namespace FocalEngine
 		static void DropCallback(GLFWwindow* Window, int Count, const char** Paths);
 		static void(*ClientDropCallbackImpl)(int, const char**);
 
+		static void ScrollCallback(GLFWwindow* Window, double Xoffset, double Yoffset);
+		static void(*ClientScrollCallbackImpl)(double, double);
+
 		std::string GetUniqueId();
 	public:
 		SINGLETON_PUBLIC_PART(FEBasicApplication)
@@ -68,6 +71,7 @@ namespace FocalEngine
 		void SetKeyCallback(void(*Func)(int, int, int, int));
 		void SetMouseMoveCallback(void(*Func)(double, double));
 		void SetDropCallback(void(*Func)(int, const char**));
+		void SetScrollCallback(void(*Func)(double, double));
 		
 		void GetWindowPosition(int* Xpos, int* Ypos) const;
 		void GetWindowSize(int* Width, int* Height) const;
