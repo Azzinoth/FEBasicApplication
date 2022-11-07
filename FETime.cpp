@@ -41,3 +41,28 @@ double FETime::EndTimeStamp(const std::string Label, const FE_TIME_RESOLUTION Ti
 	
 	return -1.0;
 }
+
+long long FETime::GetTimeStamp(FE_TIME_RESOLUTION TimeResolution)
+{
+	auto ChronoNanoSec = std::chrono::high_resolution_clock::now().time_since_epoch();
+	long long Result = ChronoNanoSec.count();
+
+	if (TimeResolution == FE_TIME_RESOLUTION_MICROSECONS)
+	{
+		Result /= long long(pow(10.0, 3));
+	}
+	else if (TimeResolution == FE_TIME_RESOLUTION_MILLISECONDS)
+	{
+		Result /= long long(pow(10.0, 6));
+	}
+	else if (TimeResolution == FE_TIME_RESOLUTION_MILLISECONDS)
+	{
+		Result /= long long(pow(10.0, 9));
+	}
+	else if (TimeResolution == FE_TIME_RESOLUTION_SECONDS)
+	{
+		Result /= long long(pow(10.0, 12));
+	}
+
+	return Result;
+}

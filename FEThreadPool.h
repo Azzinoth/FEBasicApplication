@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FETime.h"
+#include "FELog.h"
 
 #include <thread>
 #include <atomic>
