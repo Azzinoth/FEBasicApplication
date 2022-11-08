@@ -63,13 +63,15 @@ namespace FocalEngine
 
 		bool IsFileOutputActive();
 		void SetFileOutput(bool NewValue);
+
+		std::vector<std::string> GetTopicList();
 	private:
 		SINGLETON_PRIVATE_PART(FELOG)
 
 		std::unordered_map<std::string, std::unordered_map<LogItem, LogItem>> Topics;
 
 		std::unordered_map<std::string, bool> DisabledTopics;
-		bool bFileOutput = true;
+		bool bFileOutput = false;
 
 		std::unordered_map<std::string, std::fstream*> TopicFiles;
 		void OutputToFile(LogItem* Item);

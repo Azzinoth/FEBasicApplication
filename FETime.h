@@ -21,6 +21,17 @@ CLASS_NAME();                              \
 CLASS_NAME(const CLASS_NAME &);            \
 void operator= (const CLASS_NAME &);
 
+#define FE_MAP_TO_STR_VECTOR(map)          \
+std::vector<std::string> result;           \
+auto iterator = map.begin();               \
+while (iterator != map.end())              \
+{                                          \
+	result.push_back(iterator->first);     \
+	iterator++;                            \
+}                                          \
+                                           \
+return result;
+
 namespace FocalEngine
 {
 #define FE_CHRONO_TIME_POINT std::chrono::time_point<std::chrono::high_resolution_clock>

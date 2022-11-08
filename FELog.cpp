@@ -147,3 +147,8 @@ void FELOG::SetFileOutput(bool NewValue)
 {
 	bFileOutput = NewValue;
 }
+
+std::vector<std::string> FELOG::GetTopicList()
+{
+	FE_MAP_TO_STR_VECTOR(Topics)
+}

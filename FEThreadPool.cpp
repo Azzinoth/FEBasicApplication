@@ -170,5 +170,5 @@ unsigned int FEThreadPool::GetLogicalCoreCount() const
 
 unsigned int FEThreadPool::GetThreadCount() const
 {
-	return Threads.size();
+	return int(Threads.size());
 }
