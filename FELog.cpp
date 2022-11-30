@@ -30,7 +30,26 @@ void FELOG::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 	TempItem.Count = 0;
 	TempItem.Topic = Topic;
 	TempItem.TimeStamp = TIME.GetTimeStamp(FE_TIME_RESOLUTION_NANOSECONDS);
+	TempItem.ThreadID = GetCurrentThreadId();
 
+	if (bShouldAppendMsgWithTimeStamp)
+	{
+		TempItem.Text += "\n";
+		TempItem.Text += "Time stamp: " + TIME.NanosecondTimeStampToData(TempItem.TimeStamp);
+	}
+
+	if (bShouldAppendMsgWithThreadID)
+	{
+		TempItem.Text += "\n";
+		TempItem.Text += "ThreadID: " + std::to_string(TempItem.ThreadID);
+	}
+
+	if (bShouldAppendMsgWithTimeStamp || bShouldAppendMsgWithThreadID)
+	{
+		TempItem.Text += "\n";
+		TempItem.Text += "================================================================";
+	}
+		
 	const auto CurrentLogItem = Topics[Topic].find(TempItem);
 	if (CurrentLogItem == Topics[Topic].end())
 		Topics[Topic][TempItem] = TempItem;
@@ -151,4 +170,24 @@ void FELOG::SetFileOutput(bool NewValue)
 std::vector<std::string> FELOG::GetTopicList()
 {
 	FE_MAP_TO_STR_VECTOR(Topics)
+}
+
+bool FELOG::IsAppendingMsgWithTimeStamp()
+{
+	return bShouldAppendMsgWithTimeStamp;
+}
+
+void FELOG::SetShouldAppendMsgWithTimeStamp(bool NewValue)
+{
+	bShouldAppendMsgWithTimeStamp = NewValue;
+}
+
+bool FELOG::IsAppendingMsgWithThreadID()
+{
+	return bShouldAppendMsgWithThreadID;
+}
+
+void FELOG::SetShouldAppendMsgWithThreadID(bool NewValue)
+{
+	bShouldAppendMsgWithThreadID = NewValue;
 }

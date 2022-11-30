@@ -55,7 +55,9 @@ namespace FocalEngine
 		void BeginTimeStamp(std::string Label = "");
 		double EndTimeStamp(std::string Label = "", FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
 	
-		long long GetTimeStamp(FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
+		uint64_t GetTimeStamp(FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
+
+		std::string FETime::NanosecondTimeStampToData(uint64_t NanosecondsSinceEpoch = 0);
 	};
 
 #define TIME FETime::getInstance()

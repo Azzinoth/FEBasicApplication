@@ -42,27 +42,60 @@ double FETime::EndTimeStamp(const std::string Label, const FE_TIME_RESOLUTION Ti
 	return -1.0;
 }
 
-long long FETime::GetTimeStamp(FE_TIME_RESOLUTION TimeResolution)
+uint64_t FETime::GetTimeStamp(FE_TIME_RESOLUTION TimeResolution)
 {
-	auto ChronoNanoSec = std::chrono::high_resolution_clock::now().time_since_epoch();
-	long long Result = ChronoNanoSec.count();
+	uint64_t Result = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 	if (TimeResolution == FE_TIME_RESOLUTION_MICROSECONS)
 	{
-		Result /= long long(pow(10.0, 3));
+		Result /= uint64_t(pow(10.0, 3));
 	}
 	else if (TimeResolution == FE_TIME_RESOLUTION_MILLISECONDS)
 	{
-		Result /= long long(pow(10.0, 6));
-	}
-	else if (TimeResolution == FE_TIME_RESOLUTION_MILLISECONDS)
-	{
-		Result /= long long(pow(10.0, 9));
+		Result /= uint64_t(pow(10.0, 6));
 	}
 	else if (TimeResolution == FE_TIME_RESOLUTION_SECONDS)
 	{
-		Result /= long long(pow(10.0, 12));
+		Result /= uint64_t(pow(10.0, 9));
 	}
+
+	return Result;
+}
+
+std::string FETime::NanosecondTimeStampToData(uint64_t NanosecondsSinceEpoch)
+{
+	auto FillZeros = [&](std::string Data) {
+		if (Data.size() == 2)
+			Data.insert(0, "0");
+
+		if (Data.size() == 1)
+			Data.insert(0, "00");
+
+		return Data;
+	};
+
+	if (NanosecondsSinceEpoch == 0)
+		NanosecondsSinceEpoch = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+	std::time_t Seconds = NanosecondsSinceEpoch / uint64_t(pow(10.0, 9));
+
+	std::string Result = std::ctime(&Seconds);
+	// Deleting day of week.
+	Result.erase(Result.begin(), Result.begin() + 4);
+	// Deleting new line symbol.
+	Result.erase(Result.end() - 1, Result.end());
+	// Moving year.
+	Result.insert(7, Result.substr(Result.size() - 4, 4) + " ");
+	Result.erase(Result.size() - 5, 5);
+	// Add milliseconds.
+	uint64_t Milliseconds = (NanosecondsSinceEpoch - Seconds * uint64_t(pow(10.0, 9))) / uint64_t(pow(10.0, 6));
+	Result.insert(Result.size(), "." + FillZeros(std::to_string(Milliseconds)));
+	// Add microsecond.
+	uint64_t Microseconds = (NanosecondsSinceEpoch - Seconds * uint64_t(pow(10.0, 9)) - Milliseconds * uint64_t(pow(10.0, 6))) / uint64_t(pow(10.0, 3));
+	Result.insert(Result.size(), "." + FillZeros(std::to_string(Microseconds)));
+	// Add nanosecond.
+	uint64_t Nanoseconds = NanosecondsSinceEpoch - Seconds * uint64_t(pow(10.0, 9)) - Milliseconds * uint64_t(pow(10.0, 6)) - Microseconds * uint64_t(pow(10.0, 3));
+	Result.insert(Result.size(), "." + FillZeros(std::to_string(Nanoseconds)));
 
 	return Result;
 }

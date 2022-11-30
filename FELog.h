@@ -19,7 +19,8 @@ namespace FocalEngine
 		LOG_SEVERITY Severity;
 		int Count;
 		std::string Topic;
-		long long TimeStamp;
+		uint64_t TimeStamp;
+		DWORD ThreadID;
 
 		LogItem();
 		~LogItem();
@@ -65,6 +66,12 @@ namespace FocalEngine
 		void SetFileOutput(bool NewValue);
 
 		std::vector<std::string> GetTopicList();
+
+		bool IsAppendingMsgWithTimeStamp();
+		void SetShouldAppendMsgWithTimeStamp(bool NewValue);
+
+		bool IsAppendingMsgWithThreadID();
+		void SetShouldAppendMsgWithThreadID(bool NewValue);
 	private:
 		SINGLETON_PRIVATE_PART(FELOG)
 
@@ -75,6 +82,9 @@ namespace FocalEngine
 
 		std::unordered_map<std::string, std::fstream*> TopicFiles;
 		void OutputToFile(LogItem* Item);
+
+		bool bShouldAppendMsgWithTimeStamp = true;
+		bool bShouldAppendMsgWithThreadID = true;
 	};
 
 	#define LOG FELOG::getInstance()
