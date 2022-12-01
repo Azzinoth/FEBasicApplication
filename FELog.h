@@ -81,10 +81,10 @@ namespace FocalEngine
 		bool bFileOutput = false;
 
 		std::unordered_map<std::string, std::fstream*> TopicFiles;
-		void OutputToFile(LogItem* Item);
+		void OutputToFile(const LogItem* Item);
 
-		bool bShouldAppendMsgWithTimeStamp = true;
-		bool bShouldAppendMsgWithThreadID = true;
+		bool bShouldAppendMsgWithTimeStamp = false;
+		bool bShouldAppendMsgWithThreadID = false;
 	};
 
 	#define LOG FELOG::getInstance()

@@ -60,7 +60,7 @@ void FELOG::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 	OutputToFile(&Topics[Topic][TempItem]);
 }
 
-void FELOG::OutputToFile(LogItem* Item)
+void FELOG::OutputToFile(const LogItem* Item)
 {
 	if (!bFileOutput)
 		return;
@@ -80,7 +80,7 @@ void FELOG::OutputToFile(LogItem* Item)
 		TopicFiles[Item->Topic] = file;
 	}
 
-	std::string Line = Item->Text + '\n';
+	const std::string Line = Item->Text + '\n';
 	file->write(Line.c_str(), Line.size());
 	file->flush();
 }
@@ -139,7 +139,7 @@ std::string FELOG::SeverityLevelToString(const LOG_SEVERITY Severity)
 	return result;
 }
 
-bool FELOG::IsTopicFileOutputActive(std::string Topic)
+bool FELOG::IsTopicFileOutputActive(const std::string Topic)
 {
 	if (DisabledTopics.find(Topic) == DisabledTopics.end())
 		return true;
@@ -147,12 +147,12 @@ bool FELOG::IsTopicFileOutputActive(std::string Topic)
 	return false;
 }
 
-void FELOG::DisableTopicFileOutput(std::string TopicToDisable)
+void FELOG::DisableTopicFileOutput(const std::string TopicToDisable)
 {
 	DisabledTopics[TopicToDisable] = true;
 }
 
-void FELOG::EnableTopicFileOutput(std::string TopicToEnable)
+void FELOG::EnableTopicFileOutput(const std::string TopicToEnable)
 {
 	DisabledTopics.erase(TopicToEnable);
 }
@@ -162,7 +162,7 @@ bool FELOG::IsFileOutputActive()
 	return bFileOutput;
 }
 
-void FELOG::SetFileOutput(bool NewValue)
+void FELOG::SetFileOutput(const bool NewValue)
 {
 	bFileOutput = NewValue;
 }
@@ -177,7 +177,7 @@ bool FELOG::IsAppendingMsgWithTimeStamp()
 	return bShouldAppendMsgWithTimeStamp;
 }
 
-void FELOG::SetShouldAppendMsgWithTimeStamp(bool NewValue)
+void FELOG::SetShouldAppendMsgWithTimeStamp(const bool NewValue)
 {
 	bShouldAppendMsgWithTimeStamp = NewValue;
 }
@@ -187,7 +187,7 @@ bool FELOG::IsAppendingMsgWithThreadID()
 	return bShouldAppendMsgWithThreadID;
 }
 
-void FELOG::SetShouldAppendMsgWithThreadID(bool NewValue)
+void FELOG::SetShouldAppendMsgWithThreadID(const bool NewValue)
 {
 	bShouldAppendMsgWithThreadID = NewValue;
 }

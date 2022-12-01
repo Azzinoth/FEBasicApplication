@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <chrono>
+#include <time.h>
 
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)  \
 static CLASS_NAME& getInstance()           \
