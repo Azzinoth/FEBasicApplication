@@ -74,7 +74,12 @@ namespace FocalEngine
 		void SetScrollCallback(void(*Func)(double, double));
 		
 		void GetWindowPosition(int* Xpos, int* Ypos) const;
+		int GetWindowXPosition() const;
+		int GetWindowYPosition() const;
+
 		void GetWindowSize(int* Width, int* Height) const;
+		int GetWindowWidth() const;
+		int GetWindowHeight() const;
 
 		void MinimizeWindow() const;
 		void RestoreWindow() const;

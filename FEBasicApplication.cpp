@@ -202,9 +202,37 @@ void FEBasicApplication::GetWindowPosition(int* Xpos, int* Ypos) const
 	glfwGetWindowPos(Window, Xpos, Ypos);
 }
 
+int FEBasicApplication::GetWindowXPosition() const
+{
+	int X, Y;
+	glfwGetWindowPos(Window, &X, &Y);
+	return X;
+}
+
+int FEBasicApplication::GetWindowYPosition() const
+{
+	int X, Y;
+	glfwGetWindowPos(Window, &X, &Y);
+	return Y;
+}
+
 void FEBasicApplication::GetWindowSize(int* Width, int* Height) const
 {
 	glfwGetWindowSize(Window, Width, Height);
+}
+
+int FEBasicApplication::GetWindowWidth() const
+{
+	int W, H;
+	glfwGetWindowSize(Window, &W, &H);
+	return W;
+}
+
+int FEBasicApplication::GetWindowHeight() const
+{
+	int W, H;
+	glfwGetWindowSize(Window, &W, &H);
+	return H;
 }
 
 void FEBasicApplication::MinimizeWindow() const
