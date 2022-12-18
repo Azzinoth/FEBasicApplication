@@ -58,7 +58,7 @@ namespace FocalEngine
 	
 		uint64_t GetTimeStamp(FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
 
-		std::string NanosecondTimeStampToData(uint64_t NanosecondsSinceEpoch = 0);
+		std::string NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch = 0);
 	};
 
 #define TIME FETime::getInstance()

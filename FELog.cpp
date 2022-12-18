@@ -35,7 +35,7 @@ void FELOG::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 	if (bShouldAppendMsgWithTimeStamp)
 	{
 		TempItem.Text += "\n";
-		TempItem.Text += "Time stamp: " + TIME.NanosecondTimeStampToData(TempItem.TimeStamp);
+		TempItem.Text += "Time stamp: " + TIME.NanosecondTimeStampToDate(TempItem.TimeStamp);
 	}
 
 	if (bShouldAppendMsgWithThreadID)

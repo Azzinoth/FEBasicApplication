@@ -62,7 +62,7 @@ uint64_t FETime::GetTimeStamp(const FE_TIME_RESOLUTION TimeResolution)
 	return Result;
 }
 
-std::string FETime::NanosecondTimeStampToData(uint64_t NanosecondsSinceEpoch)
+std::string FETime::NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch)
 {
 	auto FillZeros = [&](std::string Data) {
 		if (Data.size() == 2)
