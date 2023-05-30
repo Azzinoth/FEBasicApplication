@@ -1,8 +1,6 @@
 #pragma once
 
-#include "FEThreadPool.h"
-
-#include <random>
+#include "SubSystems/Networking/FENetworking.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -46,8 +44,6 @@ namespace FocalEngine
 
 		static void ScrollCallback(GLFWwindow* Window, double Xoffset, double Yoffset);
 		static void(*ClientScrollCallbackImpl)(double, double);
-
-		std::string GetUniqueId();
 	public:
 		SINGLETON_PUBLIC_PART(FEBasicApplication)
 

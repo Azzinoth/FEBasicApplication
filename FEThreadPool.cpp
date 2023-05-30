@@ -8,6 +8,8 @@ JobThread::JobThread()
 	bJobFinished = false;
 	bHaveNewJob = false;
 	bJobCollected = true;
+	bNeedToExit = false;
+	bReadyForDeletion = false;
 	ThreadHandler = std::thread(&JobThread::ExecuteJob, this);
 	ThreadHandler.detach();
 }
@@ -18,6 +20,12 @@ void JobThread::ExecuteJob()
 {
 	while (true)
 	{
+		if (bNeedToExit)
+		{
+			bReadyForDeletion = true;
+			return;
+		}
+
 		bHaveNewJob = false;
 
 		if (Job != nullptr)
@@ -33,6 +41,12 @@ void JobThread::ExecuteJob()
 
 		while (true)
 		{
+			if (bNeedToExit)
+			{
+				bReadyForDeletion = true;
+				return;
+			}
+
 			Sleep(5);
 			if (bHaveNewJob.load())
 				break;
@@ -69,6 +83,13 @@ bool JobThread::AssignJob(const FEUnexecutedJob* NewJob)
 
 	return true;
 }
+
+DedicatedJobThread::DedicatedJobThread()
+{
+	ThreadID = UNIQUE_ID.GetUniqueHexID();
+}
+
+DedicatedJobThread::~DedicatedJobThread() {}
 
 FEThreadPool::FEThreadPool()
 {
@@ -161,6 +182,43 @@ void FEThreadPool::Update()
 				JobsList.erase(JobsList.begin());
 		}
 	}
+
+	for (size_t i = 0; i < DedicatedThreadsToShutdown.size(); i++)
+	{
+		if (DedicatedThreadsToShutdown[i]->bNeedToExit && DedicatedThreadsToShutdown[i]->bReadyForDeletion)
+		{
+			for (size_t j = 0; j < DedicatedThreads.size(); j++)
+			{
+				if (DedicatedThreads[j]->ThreadID == DedicatedThreadsToShutdown[i]->ThreadID)
+				{
+					DedicatedThreads.erase(DedicatedThreads.begin() + j, DedicatedThreads.begin() + j + 1);
+					break;
+				}
+			}
+
+			delete DedicatedThreadsToShutdown[i];
+			DedicatedThreadsToShutdown.erase(DedicatedThreadsToShutdown.begin() + i, DedicatedThreadsToShutdown.begin() + i + 1);
+			i--;
+			if (DedicatedThreads.empty())
+				break;
+		}
+	}
+
+	for (size_t i = 0; i < DedicatedThreads.size(); i++)
+	{
+		if (DedicatedThreads[i]->bNeedToExit || DedicatedThreads[i]->bReadyForDeletion)
+			continue;
+
+		if (DedicatedThreads[i]->IsJobFinished() && !DedicatedThreads[i]->IsJobCollected())
+		{
+			CollectJob(DedicatedThreads[i]);
+		}
+		else if (!DedicatedThreads[i]->JobsList.empty() && DedicatedThreads[i]->IsJobFinished() && DedicatedThreads[i]->IsJobCollected())
+		{
+			if (DedicatedThreads[i]->AssignJob(DedicatedThreads[i]->JobsList[0]))
+				DedicatedThreads[i]->JobsList.erase(DedicatedThreads[i]->JobsList.begin());
+		}
+	}
 }
 
 unsigned int FEThreadPool::GetLogicalCoreCount() const
@@ -171,4 +229,86 @@ unsigned int FEThreadPool::GetLogicalCoreCount() const
 unsigned int FEThreadPool::GetThreadCount() const
 {
 	return static_cast<int>(Threads.size());
+}
+
+std::string FEThreadPool::CreateDedicatedThreadID()
+{
+	DedicatedThreads.push_back(new DedicatedJobThread());
+	return DedicatedThreads.back()->ThreadID;
+}
+
+bool FEThreadPool::IsAnyDedicatedThreadHaveActiveJob() const
+{
+	for (size_t i = 0; i < DedicatedThreads.size(); i++)
+	{
+		if (!DedicatedThreads[i]->IsJobCollected())
+			return true;
+	}
+
+	return false;
+}
+
+DedicatedJobThread* FEThreadPool::GetDedicatedThread(std::string ThreadID)
+{
+	for (size_t i = 0; i < DedicatedThreads.size(); i++)
+	{
+		if (DedicatedThreads[i]->ThreadID == ThreadID)
+			return DedicatedThreads[i];
+	}
+
+	return nullptr;
+}
+
+void FEThreadPool::Execute(std::string DedicatedThreadID, const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
+{
+	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
+	if (!Thread)
+		return;
+
+	if (Thread->bNeedToExit || Thread->bReadyForDeletion)
+		return;
+
+	FEUnexecutedJob* NewJob = new FEUnexecutedJob();
+	NewJob->Job = Job;
+	NewJob->InputData = InputData;
+	NewJob->OutputData = OutputData;
+	NewJob->CallBack = CallBack;
+
+	// Check if we can start it right away
+	if (Thread->IsJobFinished() && Thread->IsJobCollected())
+	{
+		if (Thread->AssignJob(NewJob))
+			return;
+	}
+
+	// If all thread in poll are working we should save new job for later execution.
+	Thread->JobsList.push_back(NewJob);
+}
+
+void FEThreadPool::MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedThread)
+{
+	for (size_t i = 0; i < DedicatedThreadsToShutdown.size(); i++)
+	{
+		if (DedicatedThreadsToShutdown[i]->ThreadID == DedicatedThread->ThreadID)
+			return;
+	}
+
+	DedicatedThreadsToShutdown.push_back(DedicatedThread);
+}
+
+bool FEThreadPool::ShutdownDedicatedThread(std::string DedicatedThreadID)
+{
+	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
+	if (!Thread)
+		return false;
+
+	Thread->bJobFinished = false;
+	Thread->bHaveNewJob = false;
+	Thread->bJobCollected = true;
+	Thread->JobsList.clear();
+	Thread->bNeedToExit = true;
+
+	MarkDedicatedThreadForShutdown(Thread);
+
+	return true;
 }
