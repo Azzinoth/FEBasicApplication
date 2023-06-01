@@ -8,6 +8,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui_internal.h"
 
+#define GLEW_STATIC
 #include "GL/glew.h"
 #include "GL/wglew.h"
 
