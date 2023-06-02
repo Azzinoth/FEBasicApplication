@@ -50,8 +50,14 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEUniqueID.h"
 )
 
-link_directories("ThirdParty/glew2/lib/$(PlatformTarget)")
-link_directories("ThirdParty/GLFW/lib/$(PlatformTarget)")
+set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
+set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget))
+
+set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget) PARENT_SCOPE)
+set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget) PARENT_SCOPE)
+
+link_directories(${GLEW_LIB_DIR})
+link_directories(${GLFW_LIB_DIR})
 
 add_library(FEBasicApplication
 			${BasicApplicationSubSystem_SRC}
@@ -70,10 +76,17 @@ source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetwor
 # *************** THIRD_PARTY ***************
 source_group("Source Files/ThirdParty/imgui" FILES ${imgui_SRC})
 
-# set FEBasicApplication as the startup project
+# set the startup project
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplication)
 
+set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include)
+set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
+
+set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include PARENT_SCOPE)
+set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty PARENT_SCOPE)
+set(BASICAPP_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)
+
 include_directories(
-	"ThirdParty/glew2/include"
-	"ThirdParty/"
+	${GLEW_INCLUDE_DIR}
+	${BASICAPP_THIRDPARTY_DIR}
 )
