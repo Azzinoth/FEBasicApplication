@@ -26,3 +26,13 @@ If you want to move the submodule to a folder named "SubSystems", for example, u
 ```bash
 git mv FEBasicApplication SubSystems/
 ```
+
+## Third Party Licenses
+
+This project uses the following third-party libraries:
+
+1) **GLEW**: This library is licensed under a permissive open-source license, similar to the MIT license. The full license text can be found at [GLEW's GitHub repository](https://github.com/nigels-com/glew/blob/master/LICENSE.txt).
+
+2) **GLFW**: This library is licensed under the zlib License. The full license text can be found at [GLFW's GitHub repository](https://github.com/glfw/glfw/blob/master/LICENSE.md).
+
+3) **Dear ImGui**: This library is licensed under the MIT License. The full license text can be found at [Dear ImGui's GitHub repository](https://github.com/ocornut/imgui/blob/master/LICENSE.txt).
