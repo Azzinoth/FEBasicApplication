@@ -2,10 +2,10 @@
 
 #include "SubSystems/Networking/FENetworking.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui_internal.h"
 
 #define GLEW_STATIC
