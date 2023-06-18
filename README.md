@@ -1,6 +1,6 @@
 # FEBasicApplication
 
-![build](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/test_build.yml/badge.svg?branch=master)
+![build](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/Build.yml/badge.svg?branch=master)
 
 This repository serves as a base layer for applications that utilize OpenGL and ImGui. "FE" in the name stands for "Focal Engine". Originally, it was part of the [Focal Engine project](https://github.com/Azzinoth/FocalEngine/), but it has since been moved here and transformed into a standalone module. This makes it easier to incorporate its functionality into other projects.
 
