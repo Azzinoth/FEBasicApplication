@@ -19,7 +19,7 @@ namespace FocalEngine
 
     struct NetworkMessage
     {
-        int PayloadSize = -1;
+        size_t PayloadSize = 0;
         std::vector<char> PartialPayloadSize;
         int MessageType = -1;
         std::vector<char> PartialMessageType;
@@ -34,13 +34,13 @@ namespace FocalEngine
     struct BufferReader
     {
         char* ReceivedData = nullptr;
-        int CurrentShift = 0;
-        int BytesTotal = 0;
-        int BytesRead = 0;
-        int BytesLeft = 0;
+        size_t CurrentShift = 0;
+        size_t BytesTotal = 0;
+        size_t BytesRead = 0;
+        size_t BytesLeft = 0;
 
-        BufferReader(char* ReceivedData, int BytesReceived);
-        void GetBytes(std::vector<char>& Out, int Size);
+        BufferReader(char* ReceivedData, size_t BytesReceived);
+        void GetBytes(std::vector<char>& Out, size_t Size);
     };
 
     struct FENetworkSendThreadJobInfo

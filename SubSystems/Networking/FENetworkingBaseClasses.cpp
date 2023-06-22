@@ -7,20 +7,20 @@ void NetworkMessage::WorkOnMessage(char* ReceivedData, int BytesReceived, Networ
 
     while (Reader.BytesLeft > 0)
     {
-        if ((CurrentMessage)->PayloadSize == -1)
+        if ((CurrentMessage)->PayloadSize == 0)
         {
-            int BytesToRead = sizeof(int) > BytesReceived ? BytesReceived : sizeof(int);
+            int BytesToRead = sizeof(size_t) > BytesReceived ? BytesReceived : sizeof(size_t);
             if (Reader.BytesLeft != 0 && BytesToRead > Reader.BytesLeft)
                 BytesToRead = Reader.BytesLeft;
 
-            int BytesNeededToFill = sizeof(int) - static_cast<int>(CurrentMessage->PartialPayloadSize.size());
+            int BytesNeededToFill = sizeof(size_t) - static_cast<size_t>(CurrentMessage->PartialPayloadSize.size());
             BytesToRead = BytesToRead > BytesNeededToFill ? BytesNeededToFill : BytesToRead;
 
             Reader.GetBytes(CurrentMessage->PartialPayloadSize, BytesToRead);
 
-            if (CurrentMessage->PartialPayloadSize.size() == sizeof(int))
+            if (CurrentMessage->PartialPayloadSize.size() == sizeof(size_t))
             {
-                CurrentMessage->PayloadSize = *reinterpret_cast<int*>(CurrentMessage->PartialPayloadSize.data()) - HEADER_SIZE;
+                CurrentMessage->PayloadSize = *reinterpret_cast<size_t*>(CurrentMessage->PartialPayloadSize.data()) - HEADER_SIZE;
                 CurrentMessage->PartialPayloadSize.clear();
             }
 
@@ -46,7 +46,7 @@ void NetworkMessage::WorkOnMessage(char* ReceivedData, int BytesReceived, Networ
 
         if (CurrentMessage->PayloadSize > CurrentMessage->ReceivedData.size())
         {
-            int BytesToRead = CurrentMessage->PayloadSize - static_cast<int>(CurrentMessage->ReceivedData.size());
+            size_t BytesToRead = CurrentMessage->PayloadSize - CurrentMessage->ReceivedData.size();
             if (Reader.BytesLeft >= BytesToRead)
             {
                 Reader.GetBytes(CurrentMessage->ReceivedData, BytesToRead);
@@ -63,19 +63,19 @@ void NetworkMessage::WorkOnMessage(char* ReceivedData, int BytesReceived, Networ
     }
 }
 
-BufferReader::BufferReader(char* ReceivedData, int BytesReceived)
+BufferReader::BufferReader(char* ReceivedData, size_t BytesReceived)
 {
     this->ReceivedData = ReceivedData;
     BytesTotal = BytesReceived;
     BytesLeft = BytesTotal;
 }
 
-void BufferReader::GetBytes(std::vector<char>& Out, int Size)
+void BufferReader::GetBytes(std::vector<char>& Out, size_t Size)
 {
     if (Size > BytesLeft)
         return;
 
-    int StartPosition = static_cast<int>(Out.size());
+    size_t StartPosition = Out.size();
     Out.resize(Out.size() + Size);
     memcpy(Out.data() + StartPosition, ReceivedData + CurrentShift, Size);
     CurrentShift += Size;
