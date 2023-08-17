@@ -11,9 +11,9 @@ void NetworkMessage::WorkOnMessage(char* ReceivedData, int BytesReceived, Networ
         {
             int BytesToRead = sizeof(size_t) > BytesReceived ? BytesReceived : sizeof(size_t);
             if (Reader.BytesLeft != 0 && BytesToRead > Reader.BytesLeft)
-                BytesToRead = Reader.BytesLeft;
+                BytesToRead = static_cast<int>(Reader.BytesLeft);
 
-            int BytesNeededToFill = sizeof(size_t) - static_cast<size_t>(CurrentMessage->PartialPayloadSize.size());
+            int BytesNeededToFill = static_cast<int>(sizeof(size_t) - static_cast<size_t>(CurrentMessage->PartialPayloadSize.size()));
             BytesToRead = BytesToRead > BytesNeededToFill ? BytesNeededToFill : BytesToRead;
 
             Reader.GetBytes(CurrentMessage->PartialPayloadSize, BytesToRead);
@@ -29,7 +29,7 @@ void NetworkMessage::WorkOnMessage(char* ReceivedData, int BytesReceived, Networ
 
         if (CurrentMessage->MessageType == -1)
         {
-            int BytesToRead = sizeof(int) > Reader.BytesLeft ? Reader.BytesLeft : sizeof(int);
+            int BytesToRead = static_cast<int>(sizeof(int) > Reader.BytesLeft ? Reader.BytesLeft : sizeof(int));
             int BytesNeededToFill = sizeof(int) - static_cast<int>(CurrentMessage->PartialMessageType.size());
             BytesToRead = BytesToRead > BytesNeededToFill ? BytesNeededToFill : BytesToRead;
 
