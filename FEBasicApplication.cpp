@@ -2,247 +2,282 @@
 using namespace FocalEngine;
 
 FEBasicApplication* FEBasicApplication::Instance = nullptr;
-void(*FEBasicApplication::ClientWindowCloseCallbackImpl)() = nullptr;
-void(*FEBasicApplication::ClientWindowResizeCallbackImpl)(int, int) = nullptr;
-void(*FEBasicApplication::ClientMouseButtonCallbackImpl)(int, int, int) = nullptr;
-void(*FEBasicApplication::ClientMouseMoveCallbackImpl)(double, double) = nullptr;
-void(*FEBasicApplication::ClientKeyButtonCallbackImpl)(int, int, int, int) = nullptr;
-void(*FEBasicApplication::ClientDropCallbackImpl)(int, const char**) = nullptr;
-void(*FEBasicApplication::ClientScrollCallbackImpl)(double, double) = nullptr;
 
 FEBasicApplication::FEBasicApplication()
 {
-
+	glfwInit();
+	glfwSetMonitorCallback(MonitorCallback);
+	IMGUI_CHECKVERSION();
 }
 
 FEBasicApplication::~FEBasicApplication()
 {
-	glfwDestroyWindow(Window);
-	glfwTerminate();
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		Windows[i]->InvokeTerminateCallback();
+	}
+
+	OnTerminate();
 }
 
-void FEBasicApplication::InitWindow(const int Width, const int Height, std::string WindowTitle)
+void FEBasicApplication::SetWindowCallbacks(FEWindow* Window)
 {
-	WindowW = Width;
-	WindowH = Height;
-	this->WindowTitle = WindowTitle;
+	if (Window == nullptr)
+		return;
 
-	glfwInit();
+	glfwSetWindowCloseCallback(Window->GetGlfwWindow(), WindowCloseCallback);
+	glfwSetWindowFocusCallback(Window->GetGlfwWindow(), WindowFocusCallback);
+	glfwSetWindowSizeCallback(Window->GetGlfwWindow(), WindowResizeCallback);
+	glfwSetMouseButtonCallback(Window->GetGlfwWindow(), MouseButtonCallback);
+	glfwSetCursorEnterCallback(Window->GetGlfwWindow(), MouseEnterCallback);
+	glfwSetCursorPosCallback(Window->GetGlfwWindow(), MouseMoveCallback);
+	glfwSetCharCallback(Window->GetGlfwWindow(), CharCallback);
+	glfwSetKeyCallback(Window->GetGlfwWindow(), KeyButtonCallback);
+	glfwSetDropCallback(Window->GetGlfwWindow(), DropCallback);
+	glfwSetScrollCallback(Window->GetGlfwWindow(), ScrollCallback);
+}
 
-	Window = glfwCreateWindow(WindowW, WindowH, WindowTitle.c_str(), nullptr, nullptr);
-	if (!Window)
-		glfwTerminate();
-	
-	glfwMakeContextCurrent(Window);
+void FEBasicApplication::InitializeWindow(FEWindow* Window)
+{
+	if (Window == nullptr)
+		return;
+
+	glfwMakeContextCurrent(Window->GetGlfwWindow());
+	// It should be called for each window.
 	glewInit();
 
-	glfwSetWindowCloseCallback(Window, WindowCloseCallback);
-	glfwSetWindowSizeCallback(Window, WindowResizeCallback);
-	glfwSetMouseButtonCallback(Window, MouseButtonCallback);
-	glfwSetCursorPosCallback(Window, MouseMoveCallback);
-	glfwSetKeyCallback(Window, KeyButtonCallback);
-	glfwSetDropCallback(Window, DropCallback);
-	glfwSetScrollCallback(Window, ScrollCallback);
-
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-
-	ImGui_ImplGlfw_InitForOpenGL(Window, true);
-	ImGui_ImplOpenGL3_Init("#version 410");
+	SetWindowCallbacks(Window);
+	Window->InitializeImGui();
 }
 
-void FEBasicApplication::SetWindowCaption(const std::string NewCaption) const
+FEWindow* FEBasicApplication::AddWindow(const int Width, const int Height, std::string WindowTitle)
 {
-	glfwSetWindowTitle(Window, NewCaption.c_str());
+	FEWindow* NewWindow = new FEWindow(Width, Height, WindowTitle);
+	if (NewWindow->GetGlfwWindow() == nullptr)
+		return nullptr;
+
+	Windows.push_back(NewWindow);
+	InitializeWindow(NewWindow);
+
+	return NewWindow;
 }
 
-GLFWwindow* FEBasicApplication::GetGlfwWindow() const
+FEWindow* FEBasicApplication::AddFullScreenWindow(size_t MonitorIndex)
 {
-	return Window;
+	std::vector<MonitorInfo> Monitors = APPLICATION.GetMonitors();
+	if (MonitorIndex >= Monitors.size())
+		return nullptr;
+
+	return AddFullScreenWindow(&Monitors[MonitorIndex]);
+}
+
+FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
+{
+	FEWindow* NewWindow = new FEWindow(Monitor);
+	if (NewWindow->GetGlfwWindow() == nullptr)
+		return nullptr;
+
+	Windows.push_back(NewWindow);
+	InitializeWindow(NewWindow);
+
+	return NewWindow;
+}
+
+FEWindow* FEBasicApplication::GetWindow(std::string WindowID)
+{
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i]->GetID() == WindowID)
+			return Windows[i];
+	}
+
+	return nullptr;
+}
+
+FEWindow* FEBasicApplication::GetWindow(size_t WindowIndex)
+{
+	if (WindowIndex < 0 || WindowIndex >= Windows.size())
+		return nullptr;
+
+	return Windows[WindowIndex];
+}
+
+FEWindow* FEBasicApplication::GetWindow(int WindowIndex)
+{
+	return GetWindow(size_t(WindowIndex));
+}
+
+FEWindow* FEBasicApplication::GetWindow(GLFWwindow* GLFWwindow)
+{
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i]->GetGlfwWindow() == GLFWwindow)
+			return Windows[i];
+	}
+
+	return nullptr;
+}
+
+FEWindow* FEBasicApplication::GetMainWindow()
+{
+	if (Windows.empty())
+		return nullptr;
+
+	// For now, I will return the first window
+	return Windows[0];
 }
 
 void FEBasicApplication::BeginFrame()
 {
-	THREAD_POOL.Update();
+	if (APPLICATION.HasToTerminate)
+		return;
 
-	ImGui::GetIO().DeltaTime = 1.0f / 60.0f;
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
+	THREAD_POOL.Update();
 }
 
 void FEBasicApplication::EndFrame() const
 {
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	glfwSwapBuffers(Window);
 	glfwPollEvents();
+
+	if (APPLICATION.HasToTerminate)
+	{
+		APPLICATION.OnTerminate();
+		return;
+	}
+
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i]->bShouldTerminate)
+		{
+			APPLICATION.CloseWindow(i);
+			return;
+		}
+	}
 }
 
-bool FEBasicApplication::IsWindowOpened() const
+void FEBasicApplication::RenderWindows()
 {
-	return !glfwWindowShouldClose(Window);
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		Windows[i]->BeginFrame();
+		Windows[i]->Render();
+		Windows[i]->EndFrame();
+	}
 }
 
-bool FEBasicApplication::IsWindowInFocus() const
+bool FEBasicApplication::IsNotTerminated() const
 {
-	return glfwGetWindowAttrib(Window, GLFW_FOCUSED);
+	if (bShouldClose)
+		return false;
+
+	if ((Windows.empty() && (ConsoleWindow == nullptr && !bConsoleInitializationStarted)) || ReadToTerminate)
+		return false;
+
+	if (Windows.size() == 1 && (ConsoleWindow == nullptr && !bConsoleInitializationStarted) && APPLICATION.Windows[0]->bShouldClose)
+		return false;
+
+	return true;
 }
 
-void FEBasicApplication::Terminate() const
+void FEBasicApplication::MonitorCallback(GLFWmonitor* Monitor, int Event)
 {
-	glfwSetWindowShouldClose(Window, true);
-}
-
-void FEBasicApplication::CancelTerination() const
-{
-	glfwSetWindowShouldClose(Window, false);
-}
-
-void FEBasicApplication::SetWindowCloseCallback(void(*Func)())
-{
-	ClientWindowCloseCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		APPLICATION.Windows[i]->InvokeMonitorCallback(Monitor, Event);
+	}
 }
 
 void FEBasicApplication::WindowCloseCallback(GLFWwindow* Window)
 {
-	APPLICATION.CancelTerination();
-
-	if (ClientWindowCloseCallbackImpl != nullptr)
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
 	{
-		ClientWindowCloseCallbackImpl();
-	}
-	else
-	{
-		APPLICATION.Terminate();
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+		{
+			APPLICATION.CloseWindow(i);
+			return;
+		}
 	}
 }
 
-void FEBasicApplication::SetWindowResizeCallback(void(*Func)(int, int))
+void FEBasicApplication::WindowFocusCallback(GLFWwindow* Window, int Focused)
 {
-	ClientWindowResizeCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeOnFocusCallback(Focused);
+	}
 }
 
 void FEBasicApplication::WindowResizeCallback(GLFWwindow* Window, int Width, int Height)
 {
-	int UpdatedWidth, UpdatedHeight;
-	glfwGetWindowSize(APPLICATION.GetGlfwWindow(), &UpdatedWidth, &UpdatedHeight);
-
-	if (UpdatedWidth == 0 || UpdatedHeight == 0)
-		return;
-
-	glViewport(0, 0, UpdatedWidth, UpdatedHeight);
-
-	APPLICATION.WindowW = UpdatedWidth;
-	APPLICATION.WindowH = UpdatedHeight;
-
-	ImGui::GetIO().DisplaySize = ImVec2(static_cast<float>(UpdatedWidth), static_cast<float>(UpdatedHeight));
-
-	if (ClientWindowResizeCallbackImpl != nullptr)
-		ClientWindowResizeCallbackImpl(UpdatedWidth, UpdatedHeight);
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeResizeCallback(Width, Height);
+	}
 }
 
-void FEBasicApplication::SetMouseButtonCallback(void(*Func)(int, int, int))
+void FEBasicApplication::MouseEnterCallback(GLFWwindow* Window, int Entered)
 {
-	ClientMouseButtonCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeMouseEnterCallback(Entered);
+	}
 }
 
 void FEBasicApplication::MouseButtonCallback(GLFWwindow* Window, const int Button, const int Action, const int Mods)
 {
-	if (ClientMouseButtonCallbackImpl != nullptr)
-		ClientMouseButtonCallbackImpl(Button, Action, Mods);
-}
-
-void FEBasicApplication::SetMouseMoveCallback(void(*Func)(double, double))
-{
-	ClientMouseMoveCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeMouseButtonCallback(Button, Action, Mods);
+	}
 }
 
 void FEBasicApplication::MouseMoveCallback(GLFWwindow* Window, const double Xpos, const double Ypos)
 {
-	if (ClientMouseMoveCallbackImpl != nullptr)
-		ClientMouseMoveCallbackImpl(Xpos, Ypos);
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeMouseMoveCallback(Xpos, Ypos);
+	}
 }
 
-void FEBasicApplication::SetKeyCallback(void(*Func)(int, int, int, int))
+void FEBasicApplication::CharCallback(GLFWwindow* Window, unsigned int Codepoint)
 {
-	ClientKeyButtonCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeCharCallback(Codepoint);
+	}
 }
 
 void FEBasicApplication::KeyButtonCallback(GLFWwindow* Window, const int Key, const int Scancode, const int Action, const int Mods)
 {
-	if (ClientKeyButtonCallbackImpl != nullptr)
-		ClientKeyButtonCallbackImpl(Key, Scancode, Action, Mods);
-}
-
-void FEBasicApplication::SetDropCallback(void(*Func)(int, const char**))
-{
-	ClientDropCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeKeyCallback(Key, Scancode, Action, Mods);
+	}
 }
 
 void FEBasicApplication::DropCallback(GLFWwindow* Window, const int Count, const char** Paths)
 {
-	if (ClientDropCallbackImpl != nullptr)
-		ClientDropCallbackImpl(Count, Paths);
-}
-
-void FEBasicApplication::SetScrollCallback(void(*Func)(double, double))
-{
-	ClientScrollCallbackImpl = Func;
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeDropCallback(Count, Paths);
+	}
 }
 
 void FEBasicApplication::ScrollCallback(GLFWwindow* Window, const double Xoffset, const double Yoffset)
 {
-	if (ClientScrollCallbackImpl != nullptr)
-		ClientScrollCallbackImpl(Xoffset, Yoffset);
-}
-
-void FEBasicApplication::GetWindowPosition(int* Xpos, int* Ypos) const
-{
-	glfwGetWindowPos(Window, Xpos, Ypos);
-}
-
-int FEBasicApplication::GetWindowXPosition() const
-{
-	int X, Y;
-	glfwGetWindowPos(Window, &X, &Y);
-	return X;
-}
-
-int FEBasicApplication::GetWindowYPosition() const
-{
-	int X, Y;
-	glfwGetWindowPos(Window, &X, &Y);
-	return Y;
-}
-
-void FEBasicApplication::GetWindowSize(int* Width, int* Height) const
-{
-	glfwGetWindowSize(Window, Width, Height);
-}
-
-int FEBasicApplication::GetWindowWidth() const
-{
-	int W, H;
-	glfwGetWindowSize(Window, &W, &H);
-	return W;
-}
-
-int FEBasicApplication::GetWindowHeight() const
-{
-	int W, H;
-	glfwGetWindowSize(Window, &W, &H);
-	return H;
-}
-
-void FEBasicApplication::MinimizeWindow() const
-{
-	glfwIconifyWindow(Window);
-}
-
-void FEBasicApplication::RestoreWindow() const
-{
-	glfwRestoreWindow(Window);
+	for (size_t i = 0; i < APPLICATION.Windows.size(); i++)
+	{
+		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
+			APPLICATION.Windows[i]->InvokeScrollCallback(Xoffset, Yoffset);
+	}
 }
 
 std::string FEBasicApplication::GetUniqueHexID()
@@ -288,4 +323,346 @@ std::string FEBasicApplication::GetClipboardText()
 	}
 
 	return text;
+}
+
+bool FEBasicApplication::HasConsoleWindow() const
+{
+	return !(APPLICATION.ConsoleWindow == nullptr);
+}
+
+BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
+{
+	switch (dwType)
+	{
+		case CTRL_CLOSE_EVENT:
+			// This will be a call from different thread, so I can't call the OnTerminate() directly.
+			// Instead, I will use flag to indicate the termination
+			APPLICATION.HasToTerminate = true;
+
+			// Here we will try to wait for the main thread to terminate
+			while (!APPLICATION.ReadToTerminate)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			};
+
+			return TRUE;
+		default:
+			return FALSE;
+	}
+}
+
+void FEBasicApplication::ConsoleMainFunc()
+{
+	// Allocate a console
+	AllocConsole();
+
+	// Get a handle to the console window
+	APPLICATION.ConsoleWindow = GetConsoleWindow();
+	APPLICATION.bConsoleInitializationStarted = false;
+
+	// Redirect standard I/O to the console
+	FILE* pCout;
+	freopen_s(&pCout, "CONOUT$", "w", stdout);
+	FILE* pCin;
+	freopen_s(&pCin, "CONIN$", "r", stdin);
+
+	// Set the console control handler to intercept the close event
+	if (!SetConsoleCtrlHandler(FEBasicApplication::ConsoleHandler, TRUE))
+	{
+		LOG.Add("Failed to set console control handler", "Console");
+	}
+
+	APPLICATION.UserConsoleMainFunc(APPLICATION.UserConsoleMainFuncData);
+
+	fclose(pCout);
+	fclose(pCin);
+	FreeConsole();
+
+	APPLICATION.ConsoleWindow = nullptr;
+	APPLICATION.bConsoleActive = false;
+}
+
+bool FEBasicApplication::DisableConsoleWindowCloseButton() const
+{
+	if (APPLICATION.ConsoleWindow == nullptr)
+		return false;
+
+	// Get the system menu of the console window
+	HMENU SysMenu = GetSystemMenu(APPLICATION.ConsoleWindow, FALSE);
+
+	// Disable the close option
+	if (SysMenu != NULL)
+	{
+		RemoveMenu(SysMenu, SC_CLOSE, MF_BYCOMMAND);
+		return true;
+	}
+	
+	return false;
+}
+
+void FEBasicApplication::CreateConsoleWindow(std::function<void(void* UserData)> MainFunc, void* UserData)
+{
+	if (MainFunc == nullptr)
+		return;
+
+	bConsoleActive = true;
+	bConsoleInitializationStarted = true;
+	UserConsoleMainFunc = MainFunc;
+	UserConsoleMainFuncData = UserData;
+
+	ConsoleThreadHandler = std::thread(FEBasicApplication::ConsoleMainFunc);
+	ConsoleThreadHandler.detach();
+}
+
+bool FEBasicApplication::IsConsoleWindowCreated() const
+{
+	return APPLICATION.ConsoleWindow != nullptr;
+}
+
+bool FEBasicApplication::HideConsoleWindow() const
+{
+	if (APPLICATION.ConsoleWindow == nullptr)
+		return false;
+
+	ShowWindow(APPLICATION.ConsoleWindow, SW_HIDE);
+	return true;
+}
+
+bool FEBasicApplication::ShowConsoleWindow() const
+{
+	if (APPLICATION.ConsoleWindow == nullptr)
+		return false;
+
+	ShowWindow(APPLICATION.ConsoleWindow, SW_SHOW);
+	return true;
+}
+
+bool FEBasicApplication::IsConsoleWindowHidden() const
+{
+	if (APPLICATION.ConsoleWindow == nullptr)
+		return false;
+
+	WINDOWPLACEMENT Placement;
+	Placement.length = sizeof(WINDOWPLACEMENT);
+
+	if (GetWindowPlacement(APPLICATION.ConsoleWindow, &Placement))
+	{
+		if (Placement.showCmd == SW_HIDE)
+			return true;
+	}
+	return false;
+}
+
+bool FEBasicApplication::SetConsoleWindowTitle(const std::string Title) const
+{
+	if (APPLICATION.ConsoleWindow == nullptr)
+		return false;
+
+	SetConsoleTitleA(Title.c_str());
+	return true;
+}
+
+void FEBasicApplication::AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback)
+{
+	UserOnTerminateCallbackFunc.push_back(UserOnTerminateCallback);
+}
+
+void FEBasicApplication::OnTerminate()
+{
+	// Call the user callbacks
+	for (auto& Func : UserOnTerminateCallbackFunc)
+		Func();
+
+	// If the console is active, then terminate it
+	if (ConsoleWindow != nullptr)
+	{
+		// Post a message to the console window to close it
+		PostMessage(APPLICATION.ConsoleWindow, WM_CLOSE, 0, 0);
+	}
+
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		Windows[i]->InvokeTerminateCallback();
+		delete Windows[i];
+		if (i + 1 < Windows.size())
+			SwitchToImGuiContextOfWindow(i + 1);
+	}
+	Windows.clear();
+
+	glfwTerminate();
+
+	ReadToTerminate = true;
+}
+
+void FEBasicApplication::AddOnCloseCallback(std::function<void()> UserOnCloseCallback)
+{
+	UserOnCloseCallbackFuncs.push_back(UserOnCloseCallback);
+}
+
+void FEBasicApplication::Close()
+{
+	bShouldClose = true;
+	TryToClose();
+}
+
+void FEBasicApplication::TryToClose()
+{
+	// Call the user callbacks
+	// In these callbacks, the user can set the flag to false to prevent the application from closing
+	for (auto& Func : UserOnCloseCallbackFuncs)
+		Func();
+}
+
+void FEBasicApplication::CancelClose()
+{
+	bShouldClose = false;
+}
+
+void FEBasicApplication::CloseWindow(std::string WindowID)
+{
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i]->GetID() == WindowID)
+			CloseWindow(i);
+	}
+}
+
+void FEBasicApplication::CloseWindow(FEWindow* WindowToClose)
+{
+	if (WindowToClose == nullptr)
+		return;
+
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i] == WindowToClose)
+		{
+			CloseWindow(i);
+			break;
+		}
+	}
+}
+
+// It could happen that ImGui_ImplGlfw_WndProc would be called in glfwPollEvents() for example;
+// And if old window is destroyed, then it will cause crash.
+// So, I will set ImGui context to the first window.
+// It coudl be not the best solution, but it is the easiest one for now.
+void FEBasicApplication::SwitchToImGuiContextOfWindow(size_t WindowIndex)
+{
+	if (!Windows.empty())
+	{
+		ImGui::SetCurrentContext(Windows[WindowIndex]->GetImGuiContext());
+	}
+}
+
+void FEBasicApplication::CloseWindow(size_t WindowIndex)
+{
+	if (WindowIndex < 0 || WindowIndex >= Windows.size())
+		return;
+
+	// Call the user callbacks
+	// In these callbacks, the user can cancel the close operation
+	Windows[WindowIndex]->InvokeCloseCallback();
+
+	// If the user callback did not cancel the close operation, then close and destroy the window
+	if (Windows[WindowIndex]->bShouldClose)
+	{
+		Windows[WindowIndex]->InvokeTerminateCallback();
+		delete Windows[WindowIndex];
+		Windows.erase(Windows.begin() + WindowIndex);
+
+		SwitchToImGuiContextOfWindow();
+	}
+
+	// If there are no windows and console is hidden or not active, then terminate the application
+	if (!HaveAnyVisibleWindow())
+	{
+		OnTerminate();
+	}
+}
+
+void FEBasicApplication::TerminateWindow(FEWindow* WindowToTerminate)
+{
+	if (WindowToTerminate == nullptr)
+		return;
+
+	WindowToTerminate->InvokeTerminateCallback();
+
+	size_t WindowIndex = 0;
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i] == WindowToTerminate)
+		{
+			WindowIndex = i;
+			break;
+		}
+	}
+
+	delete WindowToTerminate;
+	Windows.erase(Windows.begin() + WindowIndex);
+
+	SwitchToImGuiContextOfWindow();
+	
+	// If there are no windows and console is hidden or not active, then terminate the application
+	if (!HaveAnyVisibleWindow())
+	{
+		OnTerminate();
+	}
+}
+
+bool FEBasicApplication::HaveAnyVisibleWindow() const
+{
+	if (Windows.empty() && (ConsoleHandler == nullptr || ConsoleHandler != nullptr && IsConsoleWindowHidden()))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool FEBasicApplication::HaveAnyWindow() const
+{
+	if (Windows.empty() && ConsoleHandler == nullptr)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+std::vector<MonitorInfo> FEBasicApplication::GetMonitors()
+{
+	std::vector<MonitorInfo> Result;
+
+	int MonitorCount;
+	GLFWmonitor** Monitors = glfwGetMonitors(&MonitorCount);
+
+	if (Monitors == nullptr || MonitorCount == 0)
+		return Result;
+
+	for (int i = 0; i < MonitorCount; i++)
+	{
+		if (Monitors[i] != nullptr)
+		{
+			MonitorInfo Info;
+
+			Info.Monitor = Monitors[i];
+			Info.VideoMode = glfwGetVideoMode(Monitors[i]);
+
+			Result.push_back(Info);
+		}
+	}
+
+	return Result;
+}
+
+size_t FEBasicApplication::MonitorInfoToMonitorIndex(MonitorInfo* Monitor)
+{
+	std::vector<MonitorInfo> Monitors = GetMonitors();
+	for (size_t i = 0; i < Monitors.size(); i++)
+	{
+		if (Monitors[i].Monitor == Monitor->Monitor)
+			return i;
+	}
+
+	return 0;
 }

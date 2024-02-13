@@ -40,6 +40,8 @@ file(GLOB BasicApplicationNetworkSubSystem_SRC
 file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplication.cpp"
 	"FEBasicApplication.h"
+	"FEWindow.cpp"
+	"FEWindow.h"
 	"FEThreadPool.cpp"
 	"FEThreadPool.h"
 	"FELog.cpp"

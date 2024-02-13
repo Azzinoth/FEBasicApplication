@@ -1,85 +1,90 @@
 #pragma once
 
-#include "SubSystems/Networking/FENetworking.h"
-
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-#include "imgui/imgui_internal.h"
-
-#define GLEW_STATIC
-#include "GL/glew.h"
-#include "GL/wglew.h"
-
-#include <GLFW/glfw3.h>
-#include <GL/GL.h>
+#include "FEWindow.h"
 
 namespace FocalEngine
 {
 	class FEBasicApplication
 	{
-		int WindowW;
-		int WindowH;
-		std::string WindowTitle;
-		
-		GLFWwindow* Window;
+		SINGLETON_PRIVATE_PART(FEBasicApplication)
+
+		std::vector<FEWindow*> Windows;
+
+		void SetWindowCallbacks(FEWindow* Window);
+		void InitializeWindow(FEWindow* Window);
 
 		static void WindowCloseCallback(GLFWwindow* Window);
-		static void(*ClientWindowCloseCallbackImpl)();
-
+		static void WindowFocusCallback(GLFWwindow* Window, int Focused);
+		static void MouseEnterCallback(GLFWwindow* Window, int Entered);
 		static void WindowResizeCallback(GLFWwindow* Window, int Width, int Height);
-		static void(*ClientWindowResizeCallbackImpl)(int, int);
-
 		static void MouseButtonCallback(GLFWwindow* Window, int Button, int Action, int Mods);
-		static void(*ClientMouseButtonCallbackImpl)(int, int, int);
-
 		static void MouseMoveCallback(GLFWwindow* Window, double Xpos, double Ypos);
-		static void(*ClientMouseMoveCallbackImpl)(double, double);
-
+		static void CharCallback(GLFWwindow* Window, unsigned int Codepoint);
 		static void KeyButtonCallback(GLFWwindow* Window, int Key, int Scancode, int Action, int Mods);
-		static void(*ClientKeyButtonCallbackImpl)(int, int, int, int);
-
 		static void DropCallback(GLFWwindow* Window, int Count, const char** Paths);
-		static void(*ClientDropCallbackImpl)(int, const char**);
-
 		static void ScrollCallback(GLFWwindow* Window, double Xoffset, double Yoffset);
-		static void(*ClientScrollCallbackImpl)(double, double);
+		static void MonitorCallback(GLFWmonitor* Monitor, int Event);
+
+		HWND ConsoleWindow = nullptr;
+		bool bConsoleInitializationStarted = false;
+		bool bConsoleActive = false;
+		static void ConsoleMainFunc();
+		std::function<void(void* UserData)> UserConsoleMainFunc = nullptr;
+		void* UserConsoleMainFuncData = nullptr;
+		std::thread ConsoleThreadHandler;
+		static BOOL WINAPI ConsoleHandler(DWORD dwType);
+
+		std::vector<std::function<void()>> UserOnTerminateCallbackFunc;
+		bool HasToTerminate = false;
+		bool ReadToTerminate = false;
+		void OnTerminate();
+
+		std::vector<std::function<void()>> UserOnCloseCallbackFuncs;
+		bool bShouldClose = false;
+		void TryToClose();
+		void CancelClose();
+
+		void CloseWindow(size_t WindowIndex);
+		void SwitchToImGuiContextOfWindow(size_t WindowIndex = 0);
+		void TerminateWindow(FEWindow* WindowToClose);
+
+		bool HaveAnyWindow() const;
+		bool HaveAnyVisibleWindow() const;
 	public:
 		SINGLETON_PUBLIC_PART(FEBasicApplication)
 
-		GLFWwindow* GetGlfwWindow() const;
+		FEWindow* AddWindow(int Width = 1920, int Height = 1080, std::string WindowTitle = "FEBasicApplication");
+		FEWindow* AddFullScreenWindow(size_t MonitorIndex);
+		FEWindow* AddFullScreenWindow(MonitorInfo* Monitor);
+		FEWindow* GetWindow(GLFWwindow* GLFWwindow);
+		FEWindow* GetWindow(std::string WindowID);
+		FEWindow* GetWindow(size_t WindowIndex);
+		FEWindow* GetWindow(int WindowIndex);
 
-		void InitWindow(int Width = 1920, int Height = 1080, std::string WindowTitle = "FEBasicApplication");
-		void SetWindowCaption(std::string NewCaption) const;
-		bool IsWindowOpened() const;
+		FEWindow* GetMainWindow();
 
-		void Terminate() const;
-		void CancelTerination() const;
+		void CloseWindow(std::string WindowID);
+		void CloseWindow(FEWindow* WindowToClose);
+
+		bool IsNotTerminated() const;
+		void Close();
+
+		bool HasConsoleWindow() const;
+		void CreateConsoleWindow(std::function<void(void* UserData)> FuncForConsoleThread, void* UserData = nullptr);
+		bool IsConsoleWindowCreated() const;
+		bool SetConsoleWindowTitle(const std::string Title) const;
+		bool DisableConsoleWindowCloseButton() const;
+		bool HideConsoleWindow() const;
+		bool IsConsoleWindowHidden() const;
+		
+		bool ShowConsoleWindow() const;
 
 		void BeginFrame();
 		void EndFrame() const;
+		void RenderWindows();
 
-		bool IsWindowInFocus() const;
-
-		void SetWindowCloseCallback(void(*Func)());
-		void SetWindowResizeCallback(void(*Func)(int, int));
-		void SetMouseButtonCallback(void(*Func)(int, int, int));
-		void SetKeyCallback(void(*Func)(int, int, int, int));
-		void SetMouseMoveCallback(void(*Func)(double, double));
-		void SetDropCallback(void(*Func)(int, const char**));
-		void SetScrollCallback(void(*Func)(double, double));
-		
-		void GetWindowPosition(int* Xpos, int* Ypos) const;
-		int GetWindowXPosition() const;
-		int GetWindowYPosition() const;
-
-		void GetWindowSize(int* Width, int* Height) const;
-		int GetWindowWidth() const;
-		int GetWindowHeight() const;
-
-		void MinimizeWindow() const;
-		void RestoreWindow() const;
+		void AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
+		void AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
 
 		// This function can produce ID's that are "unique" with very rare collisions.
 		// For most purposes it can be considered unique.
@@ -88,8 +93,9 @@ namespace FocalEngine
 
 		bool SetClipboardText(std::string Text);
 		std::string GetClipboardText();
-	private:
-		SINGLETON_PRIVATE_PART(FEBasicApplication)
+
+		std::vector<MonitorInfo> GetMonitors();
+		size_t MonitorInfoToMonitorIndex(MonitorInfo* Monitor);
 	};
 
 #define APPLICATION FEBasicApplication::getInstance()
