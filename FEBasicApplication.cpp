@@ -170,7 +170,7 @@ bool FEBasicApplication::IsNotTerminated() const
 	if (bShouldClose)
 		return false;
 
-	if ((Windows.empty() && (ConsoleWindow == nullptr && !bConsoleInitializationStarted)) || ReadToTerminate)
+	if ((Windows.empty() && (ConsoleWindow == nullptr && !bConsoleInitializationStarted)) || ReadyToTerminate)
 		return false;
 
 	if (Windows.size() == 1 && (ConsoleWindow == nullptr && !bConsoleInitializationStarted) && APPLICATION.Windows[0]->bShouldClose)
@@ -340,7 +340,7 @@ BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
 			APPLICATION.HasToTerminate = true;
 
 			// Here we will try to wait for the main thread to terminate
-			while (!APPLICATION.ReadToTerminate)
+			while (!APPLICATION.ReadyToTerminate)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			};
@@ -414,9 +414,15 @@ void FEBasicApplication::CreateConsoleWindow(std::function<void(void* UserData)>
 	ConsoleThreadHandler.detach();
 }
 
-bool FEBasicApplication::IsConsoleWindowCreated() const
+void FEBasicApplication::WaitForConsoleWindowCreation()
 {
-	return APPLICATION.ConsoleWindow != nullptr;
+	if (!bConsoleInitializationStarted)
+		return;
+
+	while (!APPLICATION.HasConsoleWindow())
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 }
 
 bool FEBasicApplication::HideConsoleWindow() const
@@ -491,7 +497,7 @@ void FEBasicApplication::OnTerminate()
 
 	glfwTerminate();
 
-	ReadToTerminate = true;
+	ReadyToTerminate = true;
 }
 
 void FEBasicApplication::AddOnCloseCallback(std::function<void()> UserOnCloseCallback)

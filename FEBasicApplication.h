@@ -36,7 +36,7 @@ namespace FocalEngine
 
 		std::vector<std::function<void()>> UserOnTerminateCallbackFunc;
 		bool HasToTerminate = false;
-		bool ReadToTerminate = false;
+		bool ReadyToTerminate = false;
 		void OnTerminate();
 
 		std::vector<std::function<void()>> UserOnCloseCallbackFuncs;
@@ -71,7 +71,7 @@ namespace FocalEngine
 
 		bool HasConsoleWindow() const;
 		void CreateConsoleWindow(std::function<void(void* UserData)> FuncForConsoleThread, void* UserData = nullptr);
-		bool IsConsoleWindowCreated() const;
+		void WaitForConsoleWindowCreation();
 		bool SetConsoleWindowTitle(const std::string Title) const;
 		bool DisableConsoleWindowCloseButton() const;
 		bool HideConsoleWindow() const;
