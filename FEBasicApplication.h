@@ -1,14 +1,25 @@
 #pragma once
 
 #include "FEWindow.h"
+#include <map>
+#include <sstream>
 
 namespace FocalEngine
 {
+	struct CommandLineActions
+	{
+		std::string Action;
+		std::map<std::string, std::string> Settings;
+	};
+
 	class FEBasicApplication
 	{
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 
 		std::vector<FEWindow*> Windows;
+
+		FEConsoleWindow* ConsoleWindow = nullptr;
+		static BOOL WINAPI ConsoleHandler(DWORD dwType);
 
 		void SetWindowCallbacks(FEWindow* Window);
 		void InitializeWindow(FEWindow* Window);
@@ -24,15 +35,6 @@ namespace FocalEngine
 		static void DropCallback(GLFWwindow* Window, int Count, const char** Paths);
 		static void ScrollCallback(GLFWwindow* Window, double Xoffset, double Yoffset);
 		static void MonitorCallback(GLFWmonitor* Monitor, int Event);
-
-		HWND ConsoleWindow = nullptr;
-		bool bConsoleInitializationStarted = false;
-		bool bConsoleActive = false;
-		static void ConsoleMainFunc();
-		std::function<void(void* UserData)> UserConsoleMainFunc = nullptr;
-		void* UserConsoleMainFuncData = nullptr;
-		std::thread ConsoleThreadHandler;
-		static BOOL WINAPI ConsoleHandler(DWORD dwType);
 
 		std::vector<std::function<void()>> UserOnTerminateCallbackFunc;
 		bool HasToTerminate = false;
@@ -66,19 +68,12 @@ namespace FocalEngine
 		void CloseWindow(std::string WindowID);
 		void CloseWindow(FEWindow* WindowToClose);
 
+		bool HasConsoleWindow() const;
+		FEConsoleWindow* CreateConsoleWindow(std::function<void(void* UserData)> FuncForConsoleThread, void* UserData = nullptr);
+
 		bool IsNotTerminated() const;
 		void Close();
-
-		bool HasConsoleWindow() const;
-		void CreateConsoleWindow(std::function<void(void* UserData)> FuncForConsoleThread, void* UserData = nullptr);
-		void WaitForConsoleWindowCreation();
-		bool SetConsoleWindowTitle(const std::string Title) const;
-		bool DisableConsoleWindowCloseButton() const;
-		bool HideConsoleWindow() const;
-		bool IsConsoleWindowHidden() const;
 		
-		bool ShowConsoleWindow() const;
-
 		void BeginFrame();
 		void EndFrame() const;
 		void RenderWindows();
@@ -96,6 +91,8 @@ namespace FocalEngine
 
 		std::vector<MonitorInfo> GetMonitors();
 		size_t MonitorInfoToMonitorIndex(MonitorInfo* Monitor);
+
+		std::vector<CommandLineActions> ParseCommandLine(const std::string CommandLine, const std::string ActionPrefix = "-", const std::string SettingEqualizer = "=");
 	};
 
 #define APPLICATION FEBasicApplication::getInstance()

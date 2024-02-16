@@ -8,6 +8,12 @@ FEBasicApplication::FEBasicApplication()
 	glfwInit();
 	glfwSetMonitorCallback(MonitorCallback);
 	IMGUI_CHECKVERSION();
+
+	// Set the console control handler to intercept the close event
+	if (!SetConsoleCtrlHandler(APPLICATION.ConsoleHandler, TRUE))
+	{
+		LOG.Add("Failed to set console control handler", "Console");
+	}
 }
 
 FEBasicApplication::~FEBasicApplication()
@@ -170,10 +176,10 @@ bool FEBasicApplication::IsNotTerminated() const
 	if (bShouldClose)
 		return false;
 
-	if ((Windows.empty() && (ConsoleWindow == nullptr && !bConsoleInitializationStarted)) || ReadyToTerminate)
+	if ((Windows.empty() && (ConsoleWindow == nullptr)) || ReadyToTerminate)
 		return false;
 
-	if (Windows.size() == 1 && (ConsoleWindow == nullptr && !bConsoleInitializationStarted) && APPLICATION.Windows[0]->bShouldClose)
+	if (Windows.size() == 1 && (ConsoleWindow == nullptr) && APPLICATION.Windows[0]->bShouldClose)
 		return false;
 
 	return true;
@@ -325,147 +331,39 @@ std::string FEBasicApplication::GetClipboardText()
 	return text;
 }
 
+BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
+{
+	switch (dwType)
+	{
+	case CTRL_CLOSE_EVENT:
+		// This will be a call from different thread, so I can't call the OnTerminate() directly.
+		// Instead, I will use flag to indicate the termination
+		APPLICATION.HasToTerminate = true;
+
+		// Here we will try to wait for the main thread to terminate
+		while (!APPLICATION.ReadyToTerminate)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		};
+
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
+
 bool FEBasicApplication::HasConsoleWindow() const
 {
 	return !(APPLICATION.ConsoleWindow == nullptr);
 }
 
-BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
-{
-	switch (dwType)
-	{
-		case CTRL_CLOSE_EVENT:
-			// This will be a call from different thread, so I can't call the OnTerminate() directly.
-			// Instead, I will use flag to indicate the termination
-			APPLICATION.HasToTerminate = true;
-
-			// Here we will try to wait for the main thread to terminate
-			while (!APPLICATION.ReadyToTerminate)
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			};
-
-			return TRUE;
-		default:
-			return FALSE;
-	}
-}
-
-void FEBasicApplication::ConsoleMainFunc()
-{
-	// Allocate a console
-	AllocConsole();
-
-	// Get a handle to the console window
-	APPLICATION.ConsoleWindow = GetConsoleWindow();
-	APPLICATION.bConsoleInitializationStarted = false;
-
-	// Redirect standard I/O to the console
-	FILE* pCout;
-	freopen_s(&pCout, "CONOUT$", "w", stdout);
-	FILE* pCin;
-	freopen_s(&pCin, "CONIN$", "r", stdin);
-
-	// Set the console control handler to intercept the close event
-	if (!SetConsoleCtrlHandler(FEBasicApplication::ConsoleHandler, TRUE))
-	{
-		LOG.Add("Failed to set console control handler", "Console");
-	}
-
-	APPLICATION.UserConsoleMainFunc(APPLICATION.UserConsoleMainFuncData);
-
-	fclose(pCout);
-	fclose(pCin);
-	FreeConsole();
-
-	APPLICATION.ConsoleWindow = nullptr;
-	APPLICATION.bConsoleActive = false;
-}
-
-bool FEBasicApplication::DisableConsoleWindowCloseButton() const
-{
-	if (APPLICATION.ConsoleWindow == nullptr)
-		return false;
-
-	// Get the system menu of the console window
-	HMENU SysMenu = GetSystemMenu(APPLICATION.ConsoleWindow, FALSE);
-
-	// Disable the close option
-	if (SysMenu != NULL)
-	{
-		RemoveMenu(SysMenu, SC_CLOSE, MF_BYCOMMAND);
-		return true;
-	}
-	
-	return false;
-}
-
-void FEBasicApplication::CreateConsoleWindow(std::function<void(void* UserData)> MainFunc, void* UserData)
+FEConsoleWindow* FEBasicApplication::CreateConsoleWindow(std::function<void(void* UserData)> MainFunc, void* UserData)
 {
 	if (MainFunc == nullptr)
-		return;
+		return nullptr;
 
-	bConsoleActive = true;
-	bConsoleInitializationStarted = true;
-	UserConsoleMainFunc = MainFunc;
-	UserConsoleMainFuncData = UserData;
-
-	ConsoleThreadHandler = std::thread(FEBasicApplication::ConsoleMainFunc);
-	ConsoleThreadHandler.detach();
-}
-
-void FEBasicApplication::WaitForConsoleWindowCreation()
-{
-	if (!bConsoleInitializationStarted)
-		return;
-
-	while (!APPLICATION.HasConsoleWindow())
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
-}
-
-bool FEBasicApplication::HideConsoleWindow() const
-{
-	if (APPLICATION.ConsoleWindow == nullptr)
-		return false;
-
-	ShowWindow(APPLICATION.ConsoleWindow, SW_HIDE);
-	return true;
-}
-
-bool FEBasicApplication::ShowConsoleWindow() const
-{
-	if (APPLICATION.ConsoleWindow == nullptr)
-		return false;
-
-	ShowWindow(APPLICATION.ConsoleWindow, SW_SHOW);
-	return true;
-}
-
-bool FEBasicApplication::IsConsoleWindowHidden() const
-{
-	if (APPLICATION.ConsoleWindow == nullptr)
-		return false;
-
-	WINDOWPLACEMENT Placement;
-	Placement.length = sizeof(WINDOWPLACEMENT);
-
-	if (GetWindowPlacement(APPLICATION.ConsoleWindow, &Placement))
-	{
-		if (Placement.showCmd == SW_HIDE)
-			return true;
-	}
-	return false;
-}
-
-bool FEBasicApplication::SetConsoleWindowTitle(const std::string Title) const
-{
-	if (APPLICATION.ConsoleWindow == nullptr)
-		return false;
-
-	SetConsoleTitleA(Title.c_str());
-	return true;
+	ConsoleWindow = new FEConsoleWindow(MainFunc, UserData);
+	return ConsoleWindow;
 }
 
 void FEBasicApplication::AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback)
@@ -483,7 +381,7 @@ void FEBasicApplication::OnTerminate()
 	if (ConsoleWindow != nullptr)
 	{
 		// Post a message to the console window to close it
-		PostMessage(APPLICATION.ConsoleWindow, WM_CLOSE, 0, 0);
+		PostMessage(ConsoleWindow->GetHandle(), WM_CLOSE, 0, 0);
 	}
 
 	for (size_t i = 0; i < Windows.size(); i++)
@@ -617,20 +515,16 @@ void FEBasicApplication::TerminateWindow(FEWindow* WindowToTerminate)
 
 bool FEBasicApplication::HaveAnyVisibleWindow() const
 {
-	if (Windows.empty() && (ConsoleHandler == nullptr || ConsoleHandler != nullptr && IsConsoleWindowHidden()))
-	{
+	if (Windows.empty() && (ConsoleWindow == nullptr || ConsoleWindow != nullptr && ConsoleWindow->IsHidden()))
 		return false;
-	}
 
 	return true;
 }
 
 bool FEBasicApplication::HaveAnyWindow() const
 {
-	if (Windows.empty() && ConsoleHandler == nullptr)
-	{
+	if (Windows.empty() && ConsoleWindow == nullptr)
 		return false;
-	}
 
 	return true;
 }
@@ -671,4 +565,44 @@ size_t FEBasicApplication::MonitorInfoToMonitorIndex(MonitorInfo* Monitor)
 	}
 
 	return 0;
+}
+
+std::vector<CommandLineActions> FEBasicApplication::ParseCommandLine(const std::string CommandLine, const std::string ActionPrefix, const std::string SettingEqualizer)
+{
+	auto Split = [](const std::string& S, char Delimiter) {
+		std::vector<std::string> Tokens;
+		std::string Token;
+		std::istringstream TokenStream(S);
+
+		while (getline(TokenStream, Token, Delimiter))
+		{
+			Tokens.push_back(Token);
+		}
+
+		return Tokens;
+	};
+
+	std::vector<std::string> Tokens = Split(CommandLine, ' ');
+
+	std::vector<CommandLineActions> Actions;
+	CommandLineActions* CurrentAction = nullptr;
+
+	for (const auto& Token : Tokens)
+	{
+		if (Token.substr(0, ActionPrefix.length()) == ActionPrefix)
+		{
+			std::string ActionName = Token.substr(ActionPrefix.length()); // Remove ActionPrefix
+			Actions.push_back(CommandLineActions{ ActionName, {} });
+			CurrentAction = &Actions.back(); // Point to the newly added action
+		}
+		else if (CurrentAction && Token.find(SettingEqualizer) != std::string::npos)
+		{
+			auto DelimPos = Token.find(SettingEqualizer);
+			std::string Key = Token.substr(0, DelimPos);
+			std::string Value = Token.substr(DelimPos + ActionPrefix.length());
+			CurrentAction->Settings[Key] = Value;
+		}
+	}
+
+	return Actions;
 }

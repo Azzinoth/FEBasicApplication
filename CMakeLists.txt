@@ -42,6 +42,8 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplication.h"
 	"FEWindow.cpp"
 	"FEWindow.h"
+	"FEConsoleWindow.cpp"
+	"FEConsoleWindow.h"
 	"FEThreadPool.cpp"
 	"FEThreadPool.h"
 	"FELog.cpp"

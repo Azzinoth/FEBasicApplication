@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SubSystems/Networking/FENetworking.h"
+#include "FEConsoleWindow.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
