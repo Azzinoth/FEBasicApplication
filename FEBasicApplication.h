@@ -6,7 +6,7 @@
 
 namespace FocalEngine
 {
-	struct CommandLineActions
+	struct CommandLineAction
 	{
 		std::string Action;
 		std::map<std::string, std::string> Settings;
@@ -70,6 +70,7 @@ namespace FocalEngine
 
 		bool HasConsoleWindow() const;
 		FEConsoleWindow* CreateConsoleWindow(std::function<void(void* UserData)> FuncForConsoleThread, void* UserData = nullptr);
+		FEConsoleWindow* GetConsoleWindow();
 
 		bool IsNotTerminated() const;
 		void Close();
@@ -92,7 +93,7 @@ namespace FocalEngine
 		std::vector<MonitorInfo> GetMonitors();
 		size_t MonitorInfoToMonitorIndex(MonitorInfo* Monitor);
 
-		std::vector<CommandLineActions> ParseCommandLine(const std::string CommandLine, const std::string ActionPrefix = "-", const std::string SettingEqualizer = "=");
+		std::vector<CommandLineAction> ParseCommandLine(std::string CommandLine, const std::string ActionPrefix = "-", const std::string SettingEqualizer = "=");
 	};
 
 #define APPLICATION FEBasicApplication::getInstance()

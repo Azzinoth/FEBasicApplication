@@ -567,32 +567,57 @@ size_t FEBasicApplication::MonitorInfoToMonitorIndex(MonitorInfo* Monitor)
 	return 0;
 }
 
-std::vector<CommandLineActions> FEBasicApplication::ParseCommandLine(const std::string CommandLine, const std::string ActionPrefix, const std::string SettingEqualizer)
+std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string CommandLine, const std::string ActionPrefix, const std::string SettingEqualizer)
 {
 	auto Split = [](const std::string& S, char Delimiter) {
 		std::vector<std::string> Tokens;
 		std::string Token;
 		std::istringstream TokenStream(S);
+		bool insideQuotes = false;
+		char currentChar;
 
-		while (getline(TokenStream, Token, Delimiter))
+		while (TokenStream.get(currentChar))
 		{
-			Tokens.push_back(Token);
+			if (currentChar == '\"')
+			{
+				insideQuotes = !insideQuotes; // Toggle the state
+			}
+			else if (currentChar == Delimiter && !insideQuotes)
+			{
+				if (!Token.empty())
+				{
+					Tokens.push_back(Token);
+					Token.clear();
+				}
+			}
+			else
+			{
+				Token += currentChar;
+			}
 		}
+
+		if (!Token.empty())
+			Tokens.push_back(Token); // Add the last token
 
 		return Tokens;
 	};
 
+	// Remove tabs
+	CommandLine.erase(std::remove(CommandLine.begin(), CommandLine.end(), '\t'), CommandLine.end());
+
+	// Replace new lines with spaces
+	std::replace(CommandLine.begin(), CommandLine.end(), '\n', ' ');
 	std::vector<std::string> Tokens = Split(CommandLine, ' ');
 
-	std::vector<CommandLineActions> Actions;
-	CommandLineActions* CurrentAction = nullptr;
+	std::vector<CommandLineAction> Actions;
+	CommandLineAction* CurrentAction = nullptr;
 
 	for (const auto& Token : Tokens)
 	{
 		if (Token.substr(0, ActionPrefix.length()) == ActionPrefix)
 		{
 			std::string ActionName = Token.substr(ActionPrefix.length()); // Remove ActionPrefix
-			Actions.push_back(CommandLineActions{ ActionName, {} });
+			Actions.push_back(CommandLineAction{ ActionName, {} });
 			CurrentAction = &Actions.back(); // Point to the newly added action
 		}
 		else if (CurrentAction && Token.find(SettingEqualizer) != std::string::npos)
@@ -605,4 +630,9 @@ std::vector<CommandLineActions> FEBasicApplication::ParseCommandLine(const std::
 	}
 
 	return Actions;
+}
+
+FEConsoleWindow* FEBasicApplication::GetConsoleWindow()
+{
+	return ConsoleWindow;
 }

@@ -17,6 +17,8 @@ namespace FocalEngine
 		std::function<void(void* UserData)> UserConsoleMainFunc = nullptr;
 		void* UserConsoleMainFuncData = nullptr;
 		std::thread ConsoleThreadHandler;
+
+		WORD RGBToConsoleColor(int R, int G, int B) const;
 	public:
 		// Prevent copying and assignment
 		FEConsoleWindow(const FEConsoleWindow&) = delete;
@@ -30,5 +32,8 @@ namespace FocalEngine
 		bool IsHidden() const;
 
 		HWND GetHandle() const;
+
+		std::vector<char> GetConsoleTextColor() const;
+		void SetNearestConsoleTextColor(int R, int G, int B) const;
 	};
 }
