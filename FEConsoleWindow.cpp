@@ -170,13 +170,13 @@ std::vector<char> FEConsoleWindow::GetConsoleTextColor() const
 
 	// Mapping the color attributes to RGB values
 	if (ColorWord & FOREGROUND_RED)
-		ColorRGB[0] = 255; // R
+		ColorRGB[0] = static_cast<char>(255); // R
 
 	if (ColorWord & FOREGROUND_GREEN)
-		ColorRGB[1] = 255; // G
+		ColorRGB[1] = static_cast<char>(255); // G
 
 	if (ColorWord & FOREGROUND_BLUE)
-		ColorRGB[2] = 255; // B
+		ColorRGB[2] = static_cast<char>(255); // B
 
 	// Adjust brightness based on FOREGROUND_INTENSITY
 	if (!(ColorWord & FOREGROUND_INTENSITY))
