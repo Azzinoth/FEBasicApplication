@@ -5,6 +5,8 @@
 #include <thread>
 #include <atomic>
 #include <functional>
+#include <utility>
+#include <mutex>
 
 namespace FocalEngine
 {
@@ -65,6 +67,17 @@ namespace FocalEngine
 		~DedicatedJobThread();
 	};
 
+	class LightThread
+	{
+		friend FEThreadPool;
+		std::string ThreadID;
+
+		std::thread ThreadHandler;
+	public:
+		LightThread();
+		~LightThread();
+	};
+
 	class FEThreadPool
 	{
 	public:
@@ -78,13 +91,32 @@ namespace FocalEngine
 		unsigned int GetLogicalCoreCount() const;
 		unsigned int GetThreadCount() const;
 
-		std::string CreateDedicatedThreadID();
+		std::string CreateDedicatedThread();
 		bool IsAnyDedicatedThreadHaveActiveJob() const;
-		void Execute(std::string DedicatedThreadID, FE_THREAD_JOB_FUNC Job, void* InputData = nullptr, void* OutputData = nullptr, FE_THREAD_CALLBACK_FUNC CallBack = nullptr);
+		void Execute(const std::string& DedicatedThreadID, FE_THREAD_JOB_FUNC Job, void* InputData = nullptr, void* OutputData = nullptr, FE_THREAD_CALLBACK_FUNC CallBack = nullptr);
+		bool WaitForDedicatedThread(const std::string& DedicatedThreadID);
+		bool ShutdownDedicatedThread(const std::string& DedicatedThreadID);
 
-		bool ShutdownDedicatedThread(std::string DedicatedThreadID);
+		std::string CreateLightThread();
+
+		template <typename Callable, typename... Args>
+		bool ExecuteLightThread(const std::string& LightThreadID, Callable&& Func, Args&&... ArgsList)
+		{
+			LightThread* Thread = GetLightThread(LightThreadID);
+			if (!Thread)
+				return false;
+
+			Thread->ThreadHandler = std::thread(std::forward<Callable>(Func), std::forward<Args>(ArgsList)...);
+			return true;
+		}
+
+		bool WaitForLightThread(const std::string& LightThreadID);
+		bool RemoveLightThread(const std::string& LightThreadID);
 	private:
 		SINGLETON_PRIVATE_PART(FEThreadPool)
+
+		std::mutex MainMutex;
+		std::mutex LightThreadsMutex;
 
 		std::vector<JobThread*> Threads;
 		std::vector<FEUnexecutedJob*> JobsList;
@@ -92,10 +124,12 @@ namespace FocalEngine
 		std::vector<DedicatedJobThread*> DedicatedThreads;
 		std::vector<DedicatedJobThread*> DedicatedThreadsToShutdown;
 		void MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedThread);
+		DedicatedJobThread* GetDedicatedThread(const std::string& ThreadID);
 
 		void CollectJob(JobThread* FromThread);
 
-		DedicatedJobThread* GetDedicatedThread(std::string ThreadID);
+		std::vector<LightThread*> LightThreads;
+		LightThread* GetLightThread(const std::string& ThreadID);
 	};
 
 	#define THREAD_POOL FEThreadPool::getInstance()

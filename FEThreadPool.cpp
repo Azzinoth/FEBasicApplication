@@ -91,6 +91,13 @@ DedicatedJobThread::DedicatedJobThread()
 
 DedicatedJobThread::~DedicatedJobThread() {}
 
+LightThread::LightThread()
+{
+	ThreadID = UNIQUE_ID.GetUniqueHexID();
+}
+
+LightThread::~LightThread() {}
+
 FEThreadPool::FEThreadPool()
 {
 	Threads.resize(4);
@@ -231,7 +238,7 @@ unsigned int FEThreadPool::GetThreadCount() const
 	return static_cast<int>(Threads.size());
 }
 
-std::string FEThreadPool::CreateDedicatedThreadID()
+std::string FEThreadPool::CreateDedicatedThread()
 {
 	DedicatedThreads.push_back(new DedicatedJobThread());
 	return DedicatedThreads.back()->ThreadID;
@@ -248,7 +255,7 @@ bool FEThreadPool::IsAnyDedicatedThreadHaveActiveJob() const
 	return false;
 }
 
-DedicatedJobThread* FEThreadPool::GetDedicatedThread(std::string ThreadID)
+DedicatedJobThread* FEThreadPool::GetDedicatedThread(const std::string& ThreadID)
 {
 	for (size_t i = 0; i < DedicatedThreads.size(); i++)
 	{
@@ -259,7 +266,7 @@ DedicatedJobThread* FEThreadPool::GetDedicatedThread(std::string ThreadID)
 	return nullptr;
 }
 
-void FEThreadPool::Execute(std::string DedicatedThreadID, const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
+void FEThreadPool::Execute(const std::string& DedicatedThreadID, const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
 {
 	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
 	if (!Thread)
@@ -296,7 +303,7 @@ void FEThreadPool::MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedT
 	DedicatedThreadsToShutdown.push_back(DedicatedThread);
 }
 
-bool FEThreadPool::ShutdownDedicatedThread(std::string DedicatedThreadID)
+bool FEThreadPool::ShutdownDedicatedThread(const std::string& DedicatedThreadID)
 {
 	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
 	if (!Thread)
@@ -311,4 +318,81 @@ bool FEThreadPool::ShutdownDedicatedThread(std::string DedicatedThreadID)
 	MarkDedicatedThreadForShutdown(Thread);
 
 	return true;
+}
+
+bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
+{
+	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
+	if (!Thread)
+		return false;
+
+	while (!Thread->JobsList.empty() || !Thread->IsJobFinished())
+	{
+		if (Thread->IsJobFinished() && !Thread->IsJobCollected())
+		{
+			CollectJob(Thread);
+			if (Thread->JobsList.empty())
+				return true;
+		}
+		else if (!Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
+		{
+			if (Thread->AssignJob(Thread->JobsList[0]))
+				Thread->JobsList.erase(Thread->JobsList.begin());
+		}
+		Sleep(10);
+	}
+
+	return true;
+}
+
+std::string FEThreadPool::CreateLightThread()
+{
+	std::lock_guard<std::mutex> lock(LightThreadsMutex);
+
+	LightThread* NewThread = new LightThread();
+	LightThreads.push_back(NewThread);
+	return NewThread->ThreadID;
+}
+
+LightThread* FEThreadPool::GetLightThread(const std::string& ThreadID)
+{
+	for (size_t i = 0; i < LightThreads.size(); i++)
+	{
+		if (LightThreads[i]->ThreadID == ThreadID)
+			return LightThreads[i];
+	}
+
+	return nullptr;
+}
+
+bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
+{
+	LightThread* Thread = GetLightThread(LightThreadID);
+	if (!Thread)
+		return false;
+
+	if (!Thread->ThreadHandler.joinable())
+		return false;
+
+	Thread->ThreadHandler.join();
+	return true;
+}
+
+bool FEThreadPool::RemoveLightThread(const std::string& LightThreadID)
+{
+	std::lock_guard<std::mutex> lock(LightThreadsMutex);
+
+	WaitForLightThread(LightThreadID);
+
+	for (size_t i = 0; i < LightThreads.size(); i++)
+	{
+		if (LightThreads[i]->ThreadID == LightThreadID)
+		{
+			delete LightThreads[i];
+			LightThreads.erase(LightThreads.begin() + i, LightThreads.begin() + i + 1);
+			return true;
+		}
+	}
+
+	return false;
 }

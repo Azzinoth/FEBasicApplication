@@ -42,7 +42,7 @@ bool FEServerSideNetworkConnection::TryToBind(std::string IP, unsigned int Port,
     this->OnDataSentCallback = OnDataSentCallback;
     this->OnNewClientConnectionCallback = OnNewClientConnectionCallback;
 
-    ListeningDedicatedThreadID = THREAD_POOL.CreateDedicatedThreadID();
+    ListeningDedicatedThreadID = THREAD_POOL.CreateDedicatedThread();
 
     FENetworkServerListeningThreadJobInfo* ListeningJobInfo = new FENetworkServerListeningThreadJobInfo;
     ListeningJobInfo->ListeningSocket = ListeningSocket;
@@ -99,8 +99,8 @@ void FEServerSideNetworkConnection::AddClient(FENetworkNewClientInfo* ClientInfo
     Clients[ClientInfo->ClientID]->ClientPort = ClientInfo->ClientPort;
     Clients[ClientInfo->ClientID]->ClientSocket = ClientSocket;
 
-    Clients[ClientInfo->ClientID]->SendDedicatedThreadID = THREAD_POOL.CreateDedicatedThreadID();
-    Clients[ClientInfo->ClientID]->ReceiveDedicatedThreadID = THREAD_POOL.CreateDedicatedThreadID();
+    Clients[ClientInfo->ClientID]->SendDedicatedThreadID = THREAD_POOL.CreateDedicatedThread();
+    Clients[ClientInfo->ClientID]->ReceiveDedicatedThreadID = THREAD_POOL.CreateDedicatedThread();
 
     FENetworkReceiveFromClientThreadJobInfo* ReceiveJobInfo = new FENetworkReceiveFromClientThreadJobInfo;
     ReceiveJobInfo->CurrentSocket = Clients[ClientInfo->ClientID]->ClientSocket;

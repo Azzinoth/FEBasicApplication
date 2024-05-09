@@ -31,8 +31,8 @@ bool FEClientSideNetworkConnection::TryToConnect(std::string ServerIP, unsigned 
 
     // As multiple threads cannot simultaneously read from or write to the same socket,
     // a dedicated thread is created for each socket.
-    SendDedicatedThreadID = THREAD_POOL.CreateDedicatedThreadID();
-    ReceiveDedicatedThreadID = THREAD_POOL.CreateDedicatedThreadID();
+    SendDedicatedThreadID = THREAD_POOL.CreateDedicatedThread();
+    ReceiveDedicatedThreadID = THREAD_POOL.CreateDedicatedThread();
 
     FENetworkReceiveThreadJobInfo* ReceiveJobInfo = new FENetworkReceiveThreadJobInfo;
     ReceiveJobInfo->CurrentSocket = Socket;
