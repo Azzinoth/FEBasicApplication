@@ -72,7 +72,7 @@ namespace FocalEngine
 		void InvokeMouseEnterCallback(int Entered);
 		void InvokeMouseButtonCallback(int Button, int Action, int Mods);
 		void InvokeMouseMoveCallback(double Xpos, double Ypos);
-		void InvokeCharCallback(unsigned int codepoint);
+		void InvokeCharCallback(unsigned int Codepoint);
 		void InvokeKeyCallback(int Key, int Scancode, int Action, int Mods);
 		void InvokeDropCallback(int Count, const char** Paths);
 		void InvokeScrollCallback(double Xoffset, double Yoffset);
@@ -113,17 +113,29 @@ namespace FocalEngine
 
 		// Event Handling
 		void AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
+		void RemoveOnCloseCallback(std::function<void()> UserOnCloseCallback);
 		void AddOnFocusCallback(std::function<void(int)> UserOnFocusCallback);
+		void RemoveOnFocusCallback(std::function<void(int)> UserOnFocusCallback);
 		void AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
+		void RemoveOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
 		void AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback);
+		void RemoveOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback);
 		void AddOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback);
+		void RemoveOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback);
 		void AddOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback);
+		void RemoveOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback);
 		void AddOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback);
+		void RemoveOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback);
 		void AddOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback);
+		void RemoveOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback);
 		void AddOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback);
+		void RemoveOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback);
 		void AddOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback);
+		void RemoveOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback);
 		void AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
+		void RemoveOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
 		void AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback);
+		void RemoveOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback);
 
 		GLFWwindow* GetGlfwWindow() const;
 		ImGuiContext* GetImGuiContext() const;

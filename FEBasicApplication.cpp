@@ -139,6 +139,13 @@ void FEBasicApplication::BeginFrame()
 		return;
 
 	THREAD_POOL.Update();
+
+	for (size_t i = 0; i < VirtualUIs.size(); i++)
+	{
+		VirtualUIs[i]->BeginFrame();
+		VirtualUIs[i]->Render();
+		VirtualUIs[i]->EndFrame();
+	}
 }
 
 void FEBasicApplication::EndFrame() const
@@ -635,4 +642,36 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 FEConsoleWindow* FEBasicApplication::GetConsoleWindow()
 {
 	return ConsoleWindow;
+}
+
+FEVirtualUI* FEBasicApplication::AddVirtualUI(GLuint FrameBuffer, int Width, int Height, std::string Name)
+{
+	if (Width <= 0 || Height <= 0)
+		return nullptr;
+
+	if (FrameBuffer == GLuint(-1))
+		return nullptr;
+
+	FEVirtualUI* NewVirtualUI = new FEVirtualUI(Width, Height, Name);
+	NewVirtualUI->Initialize(FrameBuffer, Width, Height);
+	NewVirtualUI->SetName(Name);
+	APPLICATION.VirtualUIs.push_back(NewVirtualUI);
+	
+	return NewVirtualUI;
+}
+
+void FEBasicApplication::RemoveVirtualUI(FEVirtualUI* VirtualUI)
+{
+	if (VirtualUI == nullptr)
+		return;
+
+	for (size_t i = 0; i < APPLICATION.VirtualUIs.size(); i++)
+	{
+		if (APPLICATION.VirtualUIs[i] == VirtualUI)
+		{
+			delete VirtualUI;
+			APPLICATION.VirtualUIs.erase(APPLICATION.VirtualUIs.begin() + i);
+			break;
+		}
+	}
 }

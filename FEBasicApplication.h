@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FEWindow.h"
+#include "FEVirtualUI.h"
 #include <map>
 #include <sstream>
 
@@ -17,6 +17,7 @@ namespace FocalEngine
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 
 		std::vector<FEWindow*> Windows;
+		std::vector<FEVirtualUI*> VirtualUIs;
 
 		FEConsoleWindow* ConsoleWindow = nullptr;
 		static BOOL WINAPI ConsoleHandler(DWORD dwType);
@@ -81,6 +82,9 @@ namespace FocalEngine
 
 		void AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
 		void AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
+
+		FEVirtualUI* AddVirtualUI(GLuint FrameBuffer, int Width = 1920, int Height = 1080, std::string Name = "UnnamedVirtualUI");
+		void RemoveVirtualUI(FEVirtualUI* VirtualUI);
 
 		// This function can produce ID's that are "unique" with very rare collisions.
 		// For most purposes it can be considered unique.
