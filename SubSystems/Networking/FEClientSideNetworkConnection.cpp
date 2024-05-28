@@ -53,7 +53,7 @@ void FEClientSideNetworkConnection::SendFunction(void* Input, void* Output)
     if (Info->DataSize == 0 || Info->Data == nullptr)
         return;
 
-    int MessageSize = static_cast<int>(Info->DataSize) + sizeof(int) * 2;
+    int MessageSize = static_cast<int>(Info->DataSize) + sizeof(size_t) + sizeof(int);
     int MessageType = 1;
     if (MessageType < 0)
         MessageType = 0;
@@ -62,7 +62,7 @@ void FEClientSideNetworkConnection::SendFunction(void* Input, void* Output)
     // In order not to reallocate memory for each data transfer,
     // we will send header part before data
     // And since TCP will ensure that data will be received in the same order as sent, this aproach is safe.
-    int Result = send(*Info->CurrentSocket, (char*)&MessageSize, sizeof(int), 0);
+    int Result = send(*Info->CurrentSocket, (char*)&MessageSize, sizeof(size_t), 0);
     if (Result == -1)
     {
         Info->ErrorCode = FE_ABRUPTLY_DISCONNECTED;
@@ -76,11 +76,18 @@ void FEClientSideNetworkConnection::SendFunction(void* Input, void* Output)
         return;
     }
 
-    Result = send(*Info->CurrentSocket, Info->Data, static_cast<int>(Info->DataSize), 0);
-    if (Result == -1)
+    // This is the maximum size that send function can handle.
+    const size_t MAX_CHUNK_SIZE = 2147483647;
+
+    for (size_t i = 0; i < MessageSize; i += MAX_CHUNK_SIZE)
     {
-        Info->ErrorCode = FE_ABRUPTLY_DISCONNECTED;
-        return;
+        size_t CurrentChunkSize = MAX_CHUNK_SIZE > MessageSize - i ? MessageSize - i : MAX_CHUNK_SIZE;
+        Result = send(*Info->CurrentSocket, (char*)Info->Data + i, static_cast<int>(CurrentChunkSize), 0);
+        if (Result == -1)
+        {
+            Info->ErrorCode = FE_ABRUPTLY_DISCONNECTED;
+            return;
+        }
     }
 }
 
