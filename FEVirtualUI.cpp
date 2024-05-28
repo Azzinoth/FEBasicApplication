@@ -20,7 +20,7 @@ void FEVirtualUI::Initialize(GLuint FrameBuffer, int Width, int Height)
 	ImGui::SetCurrentContext(ImguiContext);
 
 	ImGuiIO& IO = ImGui::GetIO();
-	IO.DisplaySize = ImVec2(Width, Height);
+	IO.DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 	IO.DeltaTime = 1.0f / 60.0f;
 
 	ImGui_ImplOpenGL3_Init("#version 410");
@@ -215,9 +215,9 @@ void FEVirtualUI::InvokeMouseMove(const double Xpos, const double Ypos)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui::GetIO().MousePos = ImVec2(Xpos, Ypos);
-    LastMouseX = Xpos;
-    LastMouseY = Ypos;
+	ImGui::GetIO().MousePos = ImVec2(static_cast<float>(Xpos), static_cast<float>(Ypos));
+    LastMouseX = static_cast<float>(Xpos);
+    LastMouseY = static_cast<float>(Ypos);
 
 	for (int i = 0; i < UserOnMouseMoveCallbackFuncs.size(); i++)
 		UserOnMouseMoveCallbackFuncs[i](Xpos, Ypos);
