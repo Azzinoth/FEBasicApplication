@@ -125,10 +125,10 @@ void FEVirtualUI::EndFrame()
             CallbacksOnFontReady.erase(CallbacksOnFontReady.begin() + i);
             i--;
         }
-    }
 
-    ImGui::GetIO().Fonts->Build();
-    ImGui_ImplOpenGL3_CreateFontsTexture();
+        ImGui::GetIO().Fonts->Build();
+        ImGui_ImplOpenGL3_CreateFontsTexture();
+    }
 }
 
 void FEVirtualUI::EnsureCorrectContextBegin()
