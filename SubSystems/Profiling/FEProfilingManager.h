@@ -44,11 +44,9 @@ namespace FocalEngine
 
 #define PROFILING FEProfilingManager::getInstance()
 
-#define ENABLE_PROFILING
+#ifdef FE_ENABLE_PROFILING
+    class FEScopedTimer;
 
-class FEScopedTimer;
-
-#ifdef ENABLE_PROFILING
 #define FE_PROFILE_FUNCTION() FEScopedTimer Timer(__FUNCTION__)
 
 #define FE_CONCAT_IMPL(x, y) x##y
