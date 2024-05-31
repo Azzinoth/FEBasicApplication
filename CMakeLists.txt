@@ -37,6 +37,15 @@ file(GLOB BasicApplicationNetworkSubSystem_SRC
 	"SubSystems/Networking/FENetworking.h"
 )
 
+file(GLOB BasicApplicationProfilingSubSystem_SRC
+	"SubSystems/Profiling/FEProfilingRegistry.cpp"
+	"SubSystems/Profiling/FEProfilingRegistry.h"
+	"SubSystems/Profiling/FEScopedTimer.cpp"
+	"SubSystems/Profiling/FEScopedTimer.h"
+	"SubSystems/Profiling/FEProfilingManager.cpp"
+	"SubSystems/Profiling/FEProfilingManager.h"
+)
+
 file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplication.cpp"
 	"FEBasicApplication.h"
@@ -68,6 +77,7 @@ link_directories(${GLFW_LIB_DIR})
 add_library(FEBasicApplication
 			${BasicApplicationSubSystem_SRC}
 			${BasicApplicationNetworkSubSystem_SRC}
+			${BasicApplicationProfilingSubSystem_SRC}
 			# *************** THIRD_PARTY ***************
 			${imgui_SRC}
 )
@@ -79,6 +89,7 @@ target_link_libraries(FEBasicApplication opengl32.lib)
 
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
+source_group("Source Files/SubSystems/Profiling" FILES ${BasicApplicationProfilingSubSystem_SRC})
 # *************** THIRD_PARTY ***************
 source_group("Source Files/ThirdParty/imgui" FILES ${imgui_SRC})
 

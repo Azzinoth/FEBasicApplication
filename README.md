@@ -12,6 +12,7 @@ This repository serves as a base layer for applications that utilize OpenGL and 
 - A thread pool class that forms a solid base for creating a job system.
 - A logging system with topic categorization and optional file output.
 - An abstraction layer for TCP client and server that hides the stream nature of TCP. This allows for the sending and receiving of distinct messages.
+- A profiling subsystem that allows for collecting timestamps of functions and/or sections using predefined macros. It supports multithreading, ensuring accurate profiling when all threads have completed their active work. The system also provides JSON export functionality for external visualization and analysis of the collected profiling data.
 
 ## Usage
 

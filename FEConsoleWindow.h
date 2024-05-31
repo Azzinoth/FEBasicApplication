@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SubSystems/Networking/FENetworking.h"
+#include "SubSystems/Profiling/FEScopedTimer.h"
 
 namespace FocalEngine
 {
