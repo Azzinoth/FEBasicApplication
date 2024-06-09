@@ -47,23 +47,34 @@ namespace FocalEngine
 #ifdef FE_ENABLE_PROFILING
     class FEScopedTimer;
 
-#define FE_PROFILE_FUNCTION() FEScopedTimer Timer(__FUNCTION__)
+    #define FE_PROFILE_FUNCTION_SCOPE() FEScopedTimer Timer(__FUNCTION__)
 
-#define FE_CONCAT_IMPL(x, y) x##y
-#define FE_CONCAT(x, y) FE_CONCAT_IMPL(x, y)
-#define FE_UNIQUE_NAME(Base, SectionName) FE_CONCAT(Base, SectionName)
-// To profile a section of code, use FE_PROFILE_FUNCTION at the beginning of the function that includes the section.
-// Then use FE_PROFILE_SECTION_START(SectionName) at the beginning of the section and FE_PROFILE_SECTION_END(SectionName) at the end of the section.
-#define FE_PROFILE_SECTION_START(SectionName) FEScopedTimer FE_UNIQUE_NAME(Timer_, SectionName)(#SectionName, true)
-// To profile a section of code, use FE_PROFILE_FUNCTION at the beginning of the function that includes the section.
-// Then use FE_PROFILE_SECTION_START(SectionName) at the beginning of the section and FE_PROFILE_SECTION_END(SectionName) at the end of the section.
-#define FE_PROFILE_SECTION_END(SectionName) FE_UNIQUE_NAME(Timer_, SectionName).Stop()
+    #define FE_CONCAT_IMPL(x, y) x##y
+    #define FE_CONCAT(x, y) FE_CONCAT_IMPL(x, y)
+    #define FE_UNIQUE_NAME(Base, SectionName) FE_CONCAT(Base, SectionName)
+    // To profile a section of code, use FE_PROFILE_FUNCTION_SCOPE(or FE_PROFILE_FUNCTION) at the beginning of the function that includes the section.
+    // Then use FE_PROFILE_SECTION_START(SectionName) at the beginning of the section and FE_PROFILE_SECTION_END(SectionName) at the end of the section.
+    #define FE_PROFILE_SECTION_START(SectionName) FEScopedTimer FE_UNIQUE_NAME(Timer_, SectionName)(#SectionName, true)
+    // To profile a section of code, use FE_PROFILE_FUNCTION_SCOPE(or FE_PROFILE_FUNCTION) at the beginning of the function that includes the section.
+    // Then use FE_PROFILE_SECTION_START(SectionName) at the beginning of the section and FE_PROFILE_SECTION_END(SectionName) at the end of the section.
+    #define FE_PROFILE_SECTION_END(SectionName) FE_UNIQUE_NAME(Timer_, SectionName).Stop()
+
+    #define FE_PROFILE_FUNCTION(FunctionDeclaration)    \
+    FunctionDeclaration                                 \
+    {                                                   \
+	    FEScopedTimer Timer(__FUNCTION__)
+
 #else
-// That's an empty macro, not to cause any overhead when profiling is disabled.
-#define FE_PROFILE_FUNCTION()
-// That's an empty macro, not to cause any overhead when profiling is disabled.
-#define FE_PROFILE_SECTION_START(SectionName)
-// That's an empty macro, not to cause any overhead when profiling is disabled.
-#define FE_PROFILE_SECTION_END()
+    // That's an empty macro, not to cause any overhead when profiling is disabled.
+    #define FE_PROFILE_FUNCTION_SCOPE()
+    // That's an empty macro, not to cause any overhead when profiling is disabled.
+    #define FE_PROFILE_SECTION_START(SectionName)
+    // That's an empty macro, not to cause any overhead when profiling is disabled.
+    #define FE_PROFILE_SECTION_END()
+    // That's an empty macro, not to cause any overhead when profiling is disabled.
+    #define FE_PROFILE_FUNCTION(FunctionDeclaration)    \
+    FunctionDeclaration                                 \
+    {         
+
 #endif
 }
