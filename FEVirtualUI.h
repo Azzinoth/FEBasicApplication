@@ -16,7 +16,7 @@ namespace FocalEngine
 		int Width = 1280;
 		int Height = 720;
 		float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.00f };
-
+	public:
 		float LastMouseX = 0.0f, LastMouseY = 0.0f;
 		
 		FEVirtualUI(int Width = 1280, int Height = 720, std::string Name = "UnNamed");
@@ -35,7 +35,7 @@ namespace FocalEngine
 		std::vector<std::function<void(double, double)>> UserOnScrollCallbackFuncs;
 
 		// User Render Function
-		std::function<void()> UserRenderFunctionImpl;
+		std::function<void(FEVirtualUI*)> UserRenderFunctionImpl;
 
 		ImGuiContext* TempImguiContext = nullptr;
 		void EnsureCorrectContextBegin();
@@ -62,8 +62,8 @@ namespace FocalEngine
 		void GetClearColor(float* R, float* G, float* B, float* A) const;
 		void SetClearColor(float R, float G, float B, float A);
 
-		std::function<void()> GetOnRenderFunction();
-		void SetOnRenderFunction(std::function<void()> UserRenderFunction);
+		std::function<void(FEVirtualUI*)> GetOnRenderFunction();
+		void SetOnRenderFunction(std::function<void(FEVirtualUI*)> UserRenderFunction);
 		void ClearOnRenderFunction();
 		void Render();
 		void BeginFrame();

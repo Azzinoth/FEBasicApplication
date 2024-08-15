@@ -36,10 +36,15 @@ ImGuiContext* FEVirtualUI::GetImGuiContext() const
 
 void FEVirtualUI::TerminateImGui()
 {
-	ImGui::SetCurrentContext(ImguiContext);
+    ImGuiContext* TempImguiContext = nullptr;
+    TempImguiContext = ImGui::GetCurrentContext();
+    if (TempImguiContext != ImguiContext)
+        ImGui::SetCurrentContext(ImguiContext);
+
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui::DestroyContext(ImguiContext);
-	ImGui::SetCurrentContext(nullptr);
+	
+    ImGui::SetCurrentContext(TempImguiContext);
 }
 
 FEVirtualUI::~FEVirtualUI()
@@ -73,12 +78,12 @@ void FEVirtualUI::SetClearColor(float R, float G, float B, float A)
 	ClearColor[3] = A;
 }
 
-std::function<void()> FEVirtualUI::GetOnRenderFunction()
+std::function<void(FEVirtualUI*)> FEVirtualUI::GetOnRenderFunction()
 {
 	return UserRenderFunctionImpl;
 }
 
-void FEVirtualUI::SetOnRenderFunction(std::function<void()> UserRenderFunction)
+void FEVirtualUI::SetOnRenderFunction(std::function<void(FEVirtualUI*)> UserRenderFunction)
 {
 	UserRenderFunctionImpl = UserRenderFunction;
 }
@@ -99,7 +104,7 @@ void FEVirtualUI::BeginFrame()
 void FEVirtualUI::Render()
 {
 	if (UserRenderFunctionImpl != nullptr)
-		UserRenderFunctionImpl();
+		UserRenderFunctionImpl(this);
 }
 
 void FEVirtualUI::EndFrame()
