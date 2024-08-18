@@ -12,7 +12,7 @@ namespace FocalEngine
 		std::map<std::string, std::string> Settings;
 	};
 
-	class FEBasicApplication
+	class FEBASICAPPLICATION_API FEBasicApplication
 	{
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 

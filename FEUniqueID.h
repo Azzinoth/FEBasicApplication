@@ -7,6 +7,7 @@
 #include <chrono>
 #include <time.h>
 #include <random>
+#include "FEBasicApplicationAPI.h"
 
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)  \
 static CLASS_NAME& getInstance()           \
@@ -37,7 +38,7 @@ return result;
 
 namespace FocalEngine
 {
-	class FEUniqueID
+	class FEBASICAPPLICATION_API FEUniqueID
 	{
 		SINGLETON_PRIVATE_PART(FEUniqueID)
 

@@ -9,6 +9,11 @@ project(FEBasicApplication)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
+option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+#set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 # Turn on the ability to create folders to organize projects (.vcproj)
 # It creates "CMakePredefinedTargets" folder by default and adds CMake
 # defined projects like INSTALL.vcproj and ZERO_CHECK.vcproj
@@ -65,6 +70,7 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FETime.h"
 	"FEUniqueID.cpp"
 	"FEUniqueID.h"
+	"FEBasicApplicationAPI.h"
 )
 
 set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
@@ -76,19 +82,55 @@ set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarge
 link_directories(${GLEW_LIB_DIR})
 link_directories(${GLFW_LIB_DIR})
 
-add_library(FEBasicApplication
-			${BasicApplicationSubSystem_SRC}
-			${BasicApplicationNetworkSubSystem_SRC}
-			${BasicApplicationProfilingSubSystem_SRC}
-			# *************** THIRD_PARTY ***************
-			${imgui_SRC}
-)
+if(BUILD_SHARED_LIBS)
+    add_library(FEBasicApplication SHARED
+                ${BasicApplicationSubSystem_SRC}
+                ${BasicApplicationNetworkSubSystem_SRC}
+                ${BasicApplicationProfilingSubSystem_SRC}
+                ${imgui_SRC})
+    target_compile_definitions(FEBasicApplication PRIVATE FEBASICAPPLICATION_EXPORTS)
+    target_compile_definitions(FEBasicApplication PUBLIC FEBASICAPPLICATION_SHARED)
 
-target_link_libraries(FEBasicApplication glew32s.lib)
-target_link_libraries(FEBasicApplication glfw3.lib)
-target_link_libraries(FEBasicApplication glfw3_mt.lib)
-target_link_libraries(FEBasicApplication glfw3dll.lib)
-target_link_libraries(FEBasicApplication opengl32.lib)
+	set_target_properties(FEBasicApplication PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+else()
+    add_library(FEBasicApplication STATIC
+                ${BasicApplicationSubSystem_SRC}
+                ${BasicApplicationNetworkSubSystem_SRC}
+                ${BasicApplicationProfilingSubSystem_SRC}
+                ${imgui_SRC})
+endif()
+
+# Adjust GLFW and GLEW linking based on BUILD_SHARED_LIBS and USE_STATIC_RUNTIME
+if(BUILD_SHARED_LIBS)
+    if(USE_STATIC_RUNTIME)
+        message(WARNING "Building a shared library with static runtime is uncommon and may lead to issues.")
+        set(GLFW_LIBRARY "glfw3_mt.lib" CACHE STRING "GLFW library to link against" FORCE)
+        set(GLEW_LIBRARY "glew32s.lib" CACHE STRING "GLEW library to link against" FORCE)
+    else()
+        set(GLFW_LIBRARY "glfw3dll.lib" CACHE STRING "GLFW library to link against" FORCE)
+        set(GLEW_LIBRARY "glew32.lib" CACHE STRING "GLEW library to link against" FORCE)
+    endif()
+else()
+    if(USE_STATIC_RUNTIME)
+        set(GLFW_LIBRARY "glfw3_mt.lib" CACHE STRING "GLFW library to link against" FORCE)
+        set(GLEW_LIBRARY "glew32s.lib" CACHE STRING "GLEW library to link against" FORCE)
+    else()
+        set(GLFW_LIBRARY "glfw3.lib" CACHE STRING "GLFW library to link against" FORCE)
+        set(GLEW_LIBRARY "glew32.lib" CACHE STRING "GLEW library to link against" FORCE)
+    endif()
+endif()
+
+# Define GLEW_STATIC for static builds
+if(USE_STATIC_RUNTIME)
+    add_definitions(-DGLEW_STATIC)
+endif()
+
+target_link_libraries(FEBasicApplication 
+    PRIVATE
+    ${GLEW_LIBRARY}
+    ${GLFW_LIBRARY}
+    opengl32.lib
+)
 
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
@@ -106,8 +148,24 @@ set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include PARENT
 set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty PARENT_SCOPE)
 set(BASICAPP_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)
 
-
 include_directories(
 	${GLEW_INCLUDE_DIR}
 	${BASICAPP_THIRDPARTY_DIR}
 )
+
+# Export the BUILD_SHARED_LIBS and USE_STATIC_RUNTIME variables
+set(FEBASICAPPLICATION_SHARED ${BUILD_SHARED_LIBS} CACHE BOOL "Indicates if FEBasicApplication is built as shared" FORCE)
+set(FEBASICAPPLICATION_STATIC_RUNTIME ${USE_STATIC_RUNTIME} CACHE BOOL "Indicates if FEBasicApplication uses static runtime" FORCE)
+
+# If building as DLL or using dynamic runtime, copy necessary DLLs to output directory
+if(BUILD_SHARED_LIBS)
+    add_custom_command(TARGET FEBasicApplication POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:FEBasicApplication>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${GLEW_LIB_DIR}/glew32.dll"
+            "$<TARGET_FILE_DIR:FEBasicApplication>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${GLFW_LIB_DIR}/glfw3.dll"
+            "$<TARGET_FILE_DIR:FEBasicApplication>"
+    )
+endif()
