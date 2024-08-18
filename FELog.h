@@ -45,7 +45,7 @@ namespace std
 
 namespace FocalEngine
 {
-	class FELOG
+	class FEBASICAPPLICATION_API FELOG
 	{
 	public:
 		SINGLETON_PUBLIC_PART(FELOG)

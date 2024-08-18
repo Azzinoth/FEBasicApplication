@@ -14,7 +14,7 @@ namespace FocalEngine
 		FE_TIME_RESOLUTION_NANOSECONDS = 3
 	};
 
-	class FETime
+	class FEBASICAPPLICATION_API FETime
 	{
 		std::unordered_map<std::string, FE_CHRONO_TIME_POINT> TimeStamps;
 

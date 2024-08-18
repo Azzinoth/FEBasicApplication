@@ -78,7 +78,7 @@ namespace FocalEngine
 		~LightThread();
 	};
 
-	class FEThreadPool
+	class FEBASICAPPLICATION_API FEThreadPool
 	{
 	public:
 		SINGLETON_PUBLIC_PART(FEThreadPool)
