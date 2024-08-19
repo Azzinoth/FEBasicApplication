@@ -9,10 +9,14 @@ project(FEBasicApplication)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(MSVC)
+  # Disable C4251 warning
+  add_compile_options(/wd4251)
+endif()
+
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
-option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" OFF)
+option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-#set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
 # Turn on the ability to create folders to organize projects (.vcproj)
 # It creates "CMakePredefinedTargets" folder by default and adds CMake
@@ -104,19 +108,19 @@ endif()
 if(BUILD_SHARED_LIBS)
     if(USE_STATIC_RUNTIME)
         message(WARNING "Building a shared library with static runtime is uncommon and may lead to issues.")
-        set(GLFW_LIBRARY "glfw3_mt.lib" CACHE STRING "GLFW library to link against" FORCE)
-        set(GLEW_LIBRARY "glew32s.lib" CACHE STRING "GLEW library to link against" FORCE)
+        set(GLFW_LIBRARY "glfw3_mt.lib")
+        set(GLEW_LIBRARY "glew32s.lib")
     else()
-        set(GLFW_LIBRARY "glfw3dll.lib" CACHE STRING "GLFW library to link against" FORCE)
-        set(GLEW_LIBRARY "glew32.lib" CACHE STRING "GLEW library to link against" FORCE)
+        set(GLFW_LIBRARY "glfw3dll.lib")
+        set(GLEW_LIBRARY "glew32.lib")
     endif()
 else()
     if(USE_STATIC_RUNTIME)
-        set(GLFW_LIBRARY "glfw3_mt.lib" CACHE STRING "GLFW library to link against" FORCE)
-        set(GLEW_LIBRARY "glew32s.lib" CACHE STRING "GLEW library to link against" FORCE)
+        set(GLFW_LIBRARY "glfw3_mt.lib")
+        set(GLEW_LIBRARY "glew32s.lib")
     else()
-        set(GLFW_LIBRARY "glfw3.lib" CACHE STRING "GLFW library to link against" FORCE)
-        set(GLEW_LIBRARY "glew32.lib" CACHE STRING "GLEW library to link against" FORCE)
+        set(GLFW_LIBRARY "glfw3.lib")
+        set(GLEW_LIBRARY "glew32.lib")
     endif()
 endif()
 
@@ -154,18 +158,27 @@ include_directories(
 )
 
 # Export the BUILD_SHARED_LIBS and USE_STATIC_RUNTIME variables
-set(FEBASICAPPLICATION_SHARED ${BUILD_SHARED_LIBS} CACHE BOOL "Indicates if FEBasicApplication is built as shared" FORCE)
-set(FEBASICAPPLICATION_STATIC_RUNTIME ${USE_STATIC_RUNTIME} CACHE BOOL "Indicates if FEBasicApplication uses static runtime" FORCE)
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} PARENT_SCOPE)
+set(USE_STATIC_RUNTIME ${USE_STATIC_RUNTIME} PARENT_SCOPE)
 
-# If building as DLL or using dynamic runtime, copy necessary DLLs to output directory
+# Export the GLEW_LIBRARY and GLFW_LIBRARY variables
+set(GLEW_LIBRARY ${GLEW_LIBRARY} PARENT_SCOPE)
+set(GLFW_LIBRARY ${GLFW_LIBRARY} PARENT_SCOPE)
+
+# If building as DLL, copy necessary DLLs to output directory
 if(BUILD_SHARED_LIBS)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:FEBasicApplication>"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${GLEW_LIB_DIR}/glew32.dll"
-            "$<TARGET_FILE_DIR:FEBasicApplication>"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLFW_LIB_DIR}/glfw3.dll"
+            "$<TARGET_FILE_DIR:FEBasicApplication>"
+    )
+endif()
+
+# If using dynamic runtime, copy necessary DLLs to output directory
+if(NOT USE_STATIC_RUNTIME)
+    add_custom_command(TARGET FEBasicApplication POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${GLEW_LIB_DIR}/glew32.dll"
             "$<TARGET_FILE_DIR:FEBasicApplication>"
     )
 endif()

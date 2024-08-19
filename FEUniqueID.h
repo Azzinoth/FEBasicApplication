@@ -10,20 +10,20 @@
 #include "FEBasicApplicationAPI.h"
 
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)  \
-static CLASS_NAME& getInstance()           \
-{										   \
-	if (!Instance)                         \
-		Instance = new CLASS_NAME();       \
-	return *Instance;				       \
-}                                          \
-										   \
-~CLASS_NAME();
+    static CLASS_NAME& getInstance()       \
+    {                                      \
+        if (!Instance)                     \
+            Instance = new CLASS_NAME();   \
+        return *Instance;                  \
+    }                                      \
+                                           \
+    ~CLASS_NAME();
 
 #define SINGLETON_PRIVATE_PART(CLASS_NAME) \
-static CLASS_NAME* Instance;               \
-CLASS_NAME();                              \
-CLASS_NAME(const CLASS_NAME &);            \
-void operator= (const CLASS_NAME &);
+    static CLASS_NAME* Instance;           \
+    CLASS_NAME();                          \
+    CLASS_NAME(const CLASS_NAME &);        \
+    void operator= (const CLASS_NAME &);
 
 #define FE_MAP_TO_STR_VECTOR(map)          \
 std::vector<std::string> result;           \
