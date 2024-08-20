@@ -12,6 +12,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
   # Disable C4251 warning
   add_compile_options(/wd4251)
+
+  # Export all symbols when building a DLL
+  #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
@@ -77,6 +80,15 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplicationAPI.h"
 )
 
+set(ALL_SOURCE_FILES "")
+list(APPEND ALL_SOURCE_FILES
+            ${BasicApplicationSubSystem_SRC}
+            ${BasicApplicationNetworkSubSystem_SRC}
+            ${BasicApplicationProfilingSubSystem_SRC}
+            # *************** THIRD_PARTY ***************
+            ${imgui_SRC}
+)
+
 set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
 set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget))
 
@@ -87,21 +99,18 @@ link_directories(${GLEW_LIB_DIR})
 link_directories(${GLFW_LIB_DIR})
 
 if(BUILD_SHARED_LIBS)
-    add_library(FEBasicApplication SHARED
-                ${BasicApplicationSubSystem_SRC}
-                ${BasicApplicationNetworkSubSystem_SRC}
-                ${BasicApplicationProfilingSubSystem_SRC}
-                ${imgui_SRC})
+    add_library(FEBasicApplication SHARED ${ALL_SOURCE_FILES})
     target_compile_definitions(FEBasicApplication PRIVATE FEBASICAPPLICATION_EXPORTS)
     target_compile_definitions(FEBasicApplication PUBLIC FEBASICAPPLICATION_SHARED)
 
+	# Some times /GL conflicts with WINDOWS_EXPORT_ALL_SYMBOLS
+	set_target_properties(FEBasicApplication PROPERTIES COMPILE_OPTIONS "/GL-")
 	set_target_properties(FEBasicApplication PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+	# Disable C4251 warning
+	target_compile_options(FEBasicApplication PRIVATE /wd4251)
 else()
-    add_library(FEBasicApplication STATIC
-                ${BasicApplicationSubSystem_SRC}
-                ${BasicApplicationNetworkSubSystem_SRC}
-                ${BasicApplicationProfilingSubSystem_SRC}
-                ${imgui_SRC})
+    add_library(FEBasicApplication STATIC ${ALL_SOURCE_FILES})
 endif()
 
 # Adjust GLFW and GLEW linking based on BUILD_SHARED_LIBS and USE_STATIC_RUNTIME
@@ -131,9 +140,9 @@ endif()
 
 target_link_libraries(FEBasicApplication 
     PRIVATE
-    ${GLEW_LIBRARY}
-    ${GLFW_LIBRARY}
-    opengl32.lib
+		${GLEW_LIBRARY}
+		${GLFW_LIBRARY}
+		opengl32.lib
 )
 
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})

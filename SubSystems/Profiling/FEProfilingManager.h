@@ -5,7 +5,7 @@
 
 namespace FocalEngine
 {
-    class FEProfilingManager
+    class FEBASICAPPLICATION_API FEProfilingManager
     {
         friend class FEScopedTimer;
         friend class FEProfilingManager;
