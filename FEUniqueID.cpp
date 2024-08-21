@@ -1,8 +1,6 @@
 #include "FEUniqueID.h"
 using namespace FocalEngine;
 
-FEUniqueID* FEUniqueID::Instance = nullptr;
-
 FEUniqueID::FEUniqueID()
 {
 

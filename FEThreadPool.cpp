@@ -1,8 +1,6 @@
 #include "FEThreadPool.h"
 using namespace FocalEngine;
 
-FEThreadPool* FEThreadPool::Instance = nullptr;
-
 JobThread::JobThread()
 {
 	bJobFinished = false;

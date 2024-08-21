@@ -1,8 +1,6 @@
 #include "FETime.h"
 using namespace FocalEngine;
 
-FETime* FETime::Instance = nullptr;
-
 FETime::FETime()
 {
 

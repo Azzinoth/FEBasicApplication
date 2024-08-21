@@ -30,5 +30,5 @@ namespace FocalEngine
 		std::string NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch = 0);
 	};
 
-#define TIME FETime::getInstance()
+#define TIME FETime::GetInstance()
 }

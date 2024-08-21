@@ -1,8 +1,6 @@
 #include "FEProfilingManager.h"
 using namespace FocalEngine;
 
-FEProfilingManager* FEProfilingManager::Instance = nullptr;
-
 FEProfilingManager::FEProfilingManager()
 {
 	RegisterThread(std::this_thread::get_id());

@@ -87,5 +87,5 @@ namespace FocalEngine
 		bool bShouldAppendMsgWithThreadID = false;
 	};
 
-	#define LOG FELOG::getInstance()
+	#define LOG FELOG::GetInstance()
 }

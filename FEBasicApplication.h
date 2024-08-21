@@ -100,5 +100,5 @@ namespace FocalEngine
 		std::vector<CommandLineAction> ParseCommandLine(std::string CommandLine, const std::string ActionPrefix = "-", const std::string SettingEqualizer = "=");
 	};
 
-#define APPLICATION FEBasicApplication::getInstance()
+#define APPLICATION FEBasicApplication::GetInstance()
 }

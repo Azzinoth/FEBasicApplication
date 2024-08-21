@@ -55,5 +55,5 @@ namespace FocalEngine
         std::vector<FEServerSideNetworkConnection*> ServerConnections;
     };
 
-    #define NETWORKING_MANAGER FENetworkingManager::getInstance()
+    #define NETWORKING_MANAGER FENetworkingManager::GetInstance()
 }

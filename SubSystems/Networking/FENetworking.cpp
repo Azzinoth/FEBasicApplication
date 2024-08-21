@@ -1,7 +1,6 @@
 #include "FENetworking.h"
-
 using namespace FocalEngine;
-FENetworkingManager* FENetworkingManager::Instance = nullptr;
+
 FENetworkingManager::FENetworkingManager()
 {
     WSADATA WinSockData;

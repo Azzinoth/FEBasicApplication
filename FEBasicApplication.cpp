@@ -1,8 +1,6 @@
 #include "FEBasicApplication.h"
 using namespace FocalEngine;
 
-FEBasicApplication* FEBasicApplication::Instance = nullptr;
-
 FEBasicApplication::FEBasicApplication()
 {
 	glfwInit();

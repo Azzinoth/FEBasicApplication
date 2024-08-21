@@ -2,7 +2,6 @@
 #include <fstream>
 
 using namespace FocalEngine;
-FELOG* FELOG::Instance = nullptr;
 
 LogItem::LogItem()
 {

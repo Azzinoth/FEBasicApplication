@@ -132,5 +132,5 @@ namespace FocalEngine
 		LightThread* GetLightThread(const std::string& ThreadID);
 	};
 
-	#define THREAD_POOL FEThreadPool::getInstance()
+	#define THREAD_POOL FEThreadPool::GetInstance()
 }
