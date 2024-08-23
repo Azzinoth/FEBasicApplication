@@ -57,5 +57,10 @@ namespace FocalEngine
 		std::string GetUniqueHexID();
 	};
 
-#define UNIQUE_ID FEUniqueID::GetInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+	extern "C" __declspec(dllexport) void* GetUniqueID();
+	#define UNIQUE_ID (*static_cast<FEUniqueID*>(GetUniqueID()))
+#else
+	#define UNIQUE_ID FEUniqueID::GetInstance()
+#endif
 }

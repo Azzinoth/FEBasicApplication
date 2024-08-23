@@ -45,10 +45,10 @@ namespace std
 
 namespace FocalEngine
 {
-	class FEBASICAPPLICATION_API FELOG
+	class FEBASICAPPLICATION_API FELog
 	{
 	public:
-		SINGLETON_PUBLIC_PART(FELOG)
+		SINGLETON_PUBLIC_PART(FELog)
 
 		void Add(std::string Text, std::string Topic = "FE_LOG_GENERAL", LOG_SEVERITY Severity = FE_LOG_INFO);
 
@@ -73,7 +73,7 @@ namespace FocalEngine
 		bool IsAppendingMsgWithThreadID();
 		void SetShouldAppendMsgWithThreadID(bool NewValue);
 	private:
-		SINGLETON_PRIVATE_PART(FELOG)
+		SINGLETON_PRIVATE_PART(FELog)
 
 		std::unordered_map<std::string, std::unordered_map<LogItem, LogItem>> Topics;
 
@@ -87,5 +87,10 @@ namespace FocalEngine
 		bool bShouldAppendMsgWithThreadID = false;
 	};
 
+#ifdef FEBASICAPPLICATION_SHARED
+	extern "C" __declspec(dllexport) void* GetLog();
+	#define LOG (*static_cast<FELog*>(GetLog()))
+#else
 	#define LOG FELOG::GetInstance()
+#endif
 }

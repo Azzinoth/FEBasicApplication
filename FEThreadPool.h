@@ -132,5 +132,10 @@ namespace FocalEngine
 		LightThread* GetLightThread(const std::string& ThreadID);
 	};
 
+#ifdef FEBASICAPPLICATION_SHARED
+	extern "C" __declspec(dllexport) void* GetThreadPool();
+	#define THREAD_POOL (*static_cast<FEThreadPool*>(GetThreadPool()))
+#else
 	#define THREAD_POOL FEThreadPool::GetInstance()
+#endif
 }

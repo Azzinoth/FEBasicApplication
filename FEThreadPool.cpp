@@ -1,6 +1,13 @@
 #include "FEThreadPool.h"
 using namespace FocalEngine;
 
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetThreadPool()
+{
+	return FEThreadPool::GetInstancePointer();
+}
+#endif
+
 JobThread::JobThread()
 {
 	bJobFinished = false;

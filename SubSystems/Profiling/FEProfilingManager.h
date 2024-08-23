@@ -42,7 +42,12 @@ namespace FocalEngine
         void SaveTimelineToJSON(const std::string& filename);
     };
 
-#define PROFILING FEProfilingManager::GetInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+    extern "C" __declspec(dllexport) void* GetProfilingManager();
+    #define PROFILING (*static_cast<FEProfilingManager*>(GetProfilingManager()))
+#else
+    #define PROFILING FEProfilingManager::GetInstance()
+#endif
 
 #ifdef FE_ENABLE_PROFILING
     class FEScopedTimer;

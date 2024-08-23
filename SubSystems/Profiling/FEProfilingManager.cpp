@@ -1,6 +1,13 @@
 #include "FEProfilingManager.h"
 using namespace FocalEngine;
 
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetProfilingManager()
+{
+	return FEProfilingManager::GetInstancePointer();
+}
+#endif
+
 FEProfilingManager::FEProfilingManager()
 {
 	RegisterThread(std::this_thread::get_id());

@@ -3,6 +3,13 @@
 
 using namespace FocalEngine;
 
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetLog()
+{
+	return FELog::GetInstancePointer();
+}
+#endif
+
 LogItem::LogItem()
 {
 	Text = "";
@@ -12,11 +19,17 @@ LogItem::LogItem()
 
 LogItem::~LogItem() {}
 
-FELOG::FELOG() {}
-FELOG::~FELOG() {}
+FELog::FELog() {}
+FELog::~FELog() {}
 
-void FELOG::Add(const std::string Text, const std::string Topic, const LOG_SEVERITY Severity)
+void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVERITY Severity)
 {
+	if (Topic.find("SCRIPT") != std::string::npos)
+	{
+		int y = 0;
+		y++;
+	}
+
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
 	{
 		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::add function", "IncorectCallArguments", FE_LOG_WARNING);
@@ -59,7 +72,7 @@ void FELOG::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 	OutputToFile(&Topics[Topic][TempItem]);
 }
 
-void FELOG::OutputToFile(const LogItem* Item)
+void FELog::OutputToFile(const LogItem* Item)
 {
 	if (!bFileOutput)
 		return;
@@ -84,7 +97,7 @@ void FELOG::OutputToFile(const LogItem* Item)
 	file->flush();
 }
 
-std::vector<LogItem> FELOG::GetLogItems(const std::string Topic)
+std::vector<LogItem> FELog::GetLogItems(const std::string Topic)
 {
 	std::vector<LogItem> result;
 	auto iterator = Topics[Topic].begin();
@@ -97,7 +110,7 @@ std::vector<LogItem> FELOG::GetLogItems(const std::string Topic)
 	return result;
 }
 
-std::string FELOG::SeverityLevelToString(const LOG_SEVERITY Severity)
+std::string FELog::SeverityLevelToString(const LOG_SEVERITY Severity)
 {
 	std::string result;
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
@@ -138,7 +151,7 @@ std::string FELOG::SeverityLevelToString(const LOG_SEVERITY Severity)
 	return result;
 }
 
-bool FELOG::IsTopicFileOutputActive(const std::string Topic)
+bool FELog::IsTopicFileOutputActive(const std::string Topic)
 {
 	if (DisabledTopics.find(Topic) == DisabledTopics.end())
 		return true;
@@ -146,47 +159,47 @@ bool FELOG::IsTopicFileOutputActive(const std::string Topic)
 	return false;
 }
 
-void FELOG::DisableTopicFileOutput(const std::string TopicToDisable)
+void FELog::DisableTopicFileOutput(const std::string TopicToDisable)
 {
 	DisabledTopics[TopicToDisable] = true;
 }
 
-void FELOG::EnableTopicFileOutput(const std::string TopicToEnable)
+void FELog::EnableTopicFileOutput(const std::string TopicToEnable)
 {
 	DisabledTopics.erase(TopicToEnable);
 }
 
-bool FELOG::IsFileOutputActive()
+bool FELog::IsFileOutputActive()
 {
 	return bFileOutput;
 }
 
-void FELOG::SetFileOutput(const bool NewValue)
+void FELog::SetFileOutput(const bool NewValue)
 {
 	bFileOutput = NewValue;
 }
 
-std::vector<std::string> FELOG::GetTopicList()
+std::vector<std::string> FELog::GetTopicList()
 {
 	FE_MAP_TO_STR_VECTOR(Topics)
 }
 
-bool FELOG::IsAppendingMsgWithTimeStamp()
+bool FELog::IsAppendingMsgWithTimeStamp()
 {
 	return bShouldAppendMsgWithTimeStamp;
 }
 
-void FELOG::SetShouldAppendMsgWithTimeStamp(const bool NewValue)
+void FELog::SetShouldAppendMsgWithTimeStamp(const bool NewValue)
 {
 	bShouldAppendMsgWithTimeStamp = NewValue;
 }
 
-bool FELOG::IsAppendingMsgWithThreadID()
+bool FELog::IsAppendingMsgWithThreadID()
 {
 	return bShouldAppendMsgWithThreadID;
 }
 
-void FELOG::SetShouldAppendMsgWithThreadID(const bool NewValue)
+void FELog::SetShouldAppendMsgWithThreadID(const bool NewValue)
 {
 	bShouldAppendMsgWithThreadID = NewValue;
 }

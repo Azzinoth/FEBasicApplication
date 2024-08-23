@@ -1,6 +1,13 @@
 #include "FEBasicApplication.h"
 using namespace FocalEngine;
 
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetBasicApplication()
+{
+	return FEBasicApplication::GetInstancePointer();
+}
+#endif
+
 FEBasicApplication::FEBasicApplication()
 {
 	glfwInit();

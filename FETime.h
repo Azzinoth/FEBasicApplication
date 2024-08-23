@@ -30,5 +30,10 @@ namespace FocalEngine
 		std::string NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch = 0);
 	};
 
-#define TIME FETime::GetInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+	extern "C" __declspec(dllexport) void* GetTime();
+	#define TIME (*static_cast<FETime*>(GetTime()))
+#else
+	#define TIME FETime::GetInstance()
+#endif
 }

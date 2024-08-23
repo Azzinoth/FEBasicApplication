@@ -1,6 +1,13 @@
 #include "FEUniqueID.h"
 using namespace FocalEngine;
 
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetUniqueID()
+{
+	return FEUniqueID::GetInstancePointer();
+}
+#endif
+
 FEUniqueID::FEUniqueID()
 {
 

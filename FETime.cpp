@@ -1,6 +1,13 @@
 #include "FETime.h"
 using namespace FocalEngine;
 
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetTime()
+{
+	return FETime::GetInstancePointer();
+}
+#endif
+
 FETime::FETime()
 {
 
