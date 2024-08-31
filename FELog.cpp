@@ -24,12 +24,6 @@ FELog::~FELog() {}
 
 void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVERITY Severity)
 {
-	if (Topic.find("SCRIPT") != std::string::npos)
-	{
-		int y = 0;
-		y++;
-	}
-
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
 	{
 		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::add function", "IncorectCallArguments", FE_LOG_WARNING);
