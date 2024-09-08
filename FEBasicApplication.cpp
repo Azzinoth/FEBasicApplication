@@ -309,11 +309,18 @@ bool FEBasicApplication::SetClipboardText(const std::string Text)
 	{
 		EmptyClipboard();
 
-		const HGLOBAL HMem = GlobalAlloc(GMEM_MOVEABLE, Text.size() + 1);
-		memcpy(GlobalLock(HMem), Text.c_str(), Text.size() + 1);
-		GlobalUnlock(HMem);
+		const HGLOBAL MemoryHandle = GlobalAlloc(GMEM_MOVEABLE, Text.size() + 1);
+		if (MemoryHandle == nullptr)
+		{
+			LOG.Add("Failed to allocate memory for clipboard", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
+			CloseClipboard();
+			return false;
+		}
 
-		SetClipboardData(CF_TEXT, HMem);
+		memcpy(GlobalLock(MemoryHandle), Text.c_str(), Text.size() + 1);
+		GlobalUnlock(MemoryHandle);
+
+		SetClipboardData(CF_TEXT, MemoryHandle);
 
 		CloseClipboard();
 		return true;
@@ -324,23 +331,23 @@ bool FEBasicApplication::SetClipboardText(const std::string Text)
 
 std::string FEBasicApplication::GetClipboardText()
 {
-	std::string text;
+	std::string Result;
 
 	if (OpenClipboard(nullptr))
 	{
-		HANDLE data = nullptr;
-		data = GetClipboardData(CF_TEXT);
-		if (data != nullptr)
+		HANDLE ClipboardData = nullptr;
+		ClipboardData = GetClipboardData(CF_TEXT);
+		if (ClipboardData != nullptr)
 		{
-			const char* PszText = static_cast<char*>(GlobalLock(data));
-			if (PszText != nullptr)
-				text = PszText;
+			const char* ClipboardText = static_cast<char*>(GlobalLock(ClipboardData));
+			if (ClipboardText != nullptr)
+				Result = ClipboardText;
 		}
 
 		CloseClipboard();
 	}
 
-	return text;
+	return Result;
 }
 
 BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)

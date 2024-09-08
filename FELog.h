@@ -91,6 +91,6 @@ namespace FocalEngine
 	extern "C" __declspec(dllexport) void* GetLog();
 	#define LOG (*static_cast<FELog*>(GetLog()))
 #else
-	#define LOG FELOG::GetInstance()
+	#define LOG FELog::GetInstance()
 #endif
 }
