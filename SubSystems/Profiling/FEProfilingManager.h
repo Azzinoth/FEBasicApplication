@@ -39,7 +39,7 @@ namespace FocalEngine
         //std::string CreateReport();
 
         // Save the timeline to a JSON file, which can be opened in Chrome's tracing tool(chrome://tracing/).
-        void SaveTimelineToJSON(const std::string& filename);
+        void SaveTimelineToJSON(const std::string& Filename);
     };
 
 #ifdef FEBASICAPPLICATION_SHARED

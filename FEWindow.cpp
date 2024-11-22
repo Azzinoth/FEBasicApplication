@@ -25,7 +25,7 @@ void FEWindow::InitializeImGui()
 	ImguiContext = ImGui::CreateContext();
 	ImGui::SetCurrentContext(ImguiContext);
 
-	// We are asking ImGui not to installing callbacks for us
+	// We are asking ImGui not to install callbacks
 	// We will do it manually because with multiple contexts we need to manage it manually
 	ImGui_ImplGlfw_InitForOpenGL(GLFWWindow, false);
 	ImGui_ImplOpenGL3_Init("#version 410");

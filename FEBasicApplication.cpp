@@ -431,7 +431,7 @@ void FEBasicApplication::Close()
 void FEBasicApplication::TryToClose()
 {
 	// Call the user callbacks
-	// In these callbacks, the user can set the flag to false to prevent the application from closing
+	// In these callbacks, the user can set the flag to false in order to prevent the application from closing
 	for (auto& Func : UserOnCloseCallbackFuncs)
 		Func();
 }
@@ -468,7 +468,7 @@ void FEBasicApplication::CloseWindow(FEWindow* WindowToClose)
 // It could happen that ImGui_ImplGlfw_WndProc would be called in glfwPollEvents() for example;
 // And if old window is destroyed, then it will cause crash.
 // So, I will set ImGui context to the first window.
-// It coudl be not the best solution, but it is the easiest one for now.
+// It could be not the best solution, but it is the easiest one for now.
 void FEBasicApplication::SwitchToImGuiContextOfWindow(size_t WindowIndex)
 {
 	if (!Windows.empty())
@@ -592,16 +592,16 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 		std::vector<std::string> Tokens;
 		std::string Token;
 		std::istringstream TokenStream(S);
-		bool insideQuotes = false;
-		char currentChar;
+		bool InsideQuotes = false;
+		char CurrentChar;
 
-		while (TokenStream.get(currentChar))
+		while (TokenStream.get(CurrentChar))
 		{
-			if (currentChar == '\"')
+			if (CurrentChar == '\"')
 			{
-				insideQuotes = !insideQuotes; // Toggle the state
+				InsideQuotes = !InsideQuotes; // Toggle the state
 			}
-			else if (currentChar == Delimiter && !insideQuotes)
+			else if (CurrentChar == Delimiter && !InsideQuotes)
 			{
 				if (!Token.empty())
 				{
@@ -611,7 +611,7 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 			}
 			else
 			{
-				Token += currentChar;
+				Token += CurrentChar;
 			}
 		}
 
