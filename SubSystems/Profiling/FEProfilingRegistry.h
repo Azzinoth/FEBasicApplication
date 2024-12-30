@@ -19,7 +19,7 @@ namespace FocalEngine
         std::vector<std::string> CallStack;
 
         int EventCount = 0;
-        FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONS;
+        FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONDS;
 
         void RecordFunctionEntry(const std::string& FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp);
         void RecordFunctionExit(const std::string& FunctionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration);

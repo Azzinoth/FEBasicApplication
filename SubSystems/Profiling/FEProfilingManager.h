@@ -13,7 +13,7 @@ namespace FocalEngine
 
         std::unordered_map<std::thread::id, FEProfilingRegistry> ThreadData;
         std::shared_mutex ThreadDataMutex;
-        FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONS;
+        FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONDS;
 
         bool bActive = false;
         int EventCount = 0;

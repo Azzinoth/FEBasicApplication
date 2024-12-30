@@ -10,7 +10,7 @@ namespace FocalEngine
 	{
 		FE_TIME_RESOLUTION_SECONDS = 0,
 		FE_TIME_RESOLUTION_MILLISECONDS = 1,
-		FE_TIME_RESOLUTION_MICROSECONS = 2,
+		FE_TIME_RESOLUTION_MICROSECONDS = 2,
 		FE_TIME_RESOLUTION_NANOSECONDS = 3
 	};
 
@@ -28,6 +28,7 @@ namespace FocalEngine
 		uint64_t GetTimeStamp(FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MILLISECONDS);
 
 		std::string NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch = 0);
+		std::string TimeToFormattedString(uint64_t TimeValue, FE_TIME_RESOLUTION Resolution = FE_TIME_RESOLUTION_NANOSECONDS);
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED

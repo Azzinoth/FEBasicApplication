@@ -35,7 +35,7 @@ double FETime::EndTimeStamp(const std::string Label, const FE_TIME_RESOLUTION Ti
 			return static_cast<double>(TimeEscaped.count()) * 0.000000001;
 		case FocalEngine::FE_TIME_RESOLUTION_MILLISECONDS:
 			return static_cast<double>(TimeEscaped.count()) * 0.000001;
-		case FocalEngine::FE_TIME_RESOLUTION_MICROSECONS:
+		case FocalEngine::FE_TIME_RESOLUTION_MICROSECONDS:
 			return static_cast<double>(TimeEscaped.count()) * 0.001;
 		case FocalEngine::FE_TIME_RESOLUTION_NANOSECONDS:
 			return static_cast<double>(TimeEscaped.count());
@@ -51,7 +51,7 @@ uint64_t FETime::GetTimeStamp(const FE_TIME_RESOLUTION TimeResolution)
 {
 	uint64_t Result = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-	if (TimeResolution == FE_TIME_RESOLUTION_MICROSECONS)
+	if (TimeResolution == FE_TIME_RESOLUTION_MICROSECONDS)
 	{
 		Result /= static_cast<uint64_t>(pow(10.0, 3));
 	}
@@ -104,6 +104,66 @@ std::string FETime::NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch)
 	// Add nanosecond.
 	const uint64_t Nanoseconds = NanosecondsSinceEpoch - Seconds * static_cast<uint64_t>(pow(10.0, 9)) - Milliseconds * static_cast<uint64_t>(pow(10.0, 6)) - Microseconds * static_cast<uint64_t>(pow(10.0, 3));
 	Result.insert(Result.size(), "." + FillZeros(std::to_string(Nanoseconds)));
+
+	return Result;
+}
+
+std::string FETime::TimeToFormattedString(uint64_t TimeValue, FE_TIME_RESOLUTION Resolution)
+{
+	// Convert input time to nanoseconds based on resolution.
+	std::chrono::nanoseconds Duration;
+	switch (Resolution)
+	{
+	case FE_TIME_RESOLUTION_SECONDS:
+		Duration = std::chrono::seconds(TimeValue);
+		break;
+	case FE_TIME_RESOLUTION_MILLISECONDS:
+		Duration = std::chrono::milliseconds(TimeValue);
+		break;
+	case FE_TIME_RESOLUTION_MICROSECONDS:
+		Duration = std::chrono::microseconds(TimeValue);
+		break;
+	case FE_TIME_RESOLUTION_NANOSECONDS:
+		Duration = std::chrono::nanoseconds(TimeValue);
+		break;
+	default:
+		return "Invalid time resolution";
+	}
+
+	// Extract hours.
+	auto Hours = std::chrono::duration_cast<std::chrono::hours>(Duration);
+	Duration -= Hours;
+
+	// Extract minutes.
+	auto Minutes = std::chrono::duration_cast<std::chrono::minutes>(Duration);
+	Duration -= Minutes;
+
+	// Extract seconds.
+	auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Duration);
+	Duration -= Seconds;
+
+	// Extract milliseconds.
+	auto Milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(Duration);
+
+	std::string Result;
+
+	// Build the formatted string.
+	if (Hours.count() > 0)
+		Result += std::to_string(Hours.count()) + " hour" + (Hours.count() > 1 ? "s " : " ");
+
+	if (Minutes.count() > 0)
+		Result += std::to_string(Minutes.count()) + " minute" + (Minutes.count() > 1 ? "s " : " ");
+
+	if (Seconds.count() > 0)
+		Result += std::to_string(Seconds.count()) + " second" + (Seconds.count() > 1 ? "s " : " ");
+
+	// Handle case when duration is 0.
+	if (Result.empty())
+		Result = "0 seconds";
+
+	// Remove trailing space if exists.
+	if (!Result.empty() && Result.back() == ' ')
+		Result.pop_back();
 
 	return Result;
 }

@@ -40,7 +40,7 @@ void FEScopedTimer::Stop()
 	case FocalEngine::FE_TIME_RESOLUTION_MILLISECONDS:
 		Result = static_cast<double>(TimeEscaped.count()) * 0.000001;
 		break;
-	case FocalEngine::FE_TIME_RESOLUTION_MICROSECONS:
+	case FocalEngine::FE_TIME_RESOLUTION_MICROSECONDS:
 		Result = static_cast<double>(TimeEscaped.count()) * 0.001;
 		break;
 	case FocalEngine::FE_TIME_RESOLUTION_NANOSECONDS:
