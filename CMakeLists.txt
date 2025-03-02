@@ -12,14 +12,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
   # Disable C4251 warning
   add_compile_options(/wd4251)
-
-  # Export all symbols when building a DLL
-  #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(MSVC)
+	# Disable C4251 warning
+	add_compile_options(/wd4251)
+
+	if(USE_STATIC_RUNTIME)
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+	else()
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
+		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+	endif()
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+endif()
 
 # Turn on the ability to create folders to organize projects (.vcproj)
 # It creates "CMakePredefinedTargets" folder by default and adds CMake
