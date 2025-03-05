@@ -1,7 +1,12 @@
 #include "FEBasicApplication.h"
 using namespace FocalEngine;
 
-FEBasicApplication* FEBasicApplication::Instance = nullptr;
+#ifdef FEBASICAPPLICATION_SHARED
+extern "C" __declspec(dllexport) void* GetBasicApplication()
+{
+	return FEBasicApplication::GetInstancePointer();
+}
+#endif
 
 FEBasicApplication::FEBasicApplication()
 {
@@ -304,11 +309,18 @@ bool FEBasicApplication::SetClipboardText(const std::string Text)
 	{
 		EmptyClipboard();
 
-		const HGLOBAL HMem = GlobalAlloc(GMEM_MOVEABLE, Text.size() + 1);
-		memcpy(GlobalLock(HMem), Text.c_str(), Text.size() + 1);
-		GlobalUnlock(HMem);
+		const HGLOBAL MemoryHandle = GlobalAlloc(GMEM_MOVEABLE, Text.size() + 1);
+		if (MemoryHandle == nullptr)
+		{
+			LOG.Add("Failed to allocate memory for clipboard", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
+			CloseClipboard();
+			return false;
+		}
 
-		SetClipboardData(CF_TEXT, HMem);
+		memcpy(GlobalLock(MemoryHandle), Text.c_str(), Text.size() + 1);
+		GlobalUnlock(MemoryHandle);
+
+		SetClipboardData(CF_TEXT, MemoryHandle);
 
 		CloseClipboard();
 		return true;
@@ -319,23 +331,23 @@ bool FEBasicApplication::SetClipboardText(const std::string Text)
 
 std::string FEBasicApplication::GetClipboardText()
 {
-	std::string text;
+	std::string Result;
 
 	if (OpenClipboard(nullptr))
 	{
-		HANDLE data = nullptr;
-		data = GetClipboardData(CF_TEXT);
-		if (data != nullptr)
+		HANDLE ClipboardData = nullptr;
+		ClipboardData = GetClipboardData(CF_TEXT);
+		if (ClipboardData != nullptr)
 		{
-			const char* PszText = static_cast<char*>(GlobalLock(data));
-			if (PszText != nullptr)
-				text = PszText;
+			const char* ClipboardText = static_cast<char*>(GlobalLock(ClipboardData));
+			if (ClipboardText != nullptr)
+				Result = ClipboardText;
 		}
 
 		CloseClipboard();
 	}
 
-	return text;
+	return Result;
 }
 
 BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
@@ -419,7 +431,7 @@ void FEBasicApplication::Close()
 void FEBasicApplication::TryToClose()
 {
 	// Call the user callbacks
-	// In these callbacks, the user can set the flag to false to prevent the application from closing
+	// In these callbacks, the user can set the flag to false in order to prevent the application from closing
 	for (auto& Func : UserOnCloseCallbackFuncs)
 		Func();
 }
@@ -456,7 +468,7 @@ void FEBasicApplication::CloseWindow(FEWindow* WindowToClose)
 // It could happen that ImGui_ImplGlfw_WndProc would be called in glfwPollEvents() for example;
 // And if old window is destroyed, then it will cause crash.
 // So, I will set ImGui context to the first window.
-// It coudl be not the best solution, but it is the easiest one for now.
+// It could be not the best solution, but it is the easiest one for now.
 void FEBasicApplication::SwitchToImGuiContextOfWindow(size_t WindowIndex)
 {
 	if (!Windows.empty())
@@ -580,16 +592,16 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 		std::vector<std::string> Tokens;
 		std::string Token;
 		std::istringstream TokenStream(S);
-		bool insideQuotes = false;
-		char currentChar;
+		bool InsideQuotes = false;
+		char CurrentChar;
 
-		while (TokenStream.get(currentChar))
+		while (TokenStream.get(CurrentChar))
 		{
-			if (currentChar == '\"')
+			if (CurrentChar == '\"')
 			{
-				insideQuotes = !insideQuotes; // Toggle the state
+				InsideQuotes = !InsideQuotes; // Toggle the state
 			}
-			else if (currentChar == Delimiter && !insideQuotes)
+			else if (CurrentChar == Delimiter && !InsideQuotes)
 			{
 				if (!Token.empty())
 				{
@@ -599,7 +611,7 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 			}
 			else
 			{
-				Token += currentChar;
+				Token += CurrentChar;
 			}
 		}
 

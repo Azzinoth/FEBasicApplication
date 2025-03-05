@@ -5,7 +5,7 @@
 
 namespace FocalEngine
 {
-    class FEProfilingManager
+    class FEBASICAPPLICATION_API FEProfilingManager
     {
         friend class FEScopedTimer;
         friend class FEProfilingManager;
@@ -13,7 +13,7 @@ namespace FocalEngine
 
         std::unordered_map<std::thread::id, FEProfilingRegistry> ThreadData;
         std::shared_mutex ThreadDataMutex;
-        FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONS;
+        FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONDS;
 
         bool bActive = false;
         int EventCount = 0;
@@ -39,10 +39,15 @@ namespace FocalEngine
         //std::string CreateReport();
 
         // Save the timeline to a JSON file, which can be opened in Chrome's tracing tool(chrome://tracing/).
-        void SaveTimelineToJSON(const std::string& filename);
+        void SaveTimelineToJSON(const std::string& Filename);
     };
 
-#define PROFILING FEProfilingManager::getInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+    extern "C" __declspec(dllexport) void* GetProfilingManager();
+    #define PROFILING (*static_cast<FEProfilingManager*>(GetProfilingManager()))
+#else
+    #define PROFILING FEProfilingManager::GetInstance()
+#endif
 
 #ifdef FE_ENABLE_PROFILING
     class FEScopedTimer;

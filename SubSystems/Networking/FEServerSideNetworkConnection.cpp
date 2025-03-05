@@ -16,12 +16,12 @@ bool FEServerSideNetworkConnection::TryToBind(std::string IP, unsigned int Port,
 
     ListeningSocket = new SOCKET;
     *ListeningSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    sockaddr_in serverAddr{};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(Port);
-    serverAddr.sin_addr.S_un.S_addr = INADDR_ANY;
+    sockaddr_in ServerAddresses{};
+    ServerAddresses.sin_family = AF_INET;
+    ServerAddresses.sin_port = htons(Port);
+    ServerAddresses.sin_addr.S_un.S_addr = INADDR_ANY;
 
-    int BindResult = bind(*ListeningSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr));
+    int BindResult = bind(*ListeningSocket, (SOCKADDR*)&ServerAddresses, sizeof(ServerAddresses));
     if (BindResult == SOCKET_ERROR)
     {
         closesocket(*ListeningSocket);

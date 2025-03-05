@@ -25,7 +25,7 @@ void FEWindow::InitializeImGui()
 	ImguiContext = ImGui::CreateContext();
 	ImGui::SetCurrentContext(ImguiContext);
 
-	// We are asking ImGui not to installing callbacks for us
+	// We are asking ImGui not to install callbacks
 	// We will do it manually because with multiple contexts we need to manage it manually
 	ImGui_ImplGlfw_InitForOpenGL(GLFWWindow, false);
 	ImGui_ImplOpenGL3_Init("#version 410");
@@ -132,21 +132,12 @@ void FEWindow::EnsureCorrectContextEnd()
 		glfwMakeContextCurrent(TempGLFWContext);
 }
 
-void FEWindow::AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback)
+std::string FEWindow::AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback)
 {
-	UserOnMonitorCallbackFuncs.push_back(UserOnMonitorCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnMonitorCallback);
+	UserOnMonitorCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback)
-{
-	for (int i = 0; i < UserOnMonitorCallbackFuncs.size(); i++)
-	{
-		if (UserOnMonitorCallbackFuncs[i].target_type() == UserOnMonitorCallback.target_type())
-		{
-			UserOnMonitorCallbackFuncs.erase(UserOnMonitorCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeMonitorCallback(GLFWmonitor* Monitor, int Event)
@@ -156,7 +147,7 @@ void FEWindow::InvokeMonitorCallback(GLFWmonitor* Monitor, int Event)
 	ImGui_ImplGlfw_MonitorCallback(Monitor, Event);
 
 	for (int i = 0; i < UserOnMonitorCallbackFuncs.size(); i++)
-		UserOnMonitorCallbackFuncs[i](Monitor, Event);
+		UserOnMonitorCallbackFuncs[i].second(Monitor, Event);
 
 	EnsureCorrectContextEnd();
 }
@@ -166,7 +157,7 @@ void FEWindow::InvokeCloseCallback()
 	bShouldClose = true;
 
 	for (int i = 0; i < UserOnCloseCallbackFuncs.size(); i++)
-		UserOnCloseCallbackFuncs[i]();
+		UserOnCloseCallbackFuncs[i].second();
 }
 
 void FEWindow::InvokeOnFocusCallback(int Focused)
@@ -176,49 +167,31 @@ void FEWindow::InvokeOnFocusCallback(int Focused)
 	ImGui_ImplGlfw_WindowFocusCallback(GLFWWindow, Focused);
 
 	for (int i = 0; i < UserOnFocusCallbackFuncs.size(); i++)
-		UserOnFocusCallbackFuncs[i](Focused);
+		UserOnFocusCallbackFuncs[i].second(Focused);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnFocusCallback(std::function<void(int)> UserOnFocusCallback)
+std::string FEWindow::AddOnFocusCallback(std::function<void(int)> UserOnFocusCallback)
 {
-	UserOnFocusCallbackFuncs.push_back(UserOnFocusCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnFocusCallback);
+	UserOnFocusCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnFocusCallback(std::function<void(int)> UserOnFocusCallback)
-{
-	for (int i = 0; i < UserOnFocusCallbackFuncs.size(); i++)
-	{
-		if (UserOnFocusCallbackFuncs[i].target_type() == UserOnFocusCallback.target_type())
-		{
-			UserOnFocusCallbackFuncs.erase(UserOnFocusCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeTerminateCallback()
 {
 	for (int i = 0; i < UserOnTerminateCallbackFuncs.size(); i++)
-		UserOnTerminateCallbackFuncs[i]();
+		UserOnTerminateCallbackFuncs[i].second();
 }
 
-void FEWindow::AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback)
+std::string FEWindow::AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback)
 {
-	UserOnResizeCallbackFuncs.push_back(UserOnResizeCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnResizeCallback);
+	UserOnResizeCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback)
-{
-	for (int i = 0; i < UserOnResizeCallbackFuncs.size(); i++)
-	{
-		if (UserOnResizeCallbackFuncs[i].target_type() == UserOnResizeCallback.target_type())
-		{
-			UserOnResizeCallbackFuncs.erase(UserOnResizeCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeResizeCallback(int Width, int Height)
@@ -236,26 +209,17 @@ void FEWindow::InvokeResizeCallback(int Width, int Height)
 	ImGui::GetIO().DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 
 	for (int i = 0; i < UserOnResizeCallbackFuncs.size(); i++)
-		UserOnResizeCallbackFuncs[i](Width, Height);
+		UserOnResizeCallbackFuncs[i].second(Width, Height);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback)
+std::string FEWindow::AddOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback)
 {
-	UserOnMouseEnterCallbackFuncs.push_back(UserOnMouseEnterCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnMouseEnterCallback);
+	UserOnMouseEnterCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback)
-{
-	for (int i = 0; i < UserOnMouseEnterCallbackFuncs.size(); i++)
-	{
-		if (UserOnMouseEnterCallbackFuncs[i].target_type() == UserOnMouseEnterCallback.target_type())
-		{
-			UserOnMouseEnterCallbackFuncs.erase(UserOnMouseEnterCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeMouseEnterCallback(int Entered)
@@ -265,26 +229,17 @@ void FEWindow::InvokeMouseEnterCallback(int Entered)
 	ImGui_ImplGlfw_CursorEnterCallback(GLFWWindow, Entered);
 
 	for (int i = 0; i < UserOnMouseEnterCallbackFuncs.size(); i++)
-		UserOnMouseEnterCallbackFuncs[i](Entered);
+		UserOnMouseEnterCallbackFuncs[i].second(Entered);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback)
+std::string FEWindow::AddOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback)
 {
-	UserOnMouseButtonCallbackFuncs.push_back(UserOnMouseButtonCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnMouseButtonCallback);
+	UserOnMouseButtonCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback)
-{
-	for (int i = 0; i < UserOnMouseButtonCallbackFuncs.size(); i++)
-	{
-		if (UserOnMouseButtonCallbackFuncs[i].target_type() == UserOnMouseButtonCallback.target_type())
-		{
-			UserOnMouseButtonCallbackFuncs.erase(UserOnMouseButtonCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeMouseButtonCallback(const int Button, const int Action, const int Mods)
@@ -294,26 +249,17 @@ void FEWindow::InvokeMouseButtonCallback(const int Button, const int Action, con
 	ImGui_ImplGlfw_MouseButtonCallback(GLFWWindow, Button, Action, Mods);
 
 	for (int i = 0; i < UserOnMouseButtonCallbackFuncs.size(); i++)
-		UserOnMouseButtonCallbackFuncs[i](Button, Action, Mods);
+		UserOnMouseButtonCallbackFuncs[i].second(Button, Action, Mods);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback)
+std::string FEWindow::AddOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback)
 {
-	UserOnMouseMoveCallbackFuncs.push_back(UserOnMouseMoveCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnMouseMoveCallback);
+	UserOnMouseMoveCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback)
-{
-	for (int i = 0; i < UserOnMouseMoveCallbackFuncs.size(); i++)
-	{
-		if (UserOnMouseMoveCallbackFuncs[i].target_type() == UserOnMouseMoveCallback.target_type())
-		{
-			UserOnMouseMoveCallbackFuncs.erase(UserOnMouseMoveCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeMouseMoveCallback(const double Xpos, const double Ypos)
@@ -323,26 +269,17 @@ void FEWindow::InvokeMouseMoveCallback(const double Xpos, const double Ypos)
 	ImGui_ImplGlfw_CursorPosCallback(GLFWWindow, Xpos, Ypos);
 
 	for (int i = 0; i < UserOnMouseMoveCallbackFuncs.size(); i++)
-		UserOnMouseMoveCallbackFuncs[i](Xpos, Ypos);
+		UserOnMouseMoveCallbackFuncs[i].second(Xpos, Ypos);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback)
+std::string FEWindow::AddOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback)
 {
-	UserOnCharCallbackFuncs.push_back(UserOnCharCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnCharCallback);
+	UserOnCharCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback)
-{
-	for (int i = 0; i < UserOnCharCallbackFuncs.size(); i++)
-	{
-		if (UserOnCharCallbackFuncs[i].target_type() == UserOnCharCallback.target_type())
-		{
-			UserOnCharCallbackFuncs.erase(UserOnCharCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeCharCallback(unsigned int Codepoint)
@@ -352,26 +289,17 @@ void FEWindow::InvokeCharCallback(unsigned int Codepoint)
 	ImGui_ImplGlfw_CharCallback(GLFWWindow, Codepoint);
 
 	for (int i = 0; i < UserOnCharCallbackFuncs.size(); i++)
-		UserOnCharCallbackFuncs[i](Codepoint);
+		UserOnCharCallbackFuncs[i].second(Codepoint);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback)
+std::string FEWindow::AddOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback)
 {
-	UserOnKeyCallbackFuncs.push_back(UserOnKeyCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnKeyCallback);
+	UserOnKeyCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback)
-{
-	for (int i = 0; i < UserOnKeyCallbackFuncs.size(); i++)
-	{
-		if (UserOnKeyCallbackFuncs[i].target_type() == UserOnKeyCallback.target_type())
-		{
-			UserOnKeyCallbackFuncs.erase(UserOnKeyCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeKeyCallback(const int Key, const int Scancode, const int Action, const int Mods)
@@ -381,26 +309,17 @@ void FEWindow::InvokeKeyCallback(const int Key, const int Scancode, const int Ac
 	ImGui_ImplGlfw_KeyCallback(GLFWWindow, Key, Scancode, Action, Mods);
 
 	for (int i = 0; i < UserOnKeyCallbackFuncs.size(); i++)
-		UserOnKeyCallbackFuncs[i](Key, Scancode, Action, Mods);
+		UserOnKeyCallbackFuncs[i].second(Key, Scancode, Action, Mods);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback)
+std::string FEWindow::AddOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback)
 {
-	UserOnDropCallbackFuncs.push_back(UserOnDropCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnDropCallback);
+	UserOnDropCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback)
-{
-	for (int i = 0; i < UserOnDropCallbackFuncs.size(); i++)
-	{
-		if (UserOnDropCallbackFuncs[i].target_type() == UserOnDropCallback.target_type())
-		{
-			UserOnDropCallbackFuncs.erase(UserOnDropCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeDropCallback(const int Count, const char** Paths)
@@ -408,26 +327,17 @@ void FEWindow::InvokeDropCallback(const int Count, const char** Paths)
 	EnsureCorrectContextBegin();
 
 	for (int i = 0; i < UserOnDropCallbackFuncs.size(); i++)
-		UserOnDropCallbackFuncs[i](Count, Paths);
+		UserOnDropCallbackFuncs[i].second(Count, Paths);
 
 	EnsureCorrectContextEnd();
 }
 
-void FEWindow::AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback)
+std::string FEWindow::AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback)
 {
-	UserOnScrollCallbackFuncs.push_back(UserOnScrollCallback);
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnScrollCallback);
+	UserOnScrollCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::RemoveOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback)
-{
-	for (int i = 0; i < UserOnScrollCallbackFuncs.size(); i++)
-	{
-		if (UserOnScrollCallbackFuncs[i].target_type() == UserOnScrollCallback.target_type())
-		{
-			UserOnScrollCallbackFuncs.erase(UserOnScrollCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::InvokeScrollCallback(const double Xoffset, const double Yoffset)
@@ -437,7 +347,7 @@ void FEWindow::InvokeScrollCallback(const double Xoffset, const double Yoffset)
 	ImGui_ImplGlfw_ScrollCallback(GLFWWindow, Xoffset, Yoffset);
 
 	for (int i = 0; i < UserOnScrollCallbackFuncs.size(); i++)
-		UserOnScrollCallbackFuncs[i](Xoffset, Yoffset);
+		UserOnScrollCallbackFuncs[i].second(Xoffset, Yoffset);
 
 	EnsureCorrectContextEnd();
 }
@@ -500,38 +410,20 @@ std::string FEWindow::GetID() const
 	return ID;
 }
 
-void FEWindow::AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback)
+std::string FEWindow::AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback)
 {
-	UserOnTerminateCallbackFuncs.push_back(UserOnTerminateCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnTerminateCallback);
+	UserOnTerminateCallbackFuncs.push_back(NewCallback);
+
+	return NewCallback.first;
 }
 
-void FEWindow::RemoveOnTerminateCallback(std::function<void()> UserOnTerminateCallback)
+std::string FEWindow::AddOnCloseCallback(std::function<void()> UserOnCloseCallback)
 {
-	for (int i = 0; i < UserOnTerminateCallbackFuncs.size(); i++)
-	{
-		if (UserOnTerminateCallbackFuncs[i].target_type() == UserOnTerminateCallback.target_type())
-		{
-			UserOnTerminateCallbackFuncs.erase(UserOnTerminateCallbackFuncs.begin() + i);
-			break;
-		}
-	}
-}
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUniqueHexID(), UserOnCloseCallback);
+	UserOnCloseCallbackFuncs.push_back(NewCallback);
 
-void FEWindow::AddOnCloseCallback(std::function<void()> UserOnCloseCallback)
-{
-	UserOnCloseCallbackFuncs.push_back(UserOnCloseCallback);
-}
-
-void FEWindow::RemoveOnCloseCallback(std::function<void()> UserOnCloseCallback)
-{
-	for (int i = 0; i < UserOnCloseCallbackFuncs.size(); i++)
-	{
-		if (UserOnCloseCallbackFuncs[i].target_type() == UserOnCloseCallback.target_type())
-		{
-			UserOnCloseCallbackFuncs.erase(UserOnCloseCallbackFuncs.begin() + i);
-			break;
-		}
-	}
+	return NewCallback.first;
 }
 
 void FEWindow::CancelClose()
@@ -577,4 +469,106 @@ MonitorInfo FEWindow::DetermineCurrentMonitor()
 	}
 
 	return BestMonitor;
+}
+
+void FEWindow::RemoveCallback(std::string CallbackID)
+{
+	for (int i = 0; i < UserOnCloseCallbackFuncs.size(); i++)
+	{
+		if (UserOnCloseCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnCloseCallbackFuncs.erase(UserOnCloseCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnFocusCallbackFuncs.size(); i++)
+	{
+		if (UserOnFocusCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnFocusCallbackFuncs.erase(UserOnFocusCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnTerminateCallbackFuncs.size(); i++)
+	{
+		if (UserOnTerminateCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnTerminateCallbackFuncs.erase(UserOnTerminateCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnResizeCallbackFuncs.size(); i++)
+	{
+		if (UserOnResizeCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnResizeCallbackFuncs.erase(UserOnResizeCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnMouseEnterCallbackFuncs.size(); i++)
+	{
+		if (UserOnMouseEnterCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnMouseEnterCallbackFuncs.erase(UserOnMouseEnterCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnMouseButtonCallbackFuncs.size(); i++)
+	{
+		if (UserOnMouseButtonCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnMouseButtonCallbackFuncs.erase(UserOnMouseButtonCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnMouseMoveCallbackFuncs.size(); i++)
+	{
+		if (UserOnMouseMoveCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnMouseMoveCallbackFuncs.erase(UserOnMouseMoveCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnCharCallbackFuncs.size(); i++)
+	{
+		if (UserOnCharCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnCharCallbackFuncs.erase(UserOnCharCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnKeyCallbackFuncs.size(); i++)
+	{
+		if (UserOnKeyCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnKeyCallbackFuncs.erase(UserOnKeyCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnDropCallbackFuncs.size(); i++)
+	{
+		if (UserOnDropCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnDropCallbackFuncs.erase(UserOnDropCallbackFuncs.begin() + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < UserOnScrollCallbackFuncs.size(); i++)
+	{
+		if (UserOnScrollCallbackFuncs[i].first == CallbackID)
+		{
+			UserOnScrollCallbackFuncs.erase(UserOnScrollCallbackFuncs.begin() + i);
+			return;
+		}
+	}
 }

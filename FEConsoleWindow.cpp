@@ -27,15 +27,15 @@ void FEConsoleWindow::ConsoleMainFunc()
 	bConsoleInitializationStarted = false;
 
 	// Redirect standard I/O to the console
-	FILE* pCout;
-	freopen_s(&pCout, "CONOUT$", "w", stdout);
-	FILE* pCin;
-	freopen_s(&pCin, "CONIN$", "r", stdin);
+	FILE* ConsoleOutputHandle;
+	freopen_s(&ConsoleOutputHandle, "CONOUT$", "w", stdout);
+	FILE* ConsoleInputHandle;
+	freopen_s(&ConsoleInputHandle, "CONIN$", "r", stdin);
 
 	UserConsoleMainFunc(UserConsoleMainFuncData);
 
-	fclose(pCout);
-	fclose(pCin);
+	fclose(ConsoleOutputHandle);
+	fclose(ConsoleInputHandle);
 	FreeConsole();
 
 	bConsoleActive = false;
@@ -116,7 +116,7 @@ bool FEConsoleWindow::SetTitle(const std::string Title) const
 WORD FEConsoleWindow::RGBToConsoleColor(int R, int G, int B) const
 {
 	// Define the basic console colors with their RGB values
-	static const std::tuple<int, int, int, WORD> consoleColors[] = {
+	static const std::tuple<int, int, int, WORD> CONSOLE_COLORS[] = {
 		{0, 0, 0, 0}, // Black
 		{0, 0, 128, FOREGROUND_BLUE}, // Dark Blue
 		{0, 128, 0, FOREGROUND_GREEN}, // Dark Green
@@ -135,24 +135,24 @@ WORD FEConsoleWindow::RGBToConsoleColor(int R, int G, int B) const
 		{255, 255, 255, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY} // White
 	};
 
-	WORD nearestColor = 0; // Default to black if no match is found
-	double minDistance = DBL_MAX;
+	WORD NearestColor = 0; // Default to black if no match is found
+	double MinDistance = DBL_MAX;
 
-	for (const auto& color : consoleColors)
+	for (const auto& color : CONSOLE_COLORS)
 	{
 		// Calculate the Euclidean distance between the two colors
-		double distance = std::sqrt(std::pow(std::get<0>(color) - R, 2) +
-			std::pow(std::get<1>(color) - G, 2) +
-			std::pow(std::get<2>(color) - B, 2));
+		const double Distance = std::sqrt(std::pow(std::get<0>(color) - R, 2) +
+										  std::pow(std::get<1>(color) - G, 2) +
+										  std::pow(std::get<2>(color) - B, 2));
 
-		if (distance < minDistance)
+		if (Distance < MinDistance)
 		{
-			minDistance = distance;
-			nearestColor = std::get<3>(color);
+			MinDistance = Distance;
+			NearestColor = std::get<3>(color);
 		}
 	}
 
-	return nearestColor;
+	return NearestColor;
 }
 
 std::vector<char> FEConsoleWindow::GetConsoleTextColor() const

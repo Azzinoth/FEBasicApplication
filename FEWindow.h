@@ -8,7 +8,6 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_internal.h"
 
-#define GLEW_STATIC
 #include "GL/glew.h"
 #include "GL/wglew.h"
 
@@ -43,18 +42,18 @@ namespace FocalEngine
 		~FEWindow();
 
 		// User Callbacks
-		std::vector<std::function<void()>> UserOnCloseCallbackFuncs;
-		std::vector<std::function<void(int)>> UserOnFocusCallbackFuncs;
-		std::vector<std::function<void()>> UserOnTerminateCallbackFuncs;
-		std::vector<std::function<void(int, int)>> UserOnResizeCallbackFuncs;
-		std::vector<std::function<void(int)>> UserOnMouseEnterCallbackFuncs;
-		std::vector<std::function<void(int, int, int)>> UserOnMouseButtonCallbackFuncs;
-		std::vector<std::function<void(double, double)>> UserOnMouseMoveCallbackFuncs;
-		std::vector<std::function<void(unsigned int)>> UserOnCharCallbackFuncs;
-		std::vector<std::function<void(int, int, int, int)>> UserOnKeyCallbackFuncs;
-		std::vector<std::function<void(int, const char**)>> UserOnDropCallbackFuncs;
-		std::vector<std::function<void(double, double)>> UserOnScrollCallbackFuncs;
-		std::vector<std::function<void(GLFWmonitor*, int)>> UserOnMonitorCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void()>>> UserOnCloseCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(int)>>> UserOnFocusCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void()>>> UserOnTerminateCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(int, int)>>> UserOnResizeCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(int)>>> UserOnMouseEnterCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(int, int, int)>>> UserOnMouseButtonCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(double, double)>>> UserOnMouseMoveCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(unsigned int)>>> UserOnCharCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(int, int, int, int)>>> UserOnKeyCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(int, const char**)>>> UserOnDropCallbackFuncs;
+		std::vector<std::pair<std::string, std::function<void(double, double)>>> UserOnScrollCallbackFuncs;
+		std::vector< std::pair<std::string, std::function<void(GLFWmonitor*, int)>>> UserOnMonitorCallbackFuncs;
 
 		// User Render Function
 		std::function<void()> UserRenderFunctionImpl;
@@ -112,30 +111,21 @@ namespace FocalEngine
 		void Terminate();
 
 		// Event Handling
-		void AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
-		void RemoveOnCloseCallback(std::function<void()> UserOnCloseCallback);
-		void AddOnFocusCallback(std::function<void(int)> UserOnFocusCallback);
-		void RemoveOnFocusCallback(std::function<void(int)> UserOnFocusCallback);
-		void AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
-		void RemoveOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
-		void AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback);
-		void RemoveOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback);
-		void AddOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback);
-		void RemoveOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback);
-		void AddOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback);
-		void RemoveOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback);
-		void AddOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback);
-		void RemoveOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback);
-		void AddOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback);
-		void RemoveOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback);
-		void AddOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback);
-		void RemoveOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback);
-		void AddOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback);
-		void RemoveOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback);
-		void AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
-		void RemoveOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
-		void AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback);
-		void RemoveOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback);
+		std::string AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
+		std::string AddOnFocusCallback(std::function<void(int)> UserOnFocusCallback);
+		std::string AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
+		std::string AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback);
+		std::string AddOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback);
+		std::string AddOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback);
+		std::string AddOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback);
+		std::string AddOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback);
+		std::string AddOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback);
+		std::string AddOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback);
+		std::string AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
+		std::string AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback);
+
+		// TO-DO: It is terrible to obligate the user to remove the callback or application will crash. We should remove it automatically.
+		void RemoveCallback(std::string CallbackID);
 
 		GLFWwindow* GetGlfwWindow() const;
 		ImGuiContext* GetImGuiContext() const;

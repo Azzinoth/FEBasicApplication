@@ -11,12 +11,12 @@ bool FEClientSideNetworkConnection::TryToConnect(std::string ServerIP, unsigned 
 {
     Socket = new SOCKET;
     *Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    sockaddr_in clientService{};
-    clientService.sin_family = AF_INET;
-    clientService.sin_port = htons(ServerPort);
-    inet_pton(AF_INET, ServerIP.c_str(), &clientService.sin_addr.S_un.S_addr);
+    sockaddr_in ClientService{};
+    ClientService.sin_family = AF_INET;
+    ClientService.sin_port = htons(ServerPort);
+    inet_pton(AF_INET, ServerIP.c_str(), &ClientService.sin_addr.S_un.S_addr);
 
-    int ConnectResult = connect(*Socket, (SOCKADDR*)&clientService, sizeof(clientService));
+    int ConnectResult = connect(*Socket, (SOCKADDR*)&ClientService, sizeof(ClientService));
     if (ConnectResult == SOCKET_ERROR)
     {
         closesocket(*Socket);

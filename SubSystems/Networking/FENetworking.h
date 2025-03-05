@@ -55,5 +55,10 @@ namespace FocalEngine
         std::vector<FEServerSideNetworkConnection*> ServerConnections;
     };
 
-    #define NETWORKING_MANAGER FENetworkingManager::getInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+    extern "C" __declspec(dllexport) void* GetNetworkingManager();
+    #define NETWORKING_MANAGER (*static_cast<FENetworkingManager*>(GetNetworkingManager()))
+#else
+    #define NETWORKING_MANAGER FENetworkingManager::GetInstance()
+#endif
 }

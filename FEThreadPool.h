@@ -78,7 +78,7 @@ namespace FocalEngine
 		~LightThread();
 	};
 
-	class FEThreadPool
+	class FEBASICAPPLICATION_API FEThreadPool
 	{
 	public:
 		SINGLETON_PUBLIC_PART(FEThreadPool)
@@ -132,5 +132,10 @@ namespace FocalEngine
 		LightThread* GetLightThread(const std::string& ThreadID);
 	};
 
-	#define THREAD_POOL FEThreadPool::getInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+	extern "C" __declspec(dllexport) void* GetThreadPool();
+	#define THREAD_POOL (*static_cast<FEThreadPool*>(GetThreadPool()))
+#else
+	#define THREAD_POOL FEThreadPool::GetInstance()
+#endif
 }

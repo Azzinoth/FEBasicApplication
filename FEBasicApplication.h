@@ -12,7 +12,7 @@ namespace FocalEngine
 		std::map<std::string, std::string> Settings;
 	};
 
-	class FEBasicApplication
+	class FEBASICAPPLICATION_API FEBasicApplication
 	{
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 
@@ -100,5 +100,10 @@ namespace FocalEngine
 		std::vector<CommandLineAction> ParseCommandLine(std::string CommandLine, const std::string ActionPrefix = "-", const std::string SettingEqualizer = "=");
 	};
 
-#define APPLICATION FEBasicApplication::getInstance()
+#ifdef FEBASICAPPLICATION_SHARED
+	extern "C" __declspec(dllexport) void* GetBasicApplication();
+	#define APPLICATION (*static_cast<FEBasicApplication*>(GetBasicApplication()))
+#else
+	#define APPLICATION FEBasicApplication::GetInstance()
+#endif
 }
