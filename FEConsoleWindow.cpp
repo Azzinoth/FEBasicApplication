@@ -138,17 +138,17 @@ WORD FEConsoleWindow::RGBToConsoleColor(int R, int G, int B) const
 	WORD NearestColor = 0; // Default to black if no match is found
 	double MinDistance = DBL_MAX;
 
-	for (const auto& color : CONSOLE_COLORS)
+	for (const auto& Color : CONSOLE_COLORS)
 	{
 		// Calculate the Euclidean distance between the two colors
-		const double Distance = std::sqrt(std::pow(std::get<0>(color) - R, 2) +
-										  std::pow(std::get<1>(color) - G, 2) +
-										  std::pow(std::get<2>(color) - B, 2));
+		const double Distance = std::sqrt(std::pow(std::get<0>(Color) - R, 2) +
+										  std::pow(std::get<1>(Color) - G, 2) +
+										  std::pow(std::get<2>(Color) - B, 2));
 
 		if (Distance < MinDistance)
 		{
 			MinDistance = Distance;
-			NearestColor = std::get<3>(color);
+			NearestColor = std::get<3>(Color);
 		}
 	}
 

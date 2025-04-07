@@ -26,7 +26,7 @@ void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 {
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
 	{
-		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::add function", "IncorectCallArguments", FE_LOG_WARNING);
+		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::add function", "IncorrectCallArguments", FE_LOG_WARNING);
 		return;
 	}
 
@@ -74,75 +74,75 @@ void FELog::OutputToFile(const LogItem* Item)
 	if (DisabledTopics.find(Item->Topic) != DisabledTopics.end())
 		return;
 
-	std::fstream* file = nullptr;
+	std::fstream* File = nullptr;
 	if (TopicFiles.find(Item->Topic) != TopicFiles.end())
 	{
-		file = TopicFiles[Item->Topic];
+		File = TopicFiles[Item->Topic];
 	}
 	else
 	{
-		file = new std::fstream;
-		file->open(Item->Topic + ".txt", std::ios::out);
-		TopicFiles[Item->Topic] = file;
+		File = new std::fstream;
+		File->open(Item->Topic + ".txt", std::ios::out);
+		TopicFiles[Item->Topic] = File;
 	}
 
 	const std::string Line = Item->Text + '\n';
-	file->write(Line.c_str(), Line.size());
-	file->flush();
+	File->write(Line.c_str(), Line.size());
+	File->flush();
 }
 
 std::vector<LogItem> FELog::GetLogItems(const std::string Topic)
 {
-	std::vector<LogItem> result;
-	auto iterator = Topics[Topic].begin();
-	while (iterator != Topics[Topic].end())
+	std::vector<LogItem> Result;
+	auto TopicIterator = Topics[Topic].begin();
+	while (TopicIterator != Topics[Topic].end())
 	{
-		result.push_back(iterator->second);
-		iterator++;
+		Result.push_back(TopicIterator->second);
+		TopicIterator++;
 	}
 
-	return result;
+	return Result;
 }
 
 std::string FELog::SeverityLevelToString(const LOG_SEVERITY Severity)
 {
-	std::string result;
+	std::string Result;
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
 	{
-		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::SeverityLevelToString function", "IncorectCallArguments", FE_LOG_WARNING);
-		return result;
+		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::SeverityLevelToString function", "IncorrectCallArguments", FE_LOG_WARNING);
+		return Result;
 	}
 
 	switch (Severity)
 	{
 		case FocalEngine::FE_LOG_INFO:
 		{
-			result = "FE_LOG_INFO";
+			Result = "FE_LOG_INFO";
 			break;
 		}
 		case FocalEngine::FE_LOG_DEBUG:
 		{
-			result = "FE_LOG_DEBUG";
+			Result = "FE_LOG_DEBUG";
 			break;
 		}
 		case FocalEngine::FE_LOG_WARNING:
 		{
-			result = "FE_LOG_WARNING";
+			Result = "FE_LOG_WARNING";
 			break;
 		}
 		case FocalEngine::FE_LOG_ERROR:
 		{
-			result = "FE_LOG_ERROR";
+			Result = "FE_LOG_ERROR";
 			break;
 		}
 		case FocalEngine::FE_LOG_FATAL_ERROR:
 		{
-			result = "FE_LOG_FATAL_ERROR";
+			Result = "FE_LOG_FATAL_ERROR";
 			break;
 		}
 	}
 
-	return result;
+	return Result;
 }
 
 bool FELog::IsTopicFileOutputActive(const std::string Topic)

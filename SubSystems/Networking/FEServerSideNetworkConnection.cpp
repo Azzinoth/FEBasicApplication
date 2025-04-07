@@ -31,7 +31,7 @@ bool FEServerSideNetworkConnection::TryToBind(std::string IP, unsigned int Port,
 
     if (listen(*ListeningSocket, SOMAXCONN) == SOCKET_ERROR)
     {
-        int error_code = WSAGetLastError();
+        int ErrorCode = WSAGetLastError();
         LOG.Add("Listen failed with error : " + std::to_string(WSAGetLastError()), "FE_NETWORKING");
         closesocket(*ListeningSocket);
     }
@@ -153,7 +153,7 @@ void FEServerSideNetworkConnection::SendToClientFunction(void* Input, void* Outp
 
     // In order not to reallocate memory for each data transfer,
     // we will send header part before data
-    // And since TCP will ensure that data will be received in the same order as sent, this aproach is safe.
+    // And since TCP will ensure that data will be received in the same order as sent, this approach is safe.
     int Result = send(*Info->CurrentSocket, (char*)&MessageSize, sizeof(size_t), 0);
     if (Result == -1)
     {
@@ -232,7 +232,7 @@ std::vector<std::string> FEServerSideNetworkConnection::SendToAll(char* Data, si
     auto Iterator = Clients.begin();
     while (Iterator != Clients.end())
     {
-        if (Iterator->second->ClossingConnection)
+        if (Iterator->second->ClosingConnection)
             continue;
 
         FENetworkSendToClientThreadJobInfo* SendJobInfo = new FENetworkSendToClientThreadJobInfo;
@@ -309,9 +309,9 @@ void FEServerSideNetworkConnection::AfterReceivingDataFromClientFunction(void* O
 
 void FEServerSideNetworkConnection::OnConnectionError(std::string ClientID, FE_NETWORK_ERROR Error)
 {
-    if (!Clients[ClientID]->ClossingConnection)
+    if (!Clients[ClientID]->ClosingConnection)
     {
-        Clients[ClientID]->ClossingConnection = true;
+        Clients[ClientID]->ClosingConnection = true;
         
         if (OnClientDisconnectCallback != nullptr)
         {

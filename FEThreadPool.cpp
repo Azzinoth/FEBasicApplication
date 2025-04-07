@@ -168,7 +168,7 @@ void FEThreadPool::Execute(const FE_THREAD_JOB_FUNC Job, void* InputData, void* 
 		}
 	}
 
-	// If all thread in poll are working we should save new job for later execution.
+	// If all thread in pool are working we should save new job for later execution.
 	JobsList.push_back(NewJob);
 }
 
@@ -293,7 +293,7 @@ void FEThreadPool::Execute(const std::string& DedicatedThreadID, const FE_THREAD
 			return;
 	}
 
-	// If all thread in poll are working we should save new job for later execution.
+	// If all thread in pool are working we should save new job for later execution.
 	Thread->JobsList.push_back(NewJob);
 }
 

@@ -124,7 +124,7 @@ namespace FocalEngine
 		std::string AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
 		std::string AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback);
 
-		// TO-DO: It is terrible to obligate the user to remove the callback or application will crash. We should remove it automatically.
+		// TO-DO: It is problematic to require the user to remove the callback or the application will crash. We should remove it automatically.
 		void RemoveCallback(std::string CallbackID);
 
 		GLFWwindow* GetGlfwWindow() const;

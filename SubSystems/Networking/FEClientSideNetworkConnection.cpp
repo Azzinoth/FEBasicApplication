@@ -61,7 +61,7 @@ void FEClientSideNetworkConnection::SendFunction(void* Input, void* Output)
 
     // In order not to reallocate memory for each data transfer,
     // we will send header part before data
-    // And since TCP will ensure that data will be received in the same order as sent, this aproach is safe.
+    // And since TCP will ensure that data will be received in the same order as sent, this approach is safe.
     int Result = send(*Info->CurrentSocket, (char*)&MessageSize, sizeof(size_t), 0);
     if (Result == -1)
     {
