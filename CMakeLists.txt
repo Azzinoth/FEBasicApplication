@@ -115,7 +115,7 @@ if(BUILD_SHARED_LIBS)
     target_compile_definitions(FEBasicApplication PRIVATE FEBASICAPPLICATION_EXPORTS)
     target_compile_definitions(FEBasicApplication PUBLIC FEBASICAPPLICATION_SHARED)
 
-	# Some times /GL conflicts with WINDOWS_EXPORT_ALL_SYMBOLS
+	# Sometimes /GL conflicts with WINDOWS_EXPORT_ALL_SYMBOLS
 	set_target_properties(FEBasicApplication PROPERTIES COMPILE_OPTIONS "/GL-")
 	set_target_properties(FEBasicApplication PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 

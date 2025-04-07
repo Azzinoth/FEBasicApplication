@@ -86,9 +86,9 @@ namespace FocalEngine
 		FEVirtualUI* AddVirtualUI(GLuint FrameBuffer, int Width = 1920, int Height = 1080, std::string Name = "UnnamedVirtualUI");
 		void RemoveVirtualUI(FEVirtualUI* VirtualUI);
 
-		// This function can produce ID's that are "unique" with very rare collisions.
+		// This function can produce IDs that are "unique" with very rare collisions.
 		// For most purposes it can be considered unique.
-		// ID is a 24 long string.
+		// ID is a string 24 characters long.
 		std::string GetUniqueHexID();
 
 		bool SetClipboardText(std::string Text);
