@@ -352,7 +352,7 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 
 std::string FEThreadPool::CreateLightThread()
 {
-	std::lock_guard<std::mutex> lock(LightThreadsMutex);
+	std::lock_guard<std::mutex> Lock(LightThreadsMutex);
 
 	LightThread* NewThread = new LightThread();
 	LightThreads.push_back(NewThread);
@@ -385,7 +385,7 @@ bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
 
 bool FEThreadPool::RemoveLightThread(const std::string& LightThreadID)
 {
-	std::lock_guard<std::mutex> lock(LightThreadsMutex);
+	std::lock_guard<std::mutex> Lock(LightThreadsMutex);
 
 	WaitForLightThread(LightThreadID);
 
