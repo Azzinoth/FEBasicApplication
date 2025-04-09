@@ -16,8 +16,8 @@ FEUniqueID::FEUniqueID()
 std::string FEUniqueID::GetUniqueID()
 {
 	static std::random_device RandomDevice;
-	static std::mt19937 mt(RandomDevice());
-	static std::uniform_int_distribution<int> distribution(0, 128);
+	static std::mt19937 RandomEngine(RandomDevice());
+	static std::uniform_int_distribution<int> Distribution(0, 128);
 
 	static bool FirstInitialization = true;
 	if (FirstInitialization)
@@ -27,10 +27,10 @@ std::string FEUniqueID::GetUniqueID()
 	}
 
 	std::string ID;
-	ID += static_cast<char>(distribution(mt));
+	ID += static_cast<char>(Distribution(RandomEngine));
 	for (size_t j = 0; j < 11; j++)
 	{
-		ID.insert(rand() % ID.size(), 1, static_cast<char>(distribution(mt)));
+		ID.insert(rand() % ID.size(), 1, static_cast<char>(Distribution(RandomEngine)));
 	}
 
 	return ID;
