@@ -140,7 +140,7 @@ FEWindow* FEBasicApplication::GetMainWindow()
 
 void FEBasicApplication::BeginFrame()
 {
-	if (APPLICATION.HasToTerminate)
+	if (APPLICATION.bHasToTerminate)
 		return;
 
 	THREAD_POOL.Update();
@@ -157,7 +157,7 @@ void FEBasicApplication::EndFrame() const
 {
 	glfwPollEvents();
 
-	if (APPLICATION.HasToTerminate)
+	if (APPLICATION.bHasToTerminate)
 	{
 		APPLICATION.OnTerminate();
 		return;
@@ -188,7 +188,7 @@ bool FEBasicApplication::IsNotTerminated() const
 	if (bShouldClose)
 		return false;
 
-	if ((Windows.empty() && (ConsoleWindow == nullptr)) || ReadyToTerminate)
+	if ((Windows.empty() && (ConsoleWindow == nullptr)) || bIsReadyToTerminate)
 		return false;
 
 	if (Windows.size() == 1 && (ConsoleWindow == nullptr) && APPLICATION.Windows[0]->bShouldClose)
@@ -357,10 +357,10 @@ BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
 	case CTRL_CLOSE_EVENT:
 		// This will be a call from different thread, so I can't call the OnTerminate() directly.
 		// Instead, I will use flag to indicate the termination
-		APPLICATION.HasToTerminate = true;
+		APPLICATION.bHasToTerminate = true;
 
 		// Here we will try to wait for the main thread to terminate
-		while (!APPLICATION.ReadyToTerminate)
+		while (!APPLICATION.bIsReadyToTerminate)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		};
@@ -414,7 +414,7 @@ void FEBasicApplication::OnTerminate()
 
 	glfwTerminate();
 
-	ReadyToTerminate = true;
+	bIsReadyToTerminate = true;
 }
 
 void FEBasicApplication::AddOnCloseCallback(std::function<void()> UserOnCloseCallback)
@@ -566,6 +566,8 @@ std::vector<MonitorInfo> FEBasicApplication::GetMonitors()
 
 			Info.Monitor = Monitors[i];
 			Info.VideoMode = glfwGetVideoMode(Monitors[i]);
+			Info.Name = glfwGetMonitorName(Monitors[i]);
+			glfwGetMonitorPos(Monitors[i], &Info.VirtualX, &Info.VirtualY);
 
 			Result.push_back(Info);
 		}

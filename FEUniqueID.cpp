@@ -19,11 +19,11 @@ std::string FEUniqueID::GetUniqueID()
 	static std::mt19937 RandomEngine(RandomDevice());
 	static std::uniform_int_distribution<int> Distribution(0, 128);
 
-	static bool FirstInitialization = true;
-	if (FirstInitialization)
+	static bool bIsFirstInitialization = true;
+	if (bIsFirstInitialization)
 	{
 		srand(static_cast<unsigned>(time(nullptr)));
-		FirstInitialization = false;
+		bIsFirstInitialization = false;
 	}
 
 	std::string ID;

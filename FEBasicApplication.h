@@ -38,8 +38,8 @@ namespace FocalEngine
 		static void MonitorCallback(GLFWmonitor* Monitor, int Event);
 
 		std::vector<std::function<void()>> UserOnTerminateCallbackFunc;
-		bool HasToTerminate = false;
-		bool ReadyToTerminate = false;
+		bool bHasToTerminate = false;
+		bool bIsReadyToTerminate = false;
 		void OnTerminate();
 
 		std::vector<std::function<void()>> UserOnCloseCallbackFuncs;

@@ -36,7 +36,7 @@ namespace FocalEngine
             std::string ClientIP = "";
             int ClientPort = -1;
 
-            bool ClosingConnection = false;
+            bool bIsConnectionTerminating = false;
         };
 
         struct FENetworkServerListeningThreadJobInfo

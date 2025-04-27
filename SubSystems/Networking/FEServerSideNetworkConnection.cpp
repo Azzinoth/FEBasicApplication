@@ -25,7 +25,7 @@ bool FEServerSideNetworkConnection::TryToBind(std::string IP, unsigned int Port,
     if (BindResult == SOCKET_ERROR)
     {
         closesocket(*ListeningSocket);
-        LOG.Add("Binding to a IP: " + IP + " on port: " + std::to_string(Port) + " failed with error : " + std::to_string(WSAGetLastError()), "FE_NETWORKING");
+        LOG.Add("Binding to an IP: " + IP + " on port: " + std::to_string(Port) + " failed with error : " + std::to_string(WSAGetLastError()), "FE_NETWORKING");
         return false;
     }
 
@@ -90,7 +90,7 @@ void FEServerSideNetworkConnection::AddClient(FENetworkNewClientInfo* ClientInfo
 
     if (Clients.find(ClientInfo->ClientID) != Clients.end())
     {
-        LOG.Add("Trying to add client to a server that already have client with such ID.", "FE_NETWORKING");
+        LOG.Add("Trying to add a client to a server that already has a client with this ID.", "FE_NETWORKING");
     }
 
     Clients[ClientInfo->ClientID] = new FENetworkPerClientInfo;
@@ -152,7 +152,7 @@ void FEServerSideNetworkConnection::SendToClientFunction(void* Input, void* Outp
     MessageType += 1; // To ensure that it can not be 0.
 
     // In order not to reallocate memory for each data transfer,
-    // we will send header part before data
+    // we will send the header part before the data
     // And since TCP will ensure that data will be received in the same order as sent, this approach is safe.
     int Result = send(*Info->CurrentSocket, (char*)&MessageSize, sizeof(size_t), 0);
     if (Result == -1)
@@ -232,7 +232,7 @@ std::vector<std::string> FEServerSideNetworkConnection::SendToAll(char* Data, si
     auto Iterator = Clients.begin();
     while (Iterator != Clients.end())
     {
-        if (Iterator->second->ClosingConnection)
+        if (Iterator->second->bIsConnectionTerminating)
             continue;
 
         FENetworkSendToClientThreadJobInfo* SendJobInfo = new FENetworkSendToClientThreadJobInfo;
@@ -309,9 +309,9 @@ void FEServerSideNetworkConnection::AfterReceivingDataFromClientFunction(void* O
 
 void FEServerSideNetworkConnection::OnConnectionError(std::string ClientID, FE_NETWORK_ERROR Error)
 {
-    if (!Clients[ClientID]->ClosingConnection)
+    if (!Clients[ClientID]->bIsConnectionTerminating)
     {
-        Clients[ClientID]->ClosingConnection = true;
+        Clients[ClientID]->bIsConnectionTerminating = true;
         
         if (OnClientDisconnectCallback != nullptr)
         {

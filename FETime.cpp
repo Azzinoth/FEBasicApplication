@@ -27,18 +27,18 @@ double FETime::EndTimeStamp(const std::string Label, const FE_TIME_RESOLUTION Ti
 		const auto StartTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(TimeStamps[Label]).time_since_epoch();
 		const auto EndTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(EndTimePoint).time_since_epoch();
 
-		const auto TimeEscaped = EndTime - StartTime;
+		const auto TimeElapsed = EndTime - StartTime;
 
 		switch (TimeResolution)
 		{
 		case FocalEngine::FE_TIME_RESOLUTION_SECONDS:
-			return static_cast<double>(TimeEscaped.count()) * 0.000000001;
+			return static_cast<double>(TimeElapsed.count()) * 0.000000001;
 		case FocalEngine::FE_TIME_RESOLUTION_MILLISECONDS:
-			return static_cast<double>(TimeEscaped.count()) * 0.000001;
+			return static_cast<double>(TimeElapsed.count()) * 0.000001;
 		case FocalEngine::FE_TIME_RESOLUTION_MICROSECONDS:
-			return static_cast<double>(TimeEscaped.count()) * 0.001;
+			return static_cast<double>(TimeElapsed.count()) * 0.001;
 		case FocalEngine::FE_TIME_RESOLUTION_NANOSECONDS:
-			return static_cast<double>(TimeEscaped.count());
+			return static_cast<double>(TimeElapsed.count());
 		default:
 			break;
 		}

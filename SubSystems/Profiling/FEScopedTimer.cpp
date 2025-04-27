@@ -29,22 +29,22 @@ void FEScopedTimer::Stop()
 	const auto Start = std::chrono::time_point_cast<std::chrono::nanoseconds>(StartTime).time_since_epoch();
 	const auto End = std::chrono::time_point_cast<std::chrono::nanoseconds>(EndTime).time_since_epoch();
 
-	const auto TimeEscaped = EndTime - StartTime;
+	const auto TimeElapsed = EndTime - StartTime;
 
 	double Result = 0.0;
 	switch (PROFILING.TimeResolution)
 	{
 	case FocalEngine::FE_TIME_RESOLUTION_SECONDS:
-		Result = static_cast<double>(TimeEscaped.count()) * 0.000000001;
+		Result = static_cast<double>(TimeElapsed.count()) * 0.000000001;
 		break;
 	case FocalEngine::FE_TIME_RESOLUTION_MILLISECONDS:
-		Result = static_cast<double>(TimeEscaped.count()) * 0.000001;
+		Result = static_cast<double>(TimeElapsed.count()) * 0.000001;
 		break;
 	case FocalEngine::FE_TIME_RESOLUTION_MICROSECONDS:
-		Result = static_cast<double>(TimeEscaped.count()) * 0.001;
+		Result = static_cast<double>(TimeElapsed.count()) * 0.001;
 		break;
 	case FocalEngine::FE_TIME_RESOLUTION_NANOSECONDS:
-		Result = static_cast<double>(TimeEscaped.count());
+		Result = static_cast<double>(TimeElapsed.count());
 		break;
 	default:
 		break;

@@ -18,7 +18,10 @@ namespace FocalEngine
 {
 	struct MonitorInfo
 	{
-		GLFWmonitor* Monitor;
+		GLFWmonitor* Monitor = nullptr;
+		std::string Name;
+		int VirtualX = 0;
+		int VirtualY = 0;
 		const GLFWvidmode* VideoMode;
 	};
 
