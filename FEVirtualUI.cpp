@@ -134,7 +134,6 @@ void FEVirtualUI::EndFrame()
         }
 
         ImGui::GetIO().Fonts->Build();
-        ImGui_ImplOpenGL3_CreateFontsTexture();
     }
 }
 
