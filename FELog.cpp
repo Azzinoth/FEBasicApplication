@@ -55,6 +55,8 @@ void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 		TempItem.Text += "\n";
 		TempItem.Text += "================================================================";
 	}
+
+	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
 		
 	const auto CurrentLogItem = Topics[Topic].find(TempItem);
 	if (CurrentLogItem == Topics[Topic].end())

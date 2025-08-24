@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FETime.h"
+#include <mutex>
 
 namespace FocalEngine
 {
@@ -75,6 +76,7 @@ namespace FocalEngine
 	private:
 		SINGLETON_PRIVATE_PART(FELog)
 
+		std::mutex GlobalLogMutex;
 		std::unordered_map<std::string, std::unordered_map<LogItem, LogItem>> Topics;
 
 		std::unordered_map<std::string, bool> DisabledTopics;
