@@ -203,3 +203,8 @@ if(NOT USE_STATIC_RUNTIME)
             "$<TARGET_FILE_DIR:FEBasicApplication>"
     )
 endif()
+
+add_custom_command(TARGET FEBasicApplication PRE_BUILD
+	COMMAND ${CMAKE_COMMAND}
+		-P ${CMAKE_CURRENT_SOURCE_DIR}/UpdateFEBasicApplicationVersion.cmake
+)

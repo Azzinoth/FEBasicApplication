@@ -31,6 +31,44 @@ FEBasicApplication::~FEBasicApplication()
 	OnTerminate();
 }
 
+std::string FEBasicApplication::GetVersion()
+{
+	return std::to_string(FEBASICAPPLICATION_VERSION_MAJOR) + "."
+		   + std::to_string(FEBASICAPPLICATION_VERSION_MINOR) + "."
+		   + std::to_string(FEBASICAPPLICATION_VERSION_PATCH);
+}
+
+int FEBasicApplication::GetBuildNumber()
+{
+	return FEBASICAPPLICATION_BUILD_NUMBER;
+}
+
+std::string FEBasicApplication::GetBuildTimestamp()
+{
+	return FEBASICAPPLICATION_BUILD_TIMESTAMP;
+}
+
+std::string FEBasicApplication::GetBuildInfo()
+{
+	std::string Result = "build " + std::to_string(FEBASICAPPLICATION_BUILD_NUMBER);
+	if (FEBASICAPPLICATION_BUILD_BRANCH_OFFSET > 0)
+	{
+		Result += "+" + std::to_string(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET)
+			+ " (" + std::string(FEBASICAPPLICATION_GIT_BRANCH) + ", "
+			+ FEBASICAPPLICATION_GIT_HASH + std::string(FEBASICAPPLICATION_GIT_DIRTY ? "-dirty" : "") + ")";
+	}
+	else if (FEBASICAPPLICATION_GIT_DIRTY)
+	{
+		Result += " (dirty)";
+	}
+	return Result;
+}
+
+std::string FEBasicApplication::GetFullVersion()
+{
+	return "FEBasicApplication " + GetVersion() + " " + GetBuildInfo();
+}
+
 void FEBasicApplication::SetWindowCallbacks(FEWindow* Window)
 {
 	if (Window == nullptr)

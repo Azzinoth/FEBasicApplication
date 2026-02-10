@@ -56,6 +56,12 @@ namespace FocalEngine
 	public:
 		SINGLETON_PUBLIC_PART(FEBasicApplication)
 
+		std::string GetVersion();        // "1.0.0"
+		std::string GetBuildInfo();      // "build 231+52 (dev, ed4c7ce-dirty)"
+		std::string GetFullVersion();    // "FEBasicApplication 1.0.0 build 231+52 (dev, ed4c7ce-dirty)"
+		std::string GetBuildTimestamp(); // "20260207232613"
+		int GetBuildNumber();            // 231
+
 		FEWindow* AddWindow(int Width = 1920, int Height = 1080, std::string WindowTitle = "FEBasicApplication");
 		FEWindow* AddFullScreenWindow(size_t MonitorIndex);
 		FEWindow* AddFullScreenWindow(MonitorInfo* Monitor);
