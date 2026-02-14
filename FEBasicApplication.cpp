@@ -50,17 +50,15 @@ std::string FEBasicApplication::GetBuildTimestamp()
 
 std::string FEBasicApplication::GetBuildInfo()
 {
-	std::string Result = "build " + std::to_string(FEBASICAPPLICATION_BUILD_NUMBER);
+	std::string Result = "build " + std::to_string(FEBASICAPPLICATION_BUILD_NUMBER) + " (" + std::string(FEBASICAPPLICATION_GIT_HASH);
+
 	if (FEBASICAPPLICATION_BUILD_BRANCH_OFFSET > 0)
-	{
-		Result += "+" + std::to_string(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET)
-			+ " (" + std::string(FEBASICAPPLICATION_GIT_BRANCH) + ", "
-			+ FEBASICAPPLICATION_GIT_HASH + std::string(FEBASICAPPLICATION_GIT_DIRTY ? "-dirty" : "") + ")";
-	}
-	else if (FEBASICAPPLICATION_GIT_DIRTY)
-	{
-		Result += " (dirty)";
-	}
+		Result += " " + std::string(FEBASICAPPLICATION_GIT_BRANCH) + " +" + std::to_string(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET) + " from master";
+
+	if (FEBASICAPPLICATION_GIT_DIRTY)
+		Result += ", dirty";
+
+	Result += ")";
 	return Result;
 }
 
