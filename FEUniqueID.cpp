@@ -70,3 +70,31 @@ std::string FEUniqueID::GetUniqueHexID()
 
 	return FinalID;
 }
+
+FEUUID FEUniqueID::GetNewUUID()
+{
+	static std::random_device RandomDevice;
+	static std::mt19937 RandomEngine(RandomDevice());
+	static uuids::uuid_random_generator UUIDGenerator(RandomEngine);
+
+	return UUIDGenerator();
+}
+
+bool FEUniqueID::IsValidUUID(const FEUUID& ID)
+{
+	return !ID.is_nil();
+}
+
+std::string FEUniqueID::UUIDToString(const FEUUID& ID)
+{
+	return uuids::to_string(ID);
+}
+
+FEUUID FEUniqueID::ConvertStringToUUID(const std::string& ID)
+{
+	auto Result = uuids::uuid::from_string(ID);
+	if (!Result.has_value())
+		return uuids::uuid{};
+	
+	return Result.value();
+}

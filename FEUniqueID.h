@@ -2,11 +2,10 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
-#include <string>
 #include <unordered_map>
-#include <chrono>
 #include <time.h>
-#include <random>
+#include "uuid.h"
+using FEUUID = uuids::uuid;
 #include "FEBasicApplicationAPI.h"
 
 #include "FEBasicApplicationVersion.h"
@@ -57,6 +56,11 @@ namespace FocalEngine
 		// For most purposes it can be considered unique.
 		// ID is a 24 long string.
 		std::string GetUniqueHexID();
+
+		FEUUID GetNewUUID();
+		bool IsValidUUID(const FEUUID& ID);
+		std::string UUIDToString(const FEUUID& ID);
+		FEUUID ConvertStringToUUID(const std::string& ID);
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED

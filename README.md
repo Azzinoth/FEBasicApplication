@@ -39,3 +39,5 @@ This project uses the following third-party libraries:
 2) **GLFW**: This library is licensed under the zlib License. The full license text can be found at [GLFW's GitHub repository](https://github.com/glfw/glfw/blob/master/LICENSE.md).
 
 3) **Dear ImGui**: This library is licensed under the MIT License. The full license text can be found at [Dear ImGui's GitHub repository](https://github.com/ocornut/imgui/blob/master/LICENSE.txt).
+
+4) **stduuid**: This library is licensed under the MIT License. The full license text can be found at [stduuid's GitHub repository](https://github.com/mariusbancila/stduuid/blob/master/LICENSE).
