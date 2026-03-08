@@ -26,6 +26,20 @@ if(GIT_FOUND)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
     )
+	
+	# Fallback: count all commits on current branch
+	if("${FEBASICAPPLICATION_MASTER_COMMIT_COUNT}" STREQUAL "")
+		execute_process(
+			COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+			WORKING_DIRECTORY ${FEBASICAPPLICATION_FOLDER}
+			OUTPUT_VARIABLE FEBASICAPPLICATION_MASTER_COMMIT_COUNT
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_QUIET
+		)
+	endif()
+	if("${FEBASICAPPLICATION_MASTER_COMMIT_COUNT}" STREQUAL "")
+		set(FEBASICAPPLICATION_MASTER_COMMIT_COUNT 0)
+	endif()
 
     # Count commits ahead of master on current branch.
     # Will be 0 when building on master itself.
@@ -36,6 +50,20 @@ if(GIT_FOUND)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
     )
+	
+	# Fallback: count all commits on current branch
+	if("${FEBASICAPPLICATION_BRANCH_COMMIT_COUNT}" STREQUAL "")
+		execute_process(
+			COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+			WORKING_DIRECTORY ${FEBASICAPPLICATION_FOLDER}
+			OUTPUT_VARIABLE FEBASICAPPLICATION_BRANCH_COMMIT_COUNT
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_QUIET
+		)
+	endif()
+	if("${FEBASICAPPLICATION_BRANCH_COMMIT_COUNT}" STREQUAL "")
+		set(FEBASICAPPLICATION_BRANCH_COMMIT_COUNT 0)
+	endif()
 
     # --- Commit hash ---
     # Short hash for exact commit identification.

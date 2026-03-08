@@ -40,7 +40,11 @@ std::string FEBasicApplication::GetVersion()
 
 int FEBasicApplication::GetBuildNumber()
 {
-	return FEBASICAPPLICATION_BUILD_NUMBER;
+	// Macros is to ensure that if the build number is 0, then it will be treated as empty string, and not "0"
+#define STRINGIFY(X) #X
+#define TOSTRING(X) ("" STRINGIFY(X))
+
+	return std::stoi(TOSTRING(FEBASICAPPLICATION_BUILD_NUMBER));
 }
 
 std::string FEBasicApplication::GetBuildTimestamp()
@@ -50,10 +54,17 @@ std::string FEBasicApplication::GetBuildTimestamp()
 
 std::string FEBasicApplication::GetBuildInfo()
 {
-	std::string Result = "build " + std::to_string(FEBASICAPPLICATION_BUILD_NUMBER) + " (" + std::string(FEBASICAPPLICATION_GIT_HASH);
+	// Macros is to ensure that if the build number is 0, then it will be treated as empty string, and not "0"
+#define STRINGIFY(X) #X
+#define TOSTRING(X) ("" STRINGIFY(X))
+#define FE_MACRO_EMPTY(X) (sizeof(STRINGIFY(X)) == 1)
+#define FE_MACRO_IS_ZERO(X) (sizeof(STRINGIFY(X)) == 1 || STRINGIFY(X)[0] == '0')
 
-	if (FEBASICAPPLICATION_BUILD_BRANCH_OFFSET > 0)
-		Result += " " + std::string(FEBASICAPPLICATION_GIT_BRANCH) + " +" + std::to_string(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET) + " from master";
+	std::string Result = "build " + std::string(TOSTRING(FEBASICAPPLICATION_BUILD_NUMBER)) + " (" + std::string(FEBASICAPPLICATION_GIT_HASH);
+
+	const std::string BranchOffset = TOSTRING(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET);
+	if (!BranchOffset.empty() && BranchOffset != "0")
+		Result += " " + std::string(FEBASICAPPLICATION_GIT_BRANCH) + " +" + std::string(TOSTRING(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET)) + " from master";
 
 	if (FEBASICAPPLICATION_GIT_DIRTY)
 		Result += ", dirty";
