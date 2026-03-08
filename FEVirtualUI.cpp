@@ -25,7 +25,17 @@ void FEVirtualUI::Initialize(GLuint FrameBuffer, int Width, int Height)
 	IO.DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 	IO.DeltaTime = 1.0f / 60.0f;
 
+#ifdef USE_DAWN_WEBGPU
+	// FE_FIX_ME: WebGPU equivalent.
+	//ImGui_ImplWGPU_InitInfo initInfo{};
+	//initInfo.Device = FEWindow::DawnDevice.Get();
+	//initInfo.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
+	//initInfo.DepthStencilFormat = WGPUTextureFormat_Undefined;
+	//initInfo.NumFramesInFlight = 3;
+	//ImGui_ImplWGPU_Init(&initInfo);
+#else
 	ImGui_ImplOpenGL3_Init("#version 410");
+#endif
 
     if (TempImguiContext != nullptr)
         ImGui::SetCurrentContext(TempImguiContext);
@@ -43,7 +53,11 @@ void FEVirtualUI::TerminateImGui()
     if (TempImguiContext != ImguiContext)
         ImGui::SetCurrentContext(ImguiContext);
 
+#ifdef USE_DAWN_WEBGPU
+	ImGui_ImplWGPU_Shutdown();
+#else
 	ImGui_ImplOpenGL3_Shutdown();
+#endif
 	ImGui::DestroyContext(ImguiContext);
 	
     ImGui::SetCurrentContext(TempImguiContext);
@@ -99,7 +113,12 @@ void FEVirtualUI::BeginFrame()
 {
 	ImGui::SetCurrentContext(ImguiContext);
 
+#ifdef USE_DAWN_WEBGPU
+	ImGui_ImplWGPU_NewFrame();
+#else
 	ImGui_ImplOpenGL3_NewFrame();
+#endif
+	
 	ImGui::NewFrame();
 }
 
@@ -111,6 +130,11 @@ void FEVirtualUI::Render()
 
 void FEVirtualUI::EndFrame()
 {
+#ifdef USE_DAWN_WEBGPU
+	// FE_FIX_ME: WebGPU equivalent.
+	ImGui::Render();
+	//ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData());
+#else
 	glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
 	glViewport(0, 0, Width, Height);
 
@@ -121,6 +145,7 @@ void FEVirtualUI::EndFrame()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#endif
 
     if (!FunctionsToToAddFont.empty())
     {

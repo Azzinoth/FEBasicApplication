@@ -29,6 +29,8 @@ namespace FocalEngine
 		FEConsoleWindow* ConsoleWindow = nullptr;
 		static BOOL WINAPI ConsoleHandler(DWORD dwType);
 
+		void InitializeWebGPU(FEWindow* Window);
+
 		void SetWindowCallbacks(FEWindow* Window);
 		void InitializeWindow(FEWindow* Window);
 

@@ -5,14 +5,19 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-#include "imgui/imgui_internal.h"
 
+
+#ifdef USE_DAWN_WEBGPU
+#include "imgui/imgui_impl_wgpu.h"
+#else
 #include "GL/glew.h"
 #include "GL/wglew.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include <GL/GL.h>
+#endif
+#include "imgui/imgui_internal.h"
 
 #include <GLFW/glfw3.h>
-#include <GL/GL.h>
 
 namespace FocalEngine
 {
@@ -30,6 +35,10 @@ namespace FocalEngine
 		friend class FEBasicApplication;
 		GLFWwindow* GLFWWindow = nullptr;
 		ImGuiContext* ImguiContext = nullptr;
+#ifdef USE_DAWN_WEBGPU
+		static wgpu::Device DawnDevice;
+		wgpu::Surface Surface;
+#endif
 
 		std::string ID;
 		std::string Title = "FEWindow";

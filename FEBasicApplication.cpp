@@ -8,9 +8,18 @@ extern "C" __declspec(dllexport) void* GetBasicApplication()
 }
 #endif
 
+#ifdef USE_DAWN_WEBGPU
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
+
 FEBasicApplication::FEBasicApplication()
 {
 	glfwInit();
+#ifdef USE_DAWN_WEBGPU
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#endif
+
 	glfwSetMonitorCallback(MonitorCallback);
 	IMGUI_CHECKVERSION();
 
@@ -30,6 +39,86 @@ FEBasicApplication::~FEBasicApplication()
 
 	OnTerminate();
 }
+
+#ifdef USE_DAWN_WEBGPU
+void FEBasicApplication::InitializeWebGPU(FEWindow* Window)
+{
+	// 1. Create instance
+	wgpu::InstanceDescriptor instanceDesc{};
+	wgpu::Instance instance = wgpu::CreateInstance(&instanceDesc);
+
+	// 2. Create surface from GLFW window
+	HWND hwnd = glfwGetWin32Window(Window->GetGlfwWindow());
+	HINSTANCE hinstance = GetModuleHandle(nullptr);
+
+	wgpu::SurfaceSourceWindowsHWND windowDesc{};
+	windowDesc.hwnd = hwnd;
+	windowDesc.hinstance = hinstance;
+
+	wgpu::SurfaceDescriptor surfaceDesc{};
+	surfaceDesc.nextInChain = &windowDesc;
+	Window->Surface = instance.CreateSurface(&surfaceDesc);
+
+	// 3. Request adapter
+	wgpu::RequestAdapterOptions adapterOpts{};
+	adapterOpts.compatibleSurface = Window->Surface;
+	adapterOpts.powerPreference = wgpu::PowerPreference::HighPerformance;
+
+	wgpu::Adapter adapter;
+	instance.RequestAdapter(
+		&adapterOpts,
+		wgpu::CallbackMode::AllowSpontaneous,
+		[&adapter](wgpu::RequestAdapterStatus status, wgpu::Adapter result, const char* message) {
+			if (status != wgpu::RequestAdapterStatus::Success) {
+				MessageBoxA(nullptr, message ? message : "Unknown error", "RequestAdapter failed", MB_OK);
+				return;
+			}
+			adapter = std::move(result);
+	});
+
+	while (!adapter) {
+		instance.ProcessEvents();
+	}
+
+	if (!adapter) {
+		MessageBoxA(nullptr, "Adapter is null after RequestAdapter", "Error", MB_OK);
+		return;
+	}
+
+	// 4. Request device
+	wgpu::DeviceDescriptor deviceDesc{};
+	//wgpu::Device device;
+	adapter.RequestDevice(
+		&deviceDesc,
+		wgpu::CallbackMode::AllowSpontaneous,
+		[](wgpu::RequestDeviceStatus status, wgpu::Device result, const char* message) {
+			if (status == wgpu::RequestDeviceStatus::Success)
+				FEWindow::DawnDevice = std::move(result);
+	});
+
+	// Pump events until device is ready
+	while (!FEWindow::DawnDevice) {
+		instance.ProcessEvents();
+	}
+
+	if (!FEWindow::DawnDevice) {
+		MessageBoxA(nullptr, "Device is null after RequestDevice", "Error", MB_OK);
+		return;
+	}
+
+	// 5. Configure surface
+	wgpu::SurfaceCapabilities capabilities;
+	Window->Surface.GetCapabilities(adapter, &capabilities);
+
+	wgpu::SurfaceConfiguration config{};
+	config.device = FEWindow::DawnDevice;
+	config.format = capabilities.formats[0]; // first supported format
+	config.width = Window->GetWidth();
+	config.height = Window->GetHeight();
+	config.presentMode = wgpu::PresentMode::Fifo;
+	Window->Surface.Configure(&config);
+}
+#endif
 
 std::string FEBasicApplication::GetVersion()
 {
@@ -89,9 +178,12 @@ void FEBasicApplication::InitializeWindow(FEWindow* Window)
 	if (Window == nullptr)
 		return;
 
+#ifdef USE_DAWN_WEBGPU
+	InitializeWebGPU(Window);
+#else
 	glfwMakeContextCurrent(Window->GetGlfwWindow());
-	// It should be called for each window.
 	glewInit();
+#endif
 
 	SetWindowCallbacks(Window);
 	Window->InitializeImGui();

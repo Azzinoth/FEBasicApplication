@@ -1,6 +1,10 @@
 #include "FEWindow.h"
 using namespace FocalEngine;
 
+#ifdef USE_DAWN_WEBGPU
+wgpu::Device FEWindow::DawnDevice;
+#endif
+
 FEWindow::FEWindow(int Width, int Height, std::string WindowTitle)
 {
 	GLFWWindow = glfwCreateWindow(Width, Height, WindowTitle.c_str(), nullptr, nullptr);
@@ -25,10 +29,23 @@ void FEWindow::InitializeImGui()
 	ImguiContext = ImGui::CreateContext();
 	ImGui::SetCurrentContext(ImguiContext);
 
+#ifdef USE_DAWN_WEBGPU
 	// We are asking ImGui not to install callbacks
 	// We will do it manually because with multiple contexts we need to manage it manually
+	ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
+
+	ImGui_ImplWGPU_InitInfo initInfo{};
+	initInfo.Device = FEWindow::DawnDevice.Get();
+	initInfo.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
+	initInfo.DepthStencilFormat = WGPUTextureFormat_Undefined;
+	initInfo.NumFramesInFlight = 3;
+	ImGui_ImplWGPU_Init(&initInfo);
+#else
+	// We are asking ImGui not to install callbacks
+	// We will do it manually because with multiple contexts we need to manage it manuallye
 	ImGui_ImplGlfw_InitForOpenGL(GLFWWindow, false);
 	ImGui_ImplOpenGL3_Init("#version 410");
+#endif
 }
 
 ImGuiContext* FEWindow::GetImGuiContext() const
@@ -39,7 +56,11 @@ ImGuiContext* FEWindow::GetImGuiContext() const
 void FEWindow::TerminateImGui()
 {
 	ImGui::SetCurrentContext(ImguiContext);
+#ifdef USE_DAWN_WEBGPU
+	ImGui_ImplWGPU_Shutdown();
+#else
 	ImGui_ImplOpenGL3_Shutdown();
+#endif
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext(ImguiContext);
 	ImGui::SetCurrentContext(nullptr);
@@ -85,11 +106,19 @@ void FEWindow::ClearRenderFunction()
 
 void FEWindow::BeginFrame()
 {
+#ifdef USE_DAWN_WEBGPU
+
+#else
 	glfwMakeContextCurrent(GLFWWindow);
+#endif
 	ImGui::SetCurrentContext(ImguiContext);
 
 	ImGui::GetIO().DeltaTime = 1.0f / 60.0f;
+#ifdef USE_DAWN_WEBGPU
+	ImGui_ImplWGPU_NewFrame();
+#else
 	ImGui_ImplOpenGL3_NewFrame();
+#endif
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 }
@@ -103,8 +132,38 @@ void FEWindow::Render()
 void FEWindow::EndFrame()
 {
 	ImGui::Render();
+#ifdef USE_DAWN_WEBGPU
+	// Get the current texture from the surface
+	wgpu::SurfaceTexture surfaceTexture;
+	Surface.GetCurrentTexture(&surfaceTexture);
+
+	wgpu::TextureViewDescriptor viewDesc{};
+	wgpu::TextureView targetView = surfaceTexture.texture.CreateView(&viewDesc);
+
+	wgpu::RenderPassColorAttachment colorAttachment{};
+	colorAttachment.view = targetView;
+	colorAttachment.loadOp = wgpu::LoadOp::Clear;
+	colorAttachment.storeOp = wgpu::StoreOp::Store;
+	colorAttachment.clearValue = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+	wgpu::RenderPassDescriptor renderPassDesc{};
+	renderPassDesc.colorAttachmentCount = 1;
+	renderPassDesc.colorAttachments = &colorAttachment;
+
+	wgpu::CommandEncoder encoder = FEWindow::DawnDevice.CreateCommandEncoder();
+	wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPassDesc);
+
+	ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), pass.Get());
+
+	pass.End();
+	wgpu::CommandBuffer commands = encoder.Finish();
+	FEWindow::DawnDevice.GetQueue().Submit(1, &commands);
+
+	Surface.Present();
+#else
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	glfwSwapBuffers(GLFWWindow);
+#endif
 }
 
 bool FEWindow::IsInFocus() const
@@ -204,7 +263,11 @@ void FEWindow::InvokeResizeCallback(int Width, int Height)
 		return;
 	}
 	
+#ifdef USE_DAWN_WEBGPU
+	// FE_FIX_ME: WebGPU equivalent
+#else
 	glViewport(0, 0, Width, Height);
+#endif
 
 	ImGui::GetIO().DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 

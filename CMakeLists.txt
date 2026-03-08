@@ -16,6 +16,7 @@ endif()
 
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
+option(USE_DAWN_WEBGPU "Enable Dawn WebGPU support" OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(MSVC)
@@ -45,10 +46,15 @@ file(GLOB imgui_SRC
 	"ThirdParty/imgui/imgui_demo.cpp"
 	"ThirdParty/imgui/imgui_draw.cpp"
 	"ThirdParty/imgui/imgui_impl_glfw.cpp"
-	"ThirdParty/imgui/imgui_impl_opengl3.cpp"
 	"ThirdParty/imgui/imgui_tables.cpp"
 	"ThirdParty/imgui/imgui_widgets.cpp"
 )
+
+if(USE_DAWN_WEBGPU)
+    list(APPEND imgui_SRC "ThirdParty/imgui/imgui_impl_wgpu.cpp")
+else()
+    list(APPEND imgui_SRC "ThirdParty/imgui/imgui_impl_opengl3.cpp")
+endif()
 
 # *************** THIRD_PARTY END ***************
 
@@ -110,6 +116,37 @@ set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarge
 link_directories(${GLEW_LIB_DIR})
 link_directories(${GLFW_LIB_DIR})
 
+# *************** DAWN WEBGPU ***************
+if(USE_DAWN_WEBGPU)
+    set(DAWN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/Dawn)
+    set(DAWN_LIB_DIR ${DAWN_DIR}/Lib/x64/)
+    set(DAWN_INCLUDE_DIR ${DAWN_DIR}/include)
+
+    set(DAWN_DIR ${DAWN_DIR} PARENT_SCOPE)
+    set(DAWN_LIB_DIR ${DAWN_LIB_DIR} PARENT_SCOPE)
+    set(DAWN_INCLUDE_DIR ${DAWN_INCLUDE_DIR} PARENT_SCOPE)
+
+    link_directories(${DAWN_LIB_DIR})
+
+	# No static runtime variant of Dawn.
+	set(DAWN_RUNTIME_VARIANT "Dynamic_runtime")
+
+	set(DAWN_LIBRARY_DEBUG "${DAWN_LIB_DIR}Debug/${DAWN_RUNTIME_VARIANT}/webgpu_dawn.lib")
+	set(DAWN_LIBRARY_DEBUG ${DAWN_LIBRARY_DEBUG} PARENT_SCOPE)
+	set(DAWN_DLL_DEBUG "${DAWN_LIB_DIR}Debug/${DAWN_RUNTIME_VARIANT}/webgpu_dawn.dll")
+	set(DAWN_DLL_DEBUG ${DAWN_DLL_DEBUG} PARENT_SCOPE)
+	set(ABSEIL_DLL_DEBUG "${DAWN_LIB_DIR}Debug/${DAWN_RUNTIME_VARIANT}/abseil_dll.dll")
+	set(ABSEIL_DLL_DEBUG ${ABSEIL_DLL_DEBUG} PARENT_SCOPE)
+	
+    set(DAWN_LIBRARY_RELEASE "${DAWN_LIB_DIR}Release/${DAWN_RUNTIME_VARIANT}/webgpu_dawn.lib")
+	set(DAWN_LIBRARY_RELEASE ${DAWN_LIBRARY_RELEASE} PARENT_SCOPE)
+	set(DAWN_DLL_RELEASE "${DAWN_LIB_DIR}Release/${DAWN_RUNTIME_VARIANT}/webgpu_dawn.dll")
+	set(DAWN_DLL_RELEASE ${DAWN_DLL_RELEASE} PARENT_SCOPE)
+	set(ABSEIL_DLL_RELEASE "${DAWN_LIB_DIR}Release/${DAWN_RUNTIME_VARIANT}/abseil_dll.dll")
+	set(ABSEIL_DLL_RELEASE ${ABSEIL_DLL_RELEASE} PARENT_SCOPE)
+endif()
+# *************** DAWN WEBGPU END ***************
+
 if(BUILD_SHARED_LIBS)
     add_library(FEBasicApplication SHARED ${ALL_SOURCE_FILES})
     target_compile_definitions(FEBasicApplication PRIVATE FEBASICAPPLICATION_EXPORTS)
@@ -123,6 +160,12 @@ if(BUILD_SHARED_LIBS)
 	target_compile_options(FEBasicApplication PRIVATE /wd4251)
 else()
     add_library(FEBasicApplication STATIC ${ALL_SOURCE_FILES})
+endif()
+
+if(USE_DAWN_WEBGPU)
+    target_compile_definitions(FEBasicApplication PUBLIC USE_DAWN_WEBGPU)
+	target_compile_definitions(FEBasicApplication PUBLIC USE_DAWN_WEBGPU)
+    target_compile_definitions(FEBasicApplication PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 endif()
 
 # Adjust GLFW and GLEW linking based on BUILD_SHARED_LIBS and USE_STATIC_RUNTIME
@@ -146,16 +189,28 @@ else()
 endif()
 
 # Define GLEW_STATIC for static builds
-if(USE_STATIC_RUNTIME)
+if(USE_STATIC_RUNTIME AND NOT USE_DAWN_WEBGPU)
     add_definitions(-DGLEW_STATIC)
 endif()
 
 target_link_libraries(FEBasicApplication 
     PRIVATE
-		${GLEW_LIBRARY}
 		${GLFW_LIBRARY}
-		opengl32.lib
 )
+
+if(USE_DAWN_WEBGPU)
+    target_link_libraries(FEBasicApplication
+        PRIVATE
+            debug ${DAWN_LIBRARY_DEBUG}
+            optimized ${DAWN_LIBRARY_RELEASE}
+    )
+else()
+	target_link_libraries(FEBasicApplication
+        PRIVATE
+			${GLEW_LIBRARY}
+            opengl32.lib
+    )
+endif()
 
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
@@ -176,6 +231,7 @@ set(BASICAPP_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)
 include_directories(
 	${GLEW_INCLUDE_DIR}
 	${BASICAPP_THIRDPARTY_DIR}
+	$<$<BOOL:${USE_DAWN_WEBGPU}>:${DAWN_INCLUDE_DIR}>
 )
 
 # Export the BUILD_SHARED_LIBS and USE_STATIC_RUNTIME variables
@@ -196,7 +252,7 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 # If using dynamic runtime, copy necessary DLLs to output directory
-if(NOT USE_STATIC_RUNTIME)
+if(NOT USE_STATIC_RUNTIME AND NOT USE_DAWN_WEBGPU)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLEW_LIB_DIR}/glew32.dll"
