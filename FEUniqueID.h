@@ -11,6 +11,11 @@
 
 #include "FEBasicApplicationVersion.h"
 
+#ifdef USE_DAWN_WEBGPU
+#include <webgpu/webgpu_cpp.h>
+#include <webgpu/webgpu_glfw.h>
+#endif
+
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)		\
     static CLASS_NAME& GetInstance()			\
     {											\
