@@ -18,7 +18,7 @@
 imgui.ini
 CMakeCache.txt
 cmake_install.cmake
-FEBasicApplicationVersion.h
+FE_BASIC_APPLICATION_Version.h
 
 #Folders
 Debug/

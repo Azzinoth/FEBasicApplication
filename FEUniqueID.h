@@ -9,7 +9,8 @@
 #include <random>
 #include "FEBasicApplicationAPI.h"
 
-#include "FEBasicApplicationVersion.h"
+#include "VersionInfo/FE_BASIC_APPLICATION_Version.h"
+#include "VersionInfo/FEVersionInfo.h"
 
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)		\
     static CLASS_NAME& GetInstance()			\
