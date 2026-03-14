@@ -83,7 +83,7 @@ struct ExternalImageExportInfoVk : ExternalImageExportInfo {
 };
 
 // Can't use DAWN_PLATFORM_IS(LINUX) since header included in both Dawn and Chrome
-#if defined(__linux__) || defined(__Fuchsia__) || defined(__OpenBSD__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__Fuchsia__)
 
 // Common properties of external images represented by FDs. On successful import the file
 // descriptor's ownership is transferred to the Dawn implementation and they shouldn't be
