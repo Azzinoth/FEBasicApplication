@@ -621,16 +621,16 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 		std::vector<std::string> Tokens;
 		std::string Token;
 		std::istringstream TokenStream(S);
-		bool InsideQuotes = false;
+		bool bInsideQuotes = false;
 		char CurrentChar;
 
 		while (TokenStream.get(CurrentChar))
 		{
 			if (CurrentChar == '\"')
 			{
-				InsideQuotes = !InsideQuotes; // Toggle the state
+				bInsideQuotes = !bInsideQuotes; // Toggle the state
 			}
-			else if (CurrentChar == Delimiter && !InsideQuotes)
+			else if (CurrentChar == Delimiter && !bInsideQuotes)
 			{
 				if (!Token.empty())
 				{
