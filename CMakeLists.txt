@@ -41,6 +41,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # *************** THIRD_PARTY ***************
 
 file(GLOB imgui_SRC
+	"ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp"
 	"ThirdParty/imgui/imgui.cpp"
 	"ThirdParty/imgui/imgui_demo.cpp"
 	"ThirdParty/imgui/imgui_draw.cpp"
@@ -176,6 +177,7 @@ set(BASICAPP_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)
 include_directories(
 	${GLEW_INCLUDE_DIR}
 	${BASICAPP_THIRDPARTY_DIR}
+	${BASICAPP_THIRDPARTY_DIR}/imgui
 )
 
 # Export the BUILD_SHARED_LIBS and USE_STATIC_RUNTIME variables
