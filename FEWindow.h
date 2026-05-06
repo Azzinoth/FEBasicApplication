@@ -38,6 +38,9 @@ namespace FocalEngine
 
 		bool bShouldClose = false;
 		bool bShouldTerminate = false;
+
+		bool bDefaultDockspaceEnabled = false;
+		ImGuiID DefaultDockspaceID = 0;
 		
 		FEWindow(int Width = 1280, int Height = 720, std::string WindowTitle = "FEWindow");
 		FEWindow(MonitorInfo* Monitor);
@@ -111,6 +114,10 @@ namespace FocalEngine
 		bool IsInFocus() const;
 		void Minimize() const;
 		void Restore() const;
+
+		void EnableDefaultDockspace();
+		bool HasDefaultDockspace() const;
+		ImGuiID GetDefaultDockspaceID() const;
 
 		void CancelClose();
 		void Terminate();
