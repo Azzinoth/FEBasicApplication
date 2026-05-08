@@ -48,8 +48,8 @@ void FEWindow::TerminateImGui()
 FEWindow::~FEWindow()
 {
 	glfwMakeContextCurrent(GLFWWindow);
-	glfwDestroyWindow(GLFWWindow);
 	TerminateImGui();
+	glfwDestroyWindow(GLFWWindow);
 }
 
 std::string FEWindow::GetTitle() const
