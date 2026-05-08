@@ -5,7 +5,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
-
+#include "imgui/misc/cpp/imgui_stdlib.h"
 
 #ifdef USE_DAWN_WEBGPU
 #include "imgui/imgui_impl_wgpu.h"
@@ -45,6 +45,9 @@ namespace FocalEngine
 
 		bool bShouldClose = false;
 		bool bShouldTerminate = false;
+
+		bool bDefaultDockspaceEnabled = false;
+		ImGuiID DefaultDockspaceID = 0;
 		
 		FEWindow(int Width = 1280, int Height = 720, std::string WindowTitle = "FEWindow");
 		FEWindow(MonitorInfo* Monitor);
@@ -118,6 +121,10 @@ namespace FocalEngine
 		bool IsInFocus() const;
 		void Minimize() const;
 		void Restore() const;
+
+		void EnableDefaultDockspace();
+		bool HasDefaultDockspace() const;
+		ImGuiID GetDefaultDockspaceID() const;
 
 		void CancelClose();
 		void Terminate();

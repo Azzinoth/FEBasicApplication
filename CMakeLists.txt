@@ -42,6 +42,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # *************** THIRD_PARTY ***************
 
 file(GLOB imgui_SRC
+	"ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp"
 	"ThirdParty/imgui/imgui.cpp"
 	"ThirdParty/imgui/imgui_demo.cpp"
 	"ThirdParty/imgui/imgui_draw.cpp"
@@ -231,6 +232,7 @@ set(BASICAPP_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)
 include_directories(
 	${GLEW_INCLUDE_DIR}
 	${BASICAPP_THIRDPARTY_DIR}
+	${BASICAPP_THIRDPARTY_DIR}/imgui
 	$<$<BOOL:${USE_DAWN_WEBGPU}>:${DAWN_INCLUDE_DIR}>
 )
 
@@ -261,6 +263,11 @@ if(NOT USE_STATIC_RUNTIME AND NOT USE_DAWN_WEBGPU)
 endif()
 
 add_custom_command(TARGET FEBasicApplication PRE_BUILD
-	COMMAND ${CMAKE_COMMAND} -D FEBASICAPPLICATION_FOLDER=${CMAKE_CURRENT_SOURCE_DIR}
-		-P ${CMAKE_CURRENT_SOURCE_DIR}/UpdateFEBasicApplicationVersion.cmake
+    COMMAND ${CMAKE_COMMAND}
+        -D PROJECT_VERSION_PREFIX=FE_BASIC_APPLICATION_
+        -D PROJECT_VERSION_MAJOR=0
+        -D PROJECT_VERSION_MINOR=4
+        -D PROJECT_VERSION_PATCH=4
+        -D PROJECT_VERSION_DIR=${CMAKE_CURRENT_SOURCE_DIR}/VersionInfo
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VersionInfo/UpdateProjectVersion.cmake
 )

@@ -40,6 +40,8 @@ FEBasicApplication::~FEBasicApplication()
 	OnTerminate();
 }
 
+FE_DEFINE_VERSION_INFO(FE_BASIC_APPLICATION_)
+
 #ifdef USE_DAWN_WEBGPU
 void FEBasicApplication::InitializeWebGPU(FEWindow* Window)
 {
@@ -122,49 +124,27 @@ void FEBasicApplication::InitializeWebGPU(FEWindow* Window)
 
 std::string FEBasicApplication::GetVersion()
 {
-	return std::to_string(FEBASICAPPLICATION_VERSION_MAJOR) + "."
-		   + std::to_string(FEBASICAPPLICATION_VERSION_MINOR) + "."
-		   + std::to_string(FEBASICAPPLICATION_VERSION_PATCH);
+	return GetFE_BASIC_APPLICATION_VersionInfo().GetVersion();
 }
 
 int FEBasicApplication::GetBuildNumber()
 {
-	// Macros is to ensure that if the build number is 0, then it will be treated as empty string, and not "0"
-#define STRINGIFY(X) #X
-#define TOSTRING(X) ("" STRINGIFY(X))
-
-	return std::stoi(TOSTRING(FEBASICAPPLICATION_BUILD_NUMBER));
+	return GetFE_BASIC_APPLICATION_VersionInfo().BuildNumber;
 }
 
 std::string FEBasicApplication::GetBuildTimestamp()
 {
-	return FEBASICAPPLICATION_BUILD_TIMESTAMP;
+	return GetFE_BASIC_APPLICATION_VersionInfo().BuildTimestamp;
 }
 
 std::string FEBasicApplication::GetBuildInfo()
 {
-	// Macros is to ensure that if the build number is 0, then it will be treated as empty string, and not "0"
-#define STRINGIFY(X) #X
-#define TOSTRING(X) ("" STRINGIFY(X))
-#define FE_MACRO_EMPTY(X) (sizeof(STRINGIFY(X)) == 1)
-#define FE_MACRO_IS_ZERO(X) (sizeof(STRINGIFY(X)) == 1 || STRINGIFY(X)[0] == '0')
-
-	std::string Result = "build " + std::string(TOSTRING(FEBASICAPPLICATION_BUILD_NUMBER)) + " (" + std::string(FEBASICAPPLICATION_GIT_HASH);
-
-	const std::string BranchOffset = TOSTRING(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET);
-	if (!BranchOffset.empty() && BranchOffset != "0")
-		Result += " " + std::string(FEBASICAPPLICATION_GIT_BRANCH) + " +" + std::string(TOSTRING(FEBASICAPPLICATION_BUILD_BRANCH_OFFSET)) + " from master";
-
-	if (FEBASICAPPLICATION_GIT_DIRTY)
-		Result += ", dirty";
-
-	Result += ")";
-	return Result;
+	return GetFE_BASIC_APPLICATION_VersionInfo().GetBuildInfo();
 }
 
 std::string FEBasicApplication::GetFullVersion()
 {
-	return "FEBasicApplication " + GetVersion() + " " + GetBuildInfo();
+	return "FEBasicApplication " + GetFE_BASIC_APPLICATION_VersionInfo().GetFullVersionString();
 }
 
 void FEBasicApplication::SetWindowCallbacks(FEWindow* Window)
@@ -733,16 +713,16 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 		std::vector<std::string> Tokens;
 		std::string Token;
 		std::istringstream TokenStream(S);
-		bool InsideQuotes = false;
+		bool bInsideQuotes = false;
 		char CurrentChar;
 
 		while (TokenStream.get(CurrentChar))
 		{
 			if (CurrentChar == '\"')
 			{
-				InsideQuotes = !InsideQuotes; // Toggle the state
+				bInsideQuotes = !bInsideQuotes; // Toggle the state
 			}
-			else if (CurrentChar == Delimiter && !InsideQuotes)
+			else if (CurrentChar == Delimiter && !bInsideQuotes)
 			{
 				if (!Token.empty())
 				{

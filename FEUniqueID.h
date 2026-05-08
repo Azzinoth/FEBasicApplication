@@ -9,7 +9,8 @@
 #include <random>
 #include "FEBasicApplicationAPI.h"
 
-#include "FEBasicApplicationVersion.h"
+#include "VersionInfo/FE_BASIC_APPLICATION_Version.h"
+#include "VersionInfo/FEVersionInfo.h"
 
 #ifdef USE_DAWN_WEBGPU
 #include <webgpu/webgpu_cpp.h>

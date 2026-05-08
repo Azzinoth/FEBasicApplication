@@ -69,8 +69,8 @@ void FEWindow::TerminateImGui()
 FEWindow::~FEWindow()
 {
 	glfwMakeContextCurrent(GLFWWindow);
-	glfwDestroyWindow(GLFWWindow);
 	TerminateImGui();
+	glfwDestroyWindow(GLFWWindow);
 }
 
 std::string FEWindow::GetTitle() const
@@ -121,6 +121,9 @@ void FEWindow::BeginFrame()
 #endif
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
+
+	if (bDefaultDockspaceEnabled)
+		DefaultDockspaceID = ImGui::DockSpaceOverViewport(0U, ImGui::GetMainViewport());
 }
 
 void FEWindow::Render()
@@ -169,6 +172,21 @@ void FEWindow::EndFrame()
 bool FEWindow::IsInFocus() const
 {
 	return glfwGetWindowAttrib(GLFWWindow, GLFW_FOCUSED);
+}
+
+void FEWindow::EnableDefaultDockspace()
+{
+	bDefaultDockspaceEnabled = true;
+}
+
+bool FEWindow::HasDefaultDockspace() const
+{
+	return bDefaultDockspaceEnabled;
+}
+
+ImGuiID FEWindow::GetDefaultDockspaceID() const
+{
+	return DefaultDockspaceID;
 }
 
 void FEWindow::EnsureCorrectContextBegin()
