@@ -22,11 +22,13 @@ FEBasicApplication::FEBasicApplication()
 
 	IMGUI_CHECKVERSION();
 
+#ifdef _WIN32
 	// Set the console control handler to intercept the close event
 	if (!SetConsoleCtrlHandler(APPLICATION.ConsoleHandler, TRUE))
 	{
 		LOG.Add("Failed to set console control handler", "Console");
 	}
+#endif
 }
 
 FEBasicApplication::~FEBasicApplication()
@@ -268,6 +270,12 @@ void FEBasicApplication::RenderWindows()
 	}
 }
 
+void FEBasicApplication::Run(std::function<void()> Tick)
+{
+	if (Platform != nullptr)
+		Platform->RunMainLoop(std::move(Tick));
+}
+
 bool FEBasicApplication::IsNotTerminated() const
 {
 	if (bShouldClose)
@@ -404,6 +412,7 @@ std::string FEBasicApplication::GetClipboardText()
 	return Platform->GetClipboardText();
 }
 
+#ifdef _WIN32
 BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
 {
 	switch (dwType)
@@ -424,6 +433,7 @@ BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
 		return FALSE;
 	}
 }
+#endif
 
 bool FEBasicApplication::HasConsoleWindow() const
 {
@@ -435,7 +445,9 @@ FEConsoleWindow* FEBasicApplication::CreateConsoleWindow(std::function<void(void
 	if (MainFunc == nullptr)
 		return nullptr;
 
+#ifdef _WIN32
 	ConsoleWindow = new FEConsoleWindow(MainFunc, UserData);
+#endif
 	return ConsoleWindow;
 }
 
@@ -450,6 +462,7 @@ void FEBasicApplication::OnTerminate()
 	for (auto& Func : UserOnTerminateCallbackFunc)
 		Func();
 
+#ifdef _WIN32
 	// If the console is active, then terminate it
 	if (ConsoleWindow != nullptr)
 	{
@@ -458,6 +471,7 @@ void FEBasicApplication::OnTerminate()
 		delete ConsoleWindow;
 		ConsoleWindow = nullptr;
 	}
+#endif
 
 	for (FEVirtualUI* VirtualUI : VirtualUIs)
 		delete VirtualUI;
@@ -608,8 +622,13 @@ void FEBasicApplication::TerminateWindow(FEWindow* WindowToTerminate)
 
 bool FEBasicApplication::HaveAnyVisibleWindow() const
 {
+#ifdef _WIN32
 	if (Windows.empty() && (ConsoleWindow == nullptr || ConsoleWindow != nullptr && ConsoleWindow->IsHidden()))
 		return false;
+#else
+	if (Windows.empty())
+		return false;
+#endif
 
 	return true;
 }

@@ -24,6 +24,13 @@ set_property(CACHE FE_PLATFORM_BACKEND PROPERTY STRINGS GLFW Emscripten)
 set_property(CACHE FE_GRAPHIC_API_BACKEND PROPERTY STRINGS OpenGL WebGPU)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# When targeting Emscripten, force Emscripten platform + WebGPU graphics.
+if(EMSCRIPTEN)
+    set(FE_PLATFORM_BACKEND    "Emscripten" CACHE STRING "Platform backend: GLFW | Emscripten" FORCE)
+    set(FE_GRAPHIC_API_BACKEND "WebGPU"     CACHE STRING "Renderer backend: OpenGL | WebGPU"   FORCE)
+    message(STATUS "Emscripten detected: forcing FE_PLATFORM_BACKEND=Emscripten, FE_GRAPHIC_API_BACKEND=WebGPU")
+endif()
+
 # Validate combos
 if(FE_PLATFORM_BACKEND STREQUAL "Emscripten" AND FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
     message(FATAL_ERROR "Emscripten + OpenGL (WebGL2) is not supported")
@@ -52,6 +59,8 @@ elseif(FE_PLATFORM_BACKEND STREQUAL "Emscripten")
         Backends/Platforms/Emscripten/FEPlatformEmscripten.h
         Backends/Platforms/Emscripten/FEPlatformWindowEmscripten.cpp
         Backends/Platforms/Emscripten/FEPlatformWindowEmscripten.h)
+    # Emscripten code currently uses GLFW emulation (via -sUSE_GLFW=3) and ImGui's GLFW glue.
+    list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_glfw.cpp)
 endif()
 
 # Graphic API code
@@ -93,16 +102,18 @@ endif()
 # defined projects like INSTALL.vcproj and ZERO_CHECK.vcproj
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-file(GLOB BasicApplicationNetworkSubSystem_SRC
-	"SubSystems/Networking/FENetworkingBaseClasses.cpp"
-	"SubSystems/Networking/FENetworkingBaseClasses.h"
-	"SubSystems/Networking/FEClientSideNetworkConnection.cpp"
-	"SubSystems/Networking/FEClientSideNetworkConnection.h"
-	"SubSystems/Networking/FEServerSideNetworkConnection.cpp"
-	"SubSystems/Networking/FEServerSideNetworkConnection.h"
-	"SubSystems/Networking/FENetworking.cpp"
-	"SubSystems/Networking/FENetworking.h"
-)
+if(NOT EMSCRIPTEN)
+	file(GLOB BasicApplicationNetworkSubSystem_SRC
+		"SubSystems/Networking/FENetworkingBaseClasses.cpp"
+		"SubSystems/Networking/FENetworkingBaseClasses.h"
+		"SubSystems/Networking/FEClientSideNetworkConnection.cpp"
+		"SubSystems/Networking/FEClientSideNetworkConnection.h"
+		"SubSystems/Networking/FEServerSideNetworkConnection.cpp"
+		"SubSystems/Networking/FEServerSideNetworkConnection.h"
+		"SubSystems/Networking/FENetworking.cpp"
+		"SubSystems/Networking/FENetworking.h"
+	)
+endif()
 
 file(GLOB BasicApplicationProfilingSubSystem_SRC
 	"SubSystems/Profiling/FEProfilingRegistry.cpp"
@@ -133,6 +144,14 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplicationAPI.h"
 )
 
+# FEConsoleWindow is Win32-only (HWND, WORD, console color API). Web has no OS console.
+if(EMSCRIPTEN)
+	list(REMOVE_ITEM BasicApplicationSubSystem_SRC
+		"${CMAKE_CURRENT_SOURCE_DIR}/FEConsoleWindow.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/FEConsoleWindow.h"
+	)
+endif()
+
 file(GLOB Backends_SRC
 	"Backends/FEGraphicsAPI.h"
 	"Backends/FEMonitorInfo.h"
@@ -151,17 +170,20 @@ list(APPEND ALL_SOURCE_FILES
             ${imgui_SRC}
 )
 
-set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
-set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget))
+if(NOT EMSCRIPTEN)
+	set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
+	set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget))
 
-set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget) PARENT_SCOPE)
-set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget) PARENT_SCOPE)
+	set(GLEW_LIB_DIR ${GLEW_LIB_DIR} PARENT_SCOPE)
+	set(GLFW_LIB_DIR ${GLFW_LIB_DIR} PARENT_SCOPE)
 
-link_directories(${GLEW_LIB_DIR})
-link_directories(${GLFW_LIB_DIR})
+	link_directories(${GLEW_LIB_DIR})
+	link_directories(${GLFW_LIB_DIR})
+endif()
 
 # *************** DAWN WEBGPU ***************
-if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
+# Dawn is the native WebGPU implementation; Emscripten provides its own webgpu.h via -sUSE_WEBGPU=1.
+if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU" AND NOT EMSCRIPTEN)
     set(DAWN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/Dawn)
     set(DAWN_LIB_DIR ${DAWN_DIR}/Lib/x64/)
     set(DAWN_INCLUDE_DIR ${DAWN_DIR}/include)
@@ -206,7 +228,7 @@ else()
     add_library(FEBasicApplication STATIC ${ALL_SOURCE_FILES})
 endif()
 
-if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
+if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU" AND NOT EMSCRIPTEN)
     target_compile_definitions(FEBasicApplication PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 endif()
 
@@ -231,7 +253,12 @@ if(FE_PLATFORM_BACKEND STREQUAL "GLFW")
             ${GLFW_LIBRARY}
     )
 elseif(FE_PLATFORM_BACKEND STREQUAL "Emscripten")
-    target_link_options(FEBasicApplication PRIVATE "-sUSE_GLFW=3")
+    # PUBLIC so the parent executable also gets the flag at its link step.
+    # GLFW headers are in Emscripten's default sysroot; -sUSE_GLFW=3 only affects linking.
+    target_link_options(FEBasicApplication PUBLIC "-sUSE_GLFW=3")
+    # Asyncify lets emscripten_sleep yield to the browser event loop — needed for
+    # WebGPU's async adapter/device acquisition (which depends on JS promises resolving).
+    target_link_options(FEBasicApplication PUBLIC "-sASYNCIFY=1")
 endif()
 
 # Graphic API dependency linking
@@ -252,7 +279,10 @@ if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
     )
 elseif(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
     if(EMSCRIPTEN)
-        target_link_options(FEBasicApplication PRIVATE "-sUSE_WEBGPU=1")
+        # emdawnwebgpu is Dawn integrated as an Emscripten port; provides webgpu/webgpu.h.
+        # Must be active at both compile and link time.
+        target_compile_options(FEBasicApplication PUBLIC "--use-port=emdawnwebgpu")
+        target_link_options(FEBasicApplication PUBLIC "--use-port=emdawnwebgpu")
     else()
         target_link_libraries(FEBasicApplication
             PRIVATE

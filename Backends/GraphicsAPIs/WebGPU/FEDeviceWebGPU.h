@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../FEDeviceInterface.h"
+#include "../FEDeviceInterface.h"
 #include <webgpu/webgpu_cpp.h>
 
 namespace FocalEngine

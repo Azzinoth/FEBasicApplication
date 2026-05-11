@@ -1,5 +1,6 @@
 #include "FELog.h"
 #include <fstream>
+#include <thread>
 
 using namespace FocalEngine;
 
@@ -36,7 +37,7 @@ void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 	TempItem.Count = 0;
 	TempItem.Topic = Topic;
 	TempItem.TimeStamp = TIME.GetTimeStamp(FE_TIME_RESOLUTION_NANOSECONDS);
-	TempItem.ThreadID = GetCurrentThreadId();
+	TempItem.ThreadID = std::hash<std::thread::id>{}(std::this_thread::get_id());
 
 	if (bShouldAppendMsgWithTimeStamp)
 	{

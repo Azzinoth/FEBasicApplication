@@ -84,9 +84,13 @@ std::string FETime::NanosecondTimeStampToDate(uint64_t NanosecondsSinceEpoch)
 
 	const std::time_t Seconds = NanosecondsSinceEpoch / static_cast<uint64_t>(pow(10.0, 9));
 
-	char TempStr[26];
-	ctime_s(TempStr, 26, &Seconds);
-	std::string Result = TempStr;
+	char TempDateString[26];
+#ifdef _WIN32
+	ctime_s(TempDateString, 26, &Seconds);
+#else
+	ctime_r(&Seconds, TempDateString);
+#endif
+	std::string Result = TempDateString;
 
 	// Deleting day of week.
 	Result.erase(Result.begin(), Result.begin() + 4);

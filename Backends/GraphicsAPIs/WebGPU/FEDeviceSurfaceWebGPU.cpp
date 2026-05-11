@@ -67,7 +67,11 @@ namespace FocalEngine
 		wgpu::CommandBuffer Commands = CurrentEncoder.Finish();
 		OwnerDevice->GetWGPUDevice().GetQueue().Submit(1, &Commands);
 
+#ifndef __EMSCRIPTEN__
+		// Browser auto-presents the canvas after each requestAnimationFrame tick;
+		// wgpuSurfacePresent is intentionally not implemented in emdawnwebgpu.
 		Surface.Present();
+#endif
 	}
 
 	void FEDeviceSurfaceWebGPU::ImGuiShutdown()

@@ -1,12 +1,17 @@
 #include "FEDeviceWebGPU.h"
 #include "FEDeviceSurfaceWebGPU.h"
 
-// FE_FIX_ME: Windows-only HWND extraction. When porting to Mac/Linux,
-// branch on platform here or use the Dawn-shipped wgpu::glfw helper once available.
+#ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 #include <Windows.h>
+#endif
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 namespace FocalEngine
 {
@@ -46,7 +51,14 @@ namespace FocalEngine
 		});
 
 		while (!Adapter)
+		{
+#ifdef __EMSCRIPTEN__
+			// Yield to the browser event loop so the JS promise can resolve.
+			emscripten_sleep(0);
+#else
 			Instance.ProcessEvents();
+#endif
+		}
 
 		if (!Adapter)
 			return false;
@@ -62,7 +74,13 @@ namespace FocalEngine
 		});
 
 		while (!Device)
+		{
+#ifdef __EMSCRIPTEN__
+			emscripten_sleep(0);
+#else
 			Instance.ProcessEvents();
+#endif
+		}
 
 		return Device != nullptr;
 	}
@@ -77,6 +95,7 @@ namespace FocalEngine
 		if (!Instance || !Adapter || !Device || Window == nullptr)
 			return nullptr;
 
+#ifdef _WIN32
 		GLFWwindow* GlfwWindow = static_cast<GLFWwindow*>(Window->GetNativeHandle());
 		if (GlfwWindow == nullptr)
 			return nullptr;
@@ -91,6 +110,14 @@ namespace FocalEngine
 
 		wgpu::SurfaceDescriptor SurfaceDesc{};
 		SurfaceDesc.nextInChain = &WindowDesc;
+#else
+		// Web: WebGPU surface is created from an HTML canvas element by CSS selector.
+		wgpu::EmscriptenSurfaceSourceCanvasHTMLSelector CanvasDesc{};
+		CanvasDesc.selector = "#canvas";
+
+		wgpu::SurfaceDescriptor SurfaceDesc{};
+		SurfaceDesc.nextInChain = &CanvasDesc;
+#endif
 
 		FEDeviceSurfaceWebGPU* NewSurface = new FEDeviceSurfaceWebGPU();
 		NewSurface->OwnerDevice = this;

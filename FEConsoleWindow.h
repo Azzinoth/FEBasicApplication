@@ -1,7 +1,13 @@
 #pragma once
 
-#include "SubSystems/Networking/FENetworking.h"
 #include "SubSystems/Profiling/FEScopedTimer.h"
+
+// Forward declaration always available, so FEBasicApplication can hold FEConsoleWindow*
+// even on platforms where the class itself is not defined.
+namespace FocalEngine { class FEConsoleWindow; }
+
+#ifndef __EMSCRIPTEN__
+#include <windows.h>
 
 namespace FocalEngine
 {
@@ -38,3 +44,4 @@ namespace FocalEngine
 		void SetNearestConsoleTextColor(int R, int G, int B) const;
 	};
 }
+#endif // __EMSCRIPTEN__

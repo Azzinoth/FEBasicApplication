@@ -52,7 +52,7 @@ void JobThread::ExecuteJob()
 				return;
 			}
 
-			Sleep(5);
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			if (bHaveNewJob.load())
 				break;
 		}
@@ -105,11 +105,15 @@ LightThread::~LightThread() {}
 
 FEThreadPool::FEThreadPool()
 {
+#ifndef __EMSCRIPTEN__
+	// Emscripten requires -pthread (SharedArrayBuffer + COOP/COEP headers) for std::thread.
+	// Skip worker creation on web for now; submitted jobs will simply not run.
 	Threads.resize(4);
 	for (size_t i = 0; i < Threads.size(); i++)
 	{
 		Threads[i] = new JobThread();
 	}
+#endif
 }
 
 FEThreadPool::~FEThreadPool()
@@ -344,7 +348,7 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 			if (Thread->AssignJob(Thread->JobsList[0]))
 				Thread->JobsList.erase(Thread->JobsList.begin());
 		}
-		Sleep(10);
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
 	return true;

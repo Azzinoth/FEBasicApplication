@@ -37,7 +37,9 @@ namespace FocalEngine
 		std::vector<FEVirtualUI*> VirtualUIs;
 
 		FEConsoleWindow* ConsoleWindow = nullptr;
+#ifdef _WIN32
 		static BOOL WINAPI ConsoleHandler(DWORD dwType);
+#endif
 
 		void SetWindowCallbacks(FEWindow* Window);
 		void InitializeWindow(FEWindow* Window);
@@ -103,6 +105,11 @@ namespace FocalEngine
 		void BeginFrame();
 		void EndFrame() const;
 		void RenderWindows();
+
+		// Runs the main loop. Each iteration invokes Tick.
+		// Desktop: while-loop until IsNotTerminated() becomes false.
+		// Web: hands control to emscripten_set_main_loop and returns immediately.
+		void Run(std::function<void()> Tick);
 
 		void AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
 		void AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);

@@ -21,7 +21,7 @@ namespace FocalEngine
 		int Count;
 		std::string Topic;
 		uint64_t TimeStamp;
-		DWORD ThreadID;
+		size_t ThreadID;
 
 		LogItem();
 		~LogItem();

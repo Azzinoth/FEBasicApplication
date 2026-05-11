@@ -1,12 +1,9 @@
-#include "FEPlatformGLFW.h"
-#include "../../../FEBasicApplication.h"
+#include "FEPlatformEmscripten.h"
 #include <algorithm>
+#include <emscripten.h>
 
 namespace FocalEngine
 {
-	// Static bridge so GLFW's C-style monitor callback can forward into our std::function.
-	// glfwSetMonitorCallback takes a plain function pointer, so we cannot pass a capturing
-	// lambda directly. Store the registered callback and route through a non-capturing stub.
 	static std::function<void(void* NativeMonitor, int Event)> RegisteredMonitorCallback;
 	static void MonitorCallbackBridge(GLFWmonitor* Monitor, int Event)
 	{
@@ -16,44 +13,49 @@ namespace FocalEngine
 
 	FEPlatformInterface* CreatePlatform()
 	{
-		return new FEPlatformGLFW();
+		return new FEPlatformEmscripten();
 	}
 
-	FEPlatformGLFW::~FEPlatformGLFW() {}
+	FEPlatformEmscripten::~FEPlatformEmscripten() {}
 
-	bool FEPlatformGLFW::Initialize()
+	bool FEPlatformEmscripten::Initialize()
 	{
-		glfwInit();
-		return true;
+		return glfwInit() == GLFW_TRUE;
 	}
 
-	void FEPlatformGLFW::Shutdown()
+	void FEPlatformEmscripten::Shutdown()
 	{
 		glfwTerminate();
 	}
 
-	void FEPlatformGLFW::PollEvents()
+	void FEPlatformEmscripten::PollEvents()
 	{
 		glfwPollEvents();
 	}
 
-	void FEPlatformGLFW::RunMainLoop(std::function<void()> Tick)
+	// emscripten_set_main_loop takes a non-capturing C function pointer, so we route
+	// the std::function through a file-scope storage + thin dispatch stub.
+	static std::function<void()> StoredMainLoopTick;
+	static void DispatchMainLoopTick() { if (StoredMainLoopTick) StoredMainLoopTick(); }
+
+	void FEPlatformEmscripten::RunMainLoop(std::function<void()> Tick)
 	{
-		while (APPLICATION.IsNotTerminated())
-			Tick();
+		StoredMainLoopTick = std::move(Tick);
+		// fps=0 -> use requestAnimationFrame, simulate_infinite_loop=1 -> never returns to caller.
+		emscripten_set_main_loop(DispatchMainLoopTick, 0, 1);
 	}
 
-	double FEPlatformGLFW::GetTime()
+	double FEPlatformEmscripten::GetTime()
 	{
 		return glfwGetTime();
 	}
 
-	FEPlatformWindowInterface* FEPlatformGLFW::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
+	FEPlatformWindowInterface* FEPlatformEmscripten::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
 	{
 		if (API == GraphicsAPI::WebGPU)
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		FEPlatformWindowGLFW* PlatformWindow = new FEPlatformWindowGLFW();
+		FEPlatformWindowEmscripten* PlatformWindow = new FEPlatformWindowEmscripten();
 		PlatformWindow->GLFWWindow = glfwCreateWindow(Width, Height, Title.c_str(), nullptr, nullptr);
 		PlatformWindow->API = API;
 
@@ -61,7 +63,7 @@ namespace FocalEngine
 		return PlatformWindow;
 	}
 
-	FEPlatformWindowInterface* FEPlatformGLFW::OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API)
+	FEPlatformWindowInterface* FEPlatformEmscripten::OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API)
 	{
 		if (Monitor == nullptr || Monitor->Monitor == nullptr || Monitor->VideoMode == nullptr)
 			return nullptr;
@@ -75,7 +77,7 @@ namespace FocalEngine
 		glfwWindowHint(GLFW_REFRESH_RATE,  Monitor->VideoMode->refreshRate);
 		glfwWindowHint(GLFW_DECORATED,     GLFW_FALSE);
 
-		FEPlatformWindowGLFW* PlatformWindow = new FEPlatformWindowGLFW();
+		FEPlatformWindowEmscripten* PlatformWindow = new FEPlatformWindowEmscripten();
 		PlatformWindow->GLFWWindow = glfwCreateWindow(
 			Monitor->VideoMode->width,
 			Monitor->VideoMode->height,
@@ -96,19 +98,19 @@ namespace FocalEngine
 		return PlatformWindow;
 	}
 
-	bool FEPlatformGLFW::SetClipboardText(std::string Text)
+	bool FEPlatformEmscripten::SetClipboardText(std::string Text)
 	{
 		glfwSetClipboardString(nullptr, Text.c_str());
 		return true;
 	}
 
-	std::string FEPlatformGLFW::GetClipboardText()
+	std::string FEPlatformEmscripten::GetClipboardText()
 	{
 		const char* Clipboard = glfwGetClipboardString(nullptr);
 		return Clipboard ? std::string(Clipboard) : std::string();
 	}
 
-	std::vector<MonitorInfo> FEPlatformGLFW::GetMonitors()
+	std::vector<MonitorInfo> FEPlatformEmscripten::GetMonitors()
 	{
 		std::vector<MonitorInfo> Result;
 
@@ -135,7 +137,7 @@ namespace FocalEngine
 		return Result;
 	}
 
-	MonitorInfo FEPlatformGLFW::GetMonitorContainingWindow(FEPlatformWindowInterface* Window)
+	MonitorInfo FEPlatformEmscripten::GetMonitorContainingWindow(FEPlatformWindowInterface* Window)
 	{
 		MonitorInfo BestMonitor;
 		if (Window == nullptr)
@@ -158,12 +160,12 @@ namespace FocalEngine
 			int MonitorWidth = 0, MonitorHeight = 0;
 			glfwGetMonitorWorkarea(Monitors[i], &MonitorX, &MonitorY, &MonitorWidth, &MonitorHeight);
 
-			int MinX = (std::max)(WindowX, MonitorX);
-			int MinY = (std::max)(WindowY, MonitorY);
-			int MaxX = (std::min)(WindowX + WindowWidth, MonitorX + MonitorWidth);
-			int MaxY = (std::min)(WindowY + WindowHeight, MonitorY + MonitorHeight);
+			int MinX = std::max(WindowX, MonitorX);
+			int MinY = std::max(WindowY, MonitorY);
+			int MaxX = std::min(WindowX + WindowWidth, MonitorX + MonitorWidth);
+			int MaxY = std::min(WindowY + WindowHeight, MonitorY + MonitorHeight);
 
-			int Area = (std::max)(0, MaxX - MinX) * (std::max)(0, MaxY - MinY);
+			int Area = std::max(0, MaxX - MinX) * std::max(0, MaxY - MinY);
 
 			if (Area > BestArea)
 			{
@@ -176,7 +178,7 @@ namespace FocalEngine
 		return BestMonitor;
 	}
 
-	void FEPlatformGLFW::SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback)
+	void FEPlatformEmscripten::SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback)
 	{
 		RegisteredMonitorCallback = std::move(Callback);
 		glfwSetMonitorCallback(RegisteredMonitorCallback ? MonitorCallbackBridge : nullptr);
