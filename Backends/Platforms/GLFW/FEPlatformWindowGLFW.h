@@ -2,6 +2,11 @@
 
 #include "../FEPlatformWindowInterface.h"
 #include "../../FEGraphicsAPI.h"
+#ifdef _WIN32
+	// Include Windows.h before glfw3.h so APIENTRY is defined by the Windows SDK first.
+	// To not trigger C4005.
+	#include <windows.h>
+#endif
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 

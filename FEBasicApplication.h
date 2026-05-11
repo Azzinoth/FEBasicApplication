@@ -6,7 +6,7 @@
 #include "Backends/Platforms/FEPlatformInterface.h"
 #include "Backends/GraphicsAPIs/FEDeviceInterface.h"
 
-#if defined(FE_GRAPHICS_API_OPENGL)
+#ifdef FE_GRAPHICS_API_OPENGL
 	#include "Backends/GraphicsAPIs/OpenGL/FEDeviceOpenGL.h"
 	#include "Backends/GraphicsAPIs/OpenGL/FEDeviceSurfaceOpenGL.h"
 #endif
@@ -114,7 +114,7 @@ namespace FocalEngine
 		void AddOnCloseCallback(std::function<void()> UserOnCloseCallback);
 		void AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback);
 
-		FEVirtualUI* AddVirtualUI(GLuint FrameBuffer, int Width = 1920, int Height = 1080, std::string Name = "UnnamedVirtualUI");
+		FEVirtualUI* AddVirtualUI(unsigned int FrameBuffer, int Width = 1920, int Height = 1080, std::string Name = "UnnamedVirtualUI");
 		void RemoveVirtualUI(FEVirtualUI* VirtualUI);
 
 		// This function can produce IDs that are "unique" with very rare collisions.

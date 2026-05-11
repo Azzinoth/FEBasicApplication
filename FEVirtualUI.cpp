@@ -173,7 +173,7 @@ void FEVirtualUI::AddOnResizeCallback(std::function<void(int, int)> UserOnResize
 	UserOnResizeCallbackFuncs.push_back(UserOnResizeCallback);
 }
 
-void FEVirtualUI::InvokeResize(GLuint FrameBuffer, int Width, int Height)
+void FEVirtualUI::InvokeResize(unsigned int FrameBuffer, int Width, int Height)
 {
 	EnsureCorrectContextBegin();
 

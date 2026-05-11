@@ -12,7 +12,7 @@ namespace FocalEngine
 		std::string ID;
 		std::string Name = "";
 
-		GLuint Framebuffer = -1;
+		unsigned int Framebuffer = -1;
 		int Width = 1280;
 		int Height = 720;
 		float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.00f };
@@ -20,7 +20,7 @@ namespace FocalEngine
 		float LastMouseX = 0.0f, LastMouseY = 0.0f;
 		
 		FEVirtualUI(int Width = 1280, int Height = 720, std::string Name = "UnNamed");
-		void Initialize(GLuint FrameBuffer, int Width, int Height);
+		void Initialize(unsigned int FrameBuffer, int Width, int Height);
 		void TerminateImGui();
 		~FEVirtualUI();
 
@@ -80,7 +80,7 @@ namespace FocalEngine
 		void AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback);
 
 		// Functions that will be invoked by upper layers of abstraction to simulate events
-		void InvokeResize(GLuint FrameBuffer, int Width, int Height);
+		void InvokeResize(unsigned int FrameBuffer, int Width, int Height);
 		void InvokeMouseEnterCallback(int Entered);
 		void InvokeMouseButton(int Button, int Action, int Mods = 0);
 		void InvokeMouseMove(double Xpos, double Ypos);

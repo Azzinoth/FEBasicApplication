@@ -736,12 +736,12 @@ FEConsoleWindow* FEBasicApplication::GetConsoleWindow()
 	return ConsoleWindow;
 }
 
-FEVirtualUI* FEBasicApplication::AddVirtualUI(GLuint FrameBuffer, int Width, int Height, std::string Name)
+FEVirtualUI* FEBasicApplication::AddVirtualUI(unsigned int FrameBuffer, int Width, int Height, std::string Name)
 {
 	if (Width <= 0 || Height <= 0)
 		return nullptr;
 
-	if (FrameBuffer == GLuint(-1))
+	if (FrameBuffer == unsigned int(-1))
 		return nullptr;
 
 	FEVirtualUI* NewVirtualUI = new FEVirtualUI(Width, Height, Name);

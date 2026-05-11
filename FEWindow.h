@@ -11,7 +11,9 @@
 #include "Backends/GraphicsAPIs/FEDeviceSurfaceInterface.h"
 #include "Backends/FEMonitorInfo.h"
 
-#include "GL/glew.h"
+#ifdef FE_GRAPHICS_API_OPENGL
+	#include "GL/glew.h"
+#endif
 #include <GLFW/glfw3.h>
 
 namespace FocalEngine
