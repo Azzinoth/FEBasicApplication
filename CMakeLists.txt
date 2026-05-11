@@ -14,10 +14,64 @@ if(MSVC)
   add_compile_options(/wd4251)
 endif()
 
+set(ALL_SOURCE_FILES "")
+
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
-option(USE_DAWN_WEBGPU "Enable Dawn WebGPU support" OFF)
+set(FE_PLATFORM_BACKEND "GLFW"  CACHE STRING "Platform backend: GLFW | Emscripten")
+set(FE_GRAPHIC_API_BACKEND "OpenGL" CACHE STRING "Renderer backend: OpenGL | WebGPU")
+set_property(CACHE FE_PLATFORM_BACKEND PROPERTY STRINGS GLFW Emscripten)
+set_property(CACHE FE_GRAPHIC_API_BACKEND PROPERTY STRINGS OpenGL WebGPU)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Validate combos
+if(FE_PLATFORM_BACKEND STREQUAL "Emscripten" AND FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
+    message(FATAL_ERROR "Emscripten + OpenGL (WebGL2) is not supported")
+endif()
+
+file(GLOB imgui_SRC
+	"ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp"
+	"ThirdParty/imgui/imgui.cpp"
+	"ThirdParty/imgui/imgui_demo.cpp"
+	"ThirdParty/imgui/imgui_draw.cpp"
+	"ThirdParty/imgui/imgui_tables.cpp"
+	"ThirdParty/imgui/imgui_widgets.cpp"
+)
+
+# Platform code
+if(FE_PLATFORM_BACKEND STREQUAL "GLFW")
+    set(FE_PLATFORM_SRC
+        Backends/Platforms/GLFW/FEPlatformGLFW.cpp
+        Backends/Platforms/GLFW/FEPlatformGLFW.h
+        Backends/Platforms/GLFW/FEPlatformWindowGLFW.cpp
+        Backends/Platforms/GLFW/FEPlatformWindowGLFW.h)
+    list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_glfw.cpp)
+elseif(FE_PLATFORM_BACKEND STREQUAL "Emscripten")
+    set(FE_PLATFORM_SRC
+        Backends/Platforms/Emscripten/FEPlatformEmscripten.cpp
+        Backends/Platforms/Emscripten/FEPlatformEmscripten.h
+        Backends/Platforms/Emscripten/FEPlatformWindowEmscripten.cpp
+        Backends/Platforms/Emscripten/FEPlatformWindowEmscripten.h)
+endif()
+
+# Graphic API code
+if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
+    set(FE_GRAPHIC_API_SRC
+        Backends/GraphicsAPIs/OpenGL/FEDeviceOpenGL.cpp
+        Backends/GraphicsAPIs/OpenGL/FEDeviceOpenGL.h
+        Backends/GraphicsAPIs/OpenGL/FEDeviceSurfaceOpenGL.cpp
+        Backends/GraphicsAPIs/OpenGL/FEDeviceSurfaceOpenGL.h)
+    list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_opengl3.cpp)
+elseif(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
+    set(FE_GRAPHIC_API_SRC
+        Backends/GraphicsAPIs/WebGPU/FEDeviceWebGPU.cpp
+        Backends/GraphicsAPIs/WebGPU/FEDeviceWebGPU.h
+        Backends/GraphicsAPIs/WebGPU/FEDeviceSurfaceWebGPU.cpp
+        Backends/GraphicsAPIs/WebGPU/FEDeviceSurfaceWebGPU.h)
+    list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_wgpu.cpp)
+endif()
+
+list(APPEND ALL_SOURCE_FILES ${FE_PLATFORM_SRC} ${FE_GRAPHIC_API_SRC})
 
 if(MSVC)
 	# Disable C4251 warning
@@ -38,26 +92,6 @@ endif()
 # It creates "CMakePredefinedTargets" folder by default and adds CMake
 # defined projects like INSTALL.vcproj and ZERO_CHECK.vcproj
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-# *************** THIRD_PARTY ***************
-
-file(GLOB imgui_SRC
-	"ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp"
-	"ThirdParty/imgui/imgui.cpp"
-	"ThirdParty/imgui/imgui_demo.cpp"
-	"ThirdParty/imgui/imgui_draw.cpp"
-	"ThirdParty/imgui/imgui_impl_glfw.cpp"
-	"ThirdParty/imgui/imgui_tables.cpp"
-	"ThirdParty/imgui/imgui_widgets.cpp"
-)
-
-if(USE_DAWN_WEBGPU)
-    list(APPEND imgui_SRC "ThirdParty/imgui/imgui_impl_wgpu.cpp")
-else()
-    list(APPEND imgui_SRC "ThirdParty/imgui/imgui_impl_opengl3.cpp")
-endif()
-
-# *************** THIRD_PARTY END ***************
 
 file(GLOB BasicApplicationNetworkSubSystem_SRC
 	"SubSystems/Networking/FENetworkingBaseClasses.cpp"
@@ -99,11 +133,20 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplicationAPI.h"
 )
 
-set(ALL_SOURCE_FILES "")
+file(GLOB Backends_SRC
+	"Backends/FEGraphicsAPI.h"
+	"Backends/FEMonitorInfo.h"
+	"Backends/Platforms/FEPlatformInterface.h"
+	"Backends/Platforms/FEPlatformWindowInterface.h"
+	"Backends/GraphicsAPIs/FEDeviceInterface.h"
+	"Backends/GraphicsAPIs/FEDeviceSurfaceInterface.h"
+)
+
 list(APPEND ALL_SOURCE_FILES
             ${BasicApplicationSubSystem_SRC}
             ${BasicApplicationNetworkSubSystem_SRC}
             ${BasicApplicationProfilingSubSystem_SRC}
+            ${Backends_SRC}
             # *************** THIRD_PARTY ***************
             ${imgui_SRC}
 )
@@ -118,7 +161,7 @@ link_directories(${GLEW_LIB_DIR})
 link_directories(${GLFW_LIB_DIR})
 
 # *************** DAWN WEBGPU ***************
-if(USE_DAWN_WEBGPU)
+if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
     set(DAWN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/Dawn)
     set(DAWN_LIB_DIR ${DAWN_DIR}/Lib/x64/)
     set(DAWN_INCLUDE_DIR ${DAWN_DIR}/include)
@@ -163,69 +206,80 @@ else()
     add_library(FEBasicApplication STATIC ${ALL_SOURCE_FILES})
 endif()
 
-if(USE_DAWN_WEBGPU)
-    target_compile_definitions(FEBasicApplication PUBLIC USE_DAWN_WEBGPU)
-	target_compile_definitions(FEBasicApplication PUBLIC USE_DAWN_WEBGPU)
+if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
     target_compile_definitions(FEBasicApplication PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 endif()
 
-# Adjust GLFW and GLEW linking based on BUILD_SHARED_LIBS and USE_STATIC_RUNTIME
-if(BUILD_SHARED_LIBS)
-    if(USE_STATIC_RUNTIME)
-        message(WARNING "Building a shared library with static runtime is uncommon and may lead to issues.")
-        set(GLFW_LIBRARY "glfw3_mt.lib")
-        set(GLEW_LIBRARY "glew32s.lib")
+# Platform dependency linking
+if(FE_PLATFORM_BACKEND STREQUAL "GLFW")
+    if(BUILD_SHARED_LIBS)
+        if(USE_STATIC_RUNTIME)
+            set(GLFW_LIBRARY "glfw3_mt.lib")
+        else()
+            set(GLFW_LIBRARY "glfw3dll.lib")
+        endif()
     else()
-        set(GLFW_LIBRARY "glfw3dll.lib")
-        set(GLEW_LIBRARY "glew32.lib")
+        if(USE_STATIC_RUNTIME)
+            set(GLFW_LIBRARY "glfw3_mt.lib")
+        else()
+            set(GLFW_LIBRARY "glfw3.lib")
+        endif()
     endif()
-else()
-    if(USE_STATIC_RUNTIME)
-        set(GLFW_LIBRARY "glfw3_mt.lib")
-        set(GLEW_LIBRARY "glew32s.lib")
-    else()
-        set(GLFW_LIBRARY "glfw3.lib")
-        set(GLEW_LIBRARY "glew32.lib")
-    endif()
-endif()
 
-# Define GLEW_STATIC for static builds
-if(USE_STATIC_RUNTIME AND NOT USE_DAWN_WEBGPU)
-    add_definitions(-DGLEW_STATIC)
-endif()
-
-target_link_libraries(FEBasicApplication 
-    PRIVATE
-		${GLFW_LIBRARY}
-)
-
-if(USE_DAWN_WEBGPU)
     target_link_libraries(FEBasicApplication
         PRIVATE
-            debug ${DAWN_LIBRARY_DEBUG}
-            optimized ${DAWN_LIBRARY_RELEASE}
+            ${GLFW_LIBRARY}
     )
-else()
-	target_link_libraries(FEBasicApplication
+elseif(FE_PLATFORM_BACKEND STREQUAL "Emscripten")
+    target_link_options(FEBasicApplication PRIVATE "-sUSE_GLFW=3")
+endif()
+
+# Graphic API dependency linking
+if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
+    if(USE_STATIC_RUNTIME)
+        set(GLEW_LIBRARY "glew32s.lib")
+        target_compile_definitions(FEBasicApplication PRIVATE GLEW_STATIC)
+    else()
+        set(GLEW_LIBRARY "glew32.lib")
+    endif()
+
+    target_compile_definitions(FEBasicApplication PUBLIC FE_GRAPHICS_API_OPENGL)
+
+    target_link_libraries(FEBasicApplication
         PRIVATE
-			${GLEW_LIBRARY}
+            ${GLEW_LIBRARY}
             opengl32.lib
     )
+elseif(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
+    if(EMSCRIPTEN)
+        target_link_options(FEBasicApplication PRIVATE "-sUSE_WEBGPU=1")
+    else()
+        target_link_libraries(FEBasicApplication
+            PRIVATE
+                debug ${DAWN_LIBRARY_DEBUG}
+                optimized ${DAWN_LIBRARY_RELEASE}
+        )
+    endif()
 endif()
 
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
 source_group("Source Files/SubSystems/Profiling" FILES ${BasicApplicationProfilingSubSystem_SRC})
+source_group("Source Files/Backends" FILES ${Backends_SRC})
+source_group("Source Files/Backends/Platforms/${FE_PLATFORM_BACKEND}" FILES ${FE_PLATFORM_SRC})
+source_group("Source Files/Backends/GraphicsAPIs/${FE_GRAPHIC_API_BACKEND}" FILES ${FE_GRAPHIC_API_SRC})
 # *************** THIRD_PARTY ***************
 source_group("Source Files/ThirdParty/imgui" FILES ${imgui_SRC})
 
 # set the startup project
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplication)
 
-set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include)
-set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
+if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
+    set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include)
+    set(GLEW_INCLUDE_DIR ${GLEW_INCLUDE_DIR} PARENT_SCOPE)
+endif()
 
-set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include PARENT_SCOPE)
+set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
 set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty PARENT_SCOPE)
 set(BASICAPP_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)
 
@@ -233,7 +287,7 @@ include_directories(
 	${GLEW_INCLUDE_DIR}
 	${BASICAPP_THIRDPARTY_DIR}
 	${BASICAPP_THIRDPARTY_DIR}/imgui
-	$<$<BOOL:${USE_DAWN_WEBGPU}>:${DAWN_INCLUDE_DIR}>
+	$<$<STREQUAL:${FE_GRAPHIC_API_BACKEND},WebGPU>:${DAWN_INCLUDE_DIR}>
 )
 
 # Export the BUILD_SHARED_LIBS and USE_STATIC_RUNTIME variables
@@ -244,8 +298,10 @@ set(USE_STATIC_RUNTIME ${USE_STATIC_RUNTIME} PARENT_SCOPE)
 set(GLEW_LIBRARY ${GLEW_LIBRARY} PARENT_SCOPE)
 set(GLFW_LIBRARY ${GLFW_LIBRARY} PARENT_SCOPE)
 
-# If building as DLL, copy necessary DLLs to output directory
-if(BUILD_SHARED_LIBS)
+set(FE_PLATFORM_BACKEND    ${FE_PLATFORM_BACKEND}    PARENT_SCOPE)
+set(FE_GRAPHIC_API_BACKEND ${FE_GRAPHIC_API_BACKEND} PARENT_SCOPE)
+
+if(FE_PLATFORM_BACKEND STREQUAL "GLFW" AND BUILD_SHARED_LIBS AND NOT USE_STATIC_RUNTIME)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLFW_LIB_DIR}/glfw3.dll"
@@ -253,8 +309,7 @@ if(BUILD_SHARED_LIBS)
     )
 endif()
 
-# If using dynamic runtime, copy necessary DLLs to output directory
-if(NOT USE_STATIC_RUNTIME AND NOT USE_DAWN_WEBGPU)
+if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL" AND NOT USE_STATIC_RUNTIME)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLEW_LIB_DIR}/glew32.dll"

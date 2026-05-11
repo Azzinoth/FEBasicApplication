@@ -1,4 +1,10 @@
+#ifdef FE_GRAPHICS_API_OPENGL
+#include <GL/glew.h>
+#endif
 #include "FEVirtualUI.h"
+#ifdef FE_GRAPHICS_API_OPENGL
+#include "imgui/imgui_impl_opengl3.h"
+#endif
 using namespace FocalEngine;
 
 FEVirtualUI::FEVirtualUI(int Width, int Height, std::string Name)
@@ -12,8 +18,8 @@ FEVirtualUI::FEVirtualUI(int Width, int Height, std::string Name)
 
 void FEVirtualUI::Initialize(GLuint FrameBuffer, int Width, int Height)
 {
-    TempImguiContext = ImGui::GetCurrentContext();
-    
+	TemporaryImguiContext = ImGui::GetCurrentContext();
+
 	this->Framebuffer = FrameBuffer;
 	this->Width = Width;
 	this->Height = Height;
@@ -25,20 +31,12 @@ void FEVirtualUI::Initialize(GLuint FrameBuffer, int Width, int Height)
 	IO.DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 	IO.DeltaTime = 1.0f / 60.0f;
 
-#ifdef USE_DAWN_WEBGPU
-	// FE_FIX_ME: WebGPU equivalent.
-	//ImGui_ImplWGPU_InitInfo initInfo{};
-	//initInfo.Device = FEWindow::DawnDevice.Get();
-	//initInfo.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
-	//initInfo.DepthStencilFormat = WGPUTextureFormat_Undefined;
-	//initInfo.NumFramesInFlight = 3;
-	//ImGui_ImplWGPU_Init(&initInfo);
-#else
+#ifdef FE_GRAPHICS_API_OPENGL
 	ImGui_ImplOpenGL3_Init("#version 410");
 #endif
 
-    if (TempImguiContext != nullptr)
-        ImGui::SetCurrentContext(TempImguiContext);
+	if (TemporaryImguiContext != nullptr)
+		ImGui::SetCurrentContext(TemporaryImguiContext);
 }
 
 ImGuiContext* FEVirtualUI::GetImGuiContext() const
@@ -48,19 +46,20 @@ ImGuiContext* FEVirtualUI::GetImGuiContext() const
 
 void FEVirtualUI::TerminateImGui()
 {
-    ImGuiContext* TempImguiContext = nullptr;
-    TempImguiContext = ImGui::GetCurrentContext();
-    if (TempImguiContext != ImguiContext)
-        ImGui::SetCurrentContext(ImguiContext);
+	if (ImguiContext == nullptr)
+		return;
 
-#ifdef USE_DAWN_WEBGPU
-	ImGui_ImplWGPU_Shutdown();
-#else
+	ImGuiContext* PreviousContext = ImGui::GetCurrentContext();
+	if (PreviousContext != ImguiContext)
+		ImGui::SetCurrentContext(ImguiContext);
+
+#ifdef FE_GRAPHICS_API_OPENGL
 	ImGui_ImplOpenGL3_Shutdown();
 #endif
 	ImGui::DestroyContext(ImguiContext);
-	
-    ImGui::SetCurrentContext(TempImguiContext);
+	ImguiContext = nullptr;
+
+	ImGui::SetCurrentContext(PreviousContext != ImguiContext ? PreviousContext : nullptr);
 }
 
 FEVirtualUI::~FEVirtualUI()
@@ -113,12 +112,10 @@ void FEVirtualUI::BeginFrame()
 {
 	ImGui::SetCurrentContext(ImguiContext);
 
-#ifdef USE_DAWN_WEBGPU
-	ImGui_ImplWGPU_NewFrame();
-#else
+#ifdef FE_GRAPHICS_API_OPENGL
 	ImGui_ImplOpenGL3_NewFrame();
 #endif
-	
+
 	ImGui::NewFrame();
 }
 
@@ -130,11 +127,7 @@ void FEVirtualUI::Render()
 
 void FEVirtualUI::EndFrame()
 {
-#ifdef USE_DAWN_WEBGPU
-	// FE_FIX_ME: WebGPU equivalent.
-	ImGui::Render();
-	//ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData());
-#else
+#ifdef FE_GRAPHICS_API_OPENGL
 	glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
 	glViewport(0, 0, Width, Height);
 
@@ -147,32 +140,32 @@ void FEVirtualUI::EndFrame()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
 
-    if (!FunctionsToToAddFont.empty())
-    {
-        for (int i = 0; i < FunctionsToToAddFont.size(); i++)
-        {
-            FunctionsToToAddFont[i]();
-            CallbacksOnFontReady[i]();
-            FunctionsToToAddFont.erase(FunctionsToToAddFont.begin() + i);
-            CallbacksOnFontReady.erase(CallbacksOnFontReady.begin() + i);
-            i--;
-        }
+	if (!FunctionsToToAddFont.empty())
+	{
+		for (int i = 0; i < FunctionsToToAddFont.size(); i++)
+		{
+			FunctionsToToAddFont[i]();
+			CallbacksOnFontReady[i]();
+			FunctionsToToAddFont.erase(FunctionsToToAddFont.begin() + i);
+			CallbacksOnFontReady.erase(CallbacksOnFontReady.begin() + i);
+			i--;
+		}
 
-        ImGui::GetIO().Fonts->Build();
-    }
+		ImGui::GetIO().Fonts->Build();
+	}
 }
 
 void FEVirtualUI::EnsureCorrectContextBegin()
 {
-	TempImguiContext = ImGui::GetCurrentContext();
-	if (TempImguiContext != ImguiContext)
+	TemporaryImguiContext = ImGui::GetCurrentContext();
+	if (TemporaryImguiContext != ImguiContext)
 		ImGui::SetCurrentContext(ImguiContext);
 }
 
 void FEVirtualUI::EnsureCorrectContextEnd()
 {
-	if (TempImguiContext != ImguiContext)
-		ImGui::SetCurrentContext(TempImguiContext);
+	if (TemporaryImguiContext != ImguiContext)
+		ImGui::SetCurrentContext(TemporaryImguiContext);
 }
 
 void FEVirtualUI::AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback)
@@ -409,8 +402,8 @@ void FEVirtualUI::InvokeKeyInput(const int Key, const int Scancode, const int Ac
 
 	ImGuiIO& IO = ImGui::GetIO();
 	ImGuiKey ImguiKey = ImGui_ImplGlfw_KeyToImGuiKey(Key);
-    IO.AddKeyEvent(ImguiKey, (Action == GLFW_PRESS));
-    IO.SetKeyEventNativeData(ImguiKey, Key, Scancode);
+	IO.AddKeyEvent(ImguiKey, (Action == GLFW_PRESS));
+	IO.SetKeyEventNativeData(ImguiKey, Key, Scancode);
 
 	for (int i = 0; i < UserOnKeyCallbackFuncs.size(); i++)
 		UserOnKeyCallbackFuncs[i](Key, Scancode, Action, Mods);

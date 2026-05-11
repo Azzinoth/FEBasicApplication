@@ -37,7 +37,7 @@ namespace FocalEngine
 		// User Render Function
 		std::function<void(FEVirtualUI*)> UserRenderFunctionImpl;
 
-		ImGuiContext* TempImguiContext = nullptr;
+		ImGuiContext* TemporaryImguiContext = nullptr;
 		void EnsureCorrectContextBegin();
 		void EnsureCorrectContextEnd();
 

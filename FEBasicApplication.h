@@ -3,6 +3,13 @@
 #include "FEVirtualUI.h"
 #include <map>
 #include <sstream>
+#include "Backends/Platforms/FEPlatformInterface.h"
+#include "Backends/GraphicsAPIs/FEDeviceInterface.h"
+
+#if defined(FE_GRAPHICS_API_OPENGL)
+	#include "Backends/GraphicsAPIs/OpenGL/FEDeviceOpenGL.h"
+	#include "Backends/GraphicsAPIs/OpenGL/FEDeviceSurfaceOpenGL.h"
+#endif
 
 namespace FocalEngine
 {
@@ -23,13 +30,14 @@ namespace FocalEngine
 	{
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 
+		FEPlatformInterface* Platform = nullptr;
+		FEDeviceInterface* Device = nullptr;
+
 		std::vector<FEWindow*> Windows;
 		std::vector<FEVirtualUI*> VirtualUIs;
 
 		FEConsoleWindow* ConsoleWindow = nullptr;
 		static BOOL WINAPI ConsoleHandler(DWORD dwType);
-
-		void InitializeWebGPU(FEWindow* Window);
 
 		void SetWindowCallbacks(FEWindow* Window);
 		void InitializeWindow(FEWindow* Window);
@@ -49,6 +57,7 @@ namespace FocalEngine
 		std::vector<std::function<void()>> UserOnTerminateCallbackFunc;
 		bool bHasToTerminate = false;
 		bool bIsReadyToTerminate = false;
+		bool bDeviceInitialized = false;
 		void OnTerminate();
 
 		std::vector<std::function<void()>> UserOnCloseCallbackFuncs;
@@ -110,6 +119,7 @@ namespace FocalEngine
 		std::string GetClipboardText();
 
 		std::vector<MonitorInfo> GetMonitors();
+		MonitorInfo GetMonitorContainingWindow(FEWindow* Window);
 		size_t MonitorInfoToMonitorIndex(MonitorInfo* Monitor);
 
 		std::vector<CommandLineAction> ParseCommandLine(std::string CommandLine, const std::string ActionPrefix = "-", const std::string SettingEqualizer = "=");

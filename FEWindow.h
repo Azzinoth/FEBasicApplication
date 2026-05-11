@@ -4,41 +4,26 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
-
-#ifdef USE_DAWN_WEBGPU
-#include "imgui/imgui_impl_wgpu.h"
-#else
-#include "GL/glew.h"
-#include "GL/wglew.h"
-#include "imgui/imgui_impl_opengl3.h"
-#include <GL/GL.h>
-#endif
 #include "imgui/imgui_internal.h"
 
+#include "Backends/Platforms/FEPlatformWindowInterface.h"
+#include "Backends/GraphicsAPIs/FEDeviceSurfaceInterface.h"
+#include "Backends/FEMonitorInfo.h"
+
+#include "GL/glew.h"
 #include <GLFW/glfw3.h>
 
 namespace FocalEngine
 {
-	struct MonitorInfo
-	{
-		GLFWmonitor* Monitor = nullptr;
-		std::string Name;
-		int VirtualX = 0;
-		int VirtualY = 0;
-		const GLFWvidmode* VideoMode;
-	};
-
 	class FEWindow
 	{
 		friend class FEBasicApplication;
-		GLFWwindow* GLFWWindow = nullptr;
+
+		FEPlatformWindowInterface* PlatformWindow = nullptr;
+		FEDeviceSurfaceInterface* DeviceSurface = nullptr;
+
 		ImGuiContext* ImguiContext = nullptr;
-#ifdef USE_DAWN_WEBGPU
-		static wgpu::Device DawnDevice;
-		wgpu::Surface Surface;
-#endif
 
 		std::string ID;
 		std::string Title = "FEWindow";
@@ -48,9 +33,8 @@ namespace FocalEngine
 
 		bool bDefaultDockspaceEnabled = false;
 		ImGuiID DefaultDockspaceID = 0;
-		
-		FEWindow(int Width = 1280, int Height = 720, std::string WindowTitle = "FEWindow");
-		FEWindow(MonitorInfo* Monitor);
+
+		FEWindow() = default;
 
 		void InitializeImGui();
 		void TerminateImGui();
@@ -73,8 +57,7 @@ namespace FocalEngine
 		// User Render Function
 		std::function<void()> UserRenderFunctionImpl;
 
-		ImGuiContext* TempImguiContext = nullptr;
-		GLFWwindow* TempGLFWContext = nullptr;
+		ImGuiContext* TemporaryImguiContext = nullptr;
 		void EnsureCorrectContextBegin();
 		void EnsureCorrectContextEnd();
 
@@ -121,6 +104,8 @@ namespace FocalEngine
 		bool IsInFocus() const;
 		void Minimize() const;
 		void Restore() const;
+
+		void SetClearColor(float R, float G, float B, float A);
 
 		void EnableDefaultDockspace();
 		bool HasDefaultDockspace() const;

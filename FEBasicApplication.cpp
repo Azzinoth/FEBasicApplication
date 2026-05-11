@@ -8,19 +8,18 @@ extern "C" __declspec(dllexport) void* GetBasicApplication()
 }
 #endif
 
-#ifdef USE_DAWN_WEBGPU
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-#endif
-
 FEBasicApplication::FEBasicApplication()
 {
-	glfwInit();
-#ifdef USE_DAWN_WEBGPU
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-#endif
+	Platform = CreatePlatform();
+	if (!Platform->Initialize())
+		return;
 
-	glfwSetMonitorCallback(MonitorCallback);
+	Device = CreateDevice();
+
+	Platform->SetMonitorCallback([](void* NativeMonitor, int Event) {
+		FEBasicApplication::MonitorCallback(static_cast<GLFWmonitor*>(NativeMonitor), Event);
+	});
+
 	IMGUI_CHECKVERSION();
 
 	// Set the console control handler to intercept the close event
@@ -41,86 +40,6 @@ FEBasicApplication::~FEBasicApplication()
 }
 
 FE_DEFINE_VERSION_INFO(FE_BASIC_APPLICATION_)
-
-#ifdef USE_DAWN_WEBGPU
-void FEBasicApplication::InitializeWebGPU(FEWindow* Window)
-{
-	// 1. Create instance
-	wgpu::InstanceDescriptor instanceDesc{};
-	wgpu::Instance instance = wgpu::CreateInstance(&instanceDesc);
-
-	// 2. Create surface from GLFW window
-	HWND hwnd = glfwGetWin32Window(Window->GetGlfwWindow());
-	HINSTANCE hinstance = GetModuleHandle(nullptr);
-
-	wgpu::SurfaceSourceWindowsHWND windowDesc{};
-	windowDesc.hwnd = hwnd;
-	windowDesc.hinstance = hinstance;
-
-	wgpu::SurfaceDescriptor surfaceDesc{};
-	surfaceDesc.nextInChain = &windowDesc;
-	Window->Surface = instance.CreateSurface(&surfaceDesc);
-
-	// 3. Request adapter
-	wgpu::RequestAdapterOptions adapterOpts{};
-	adapterOpts.compatibleSurface = Window->Surface;
-	adapterOpts.powerPreference = wgpu::PowerPreference::HighPerformance;
-
-	wgpu::Adapter adapter;
-	instance.RequestAdapter(
-		&adapterOpts,
-		wgpu::CallbackMode::AllowSpontaneous,
-		[&adapter](wgpu::RequestAdapterStatus status, wgpu::Adapter result, const char* message) {
-			if (status != wgpu::RequestAdapterStatus::Success) {
-				MessageBoxA(nullptr, message ? message : "Unknown error", "RequestAdapter failed", MB_OK);
-				return;
-			}
-			adapter = std::move(result);
-	});
-
-	while (!adapter) {
-		instance.ProcessEvents();
-	}
-
-	if (!adapter) {
-		MessageBoxA(nullptr, "Adapter is null after RequestAdapter", "Error", MB_OK);
-		return;
-	}
-
-	// 4. Request device
-	wgpu::DeviceDescriptor deviceDesc{};
-	//wgpu::Device device;
-	adapter.RequestDevice(
-		&deviceDesc,
-		wgpu::CallbackMode::AllowSpontaneous,
-		[](wgpu::RequestDeviceStatus status, wgpu::Device result, const char* message) {
-			if (status == wgpu::RequestDeviceStatus::Success)
-				FEWindow::DawnDevice = std::move(result);
-	});
-
-	// Pump events until device is ready
-	while (!FEWindow::DawnDevice) {
-		instance.ProcessEvents();
-	}
-
-	if (!FEWindow::DawnDevice) {
-		MessageBoxA(nullptr, "Device is null after RequestDevice", "Error", MB_OK);
-		return;
-	}
-
-	// 5. Configure surface
-	wgpu::SurfaceCapabilities capabilities;
-	Window->Surface.GetCapabilities(adapter, &capabilities);
-
-	wgpu::SurfaceConfiguration config{};
-	config.device = FEWindow::DawnDevice;
-	config.format = capabilities.formats[0]; // first supported format
-	config.width = Window->GetWidth();
-	config.height = Window->GetHeight();
-	config.presentMode = wgpu::PresentMode::Fifo;
-	Window->Surface.Configure(&config);
-}
-#endif
 
 std::string FEBasicApplication::GetVersion()
 {
@@ -169,22 +88,42 @@ void FEBasicApplication::InitializeWindow(FEWindow* Window)
 	if (Window == nullptr)
 		return;
 
-#ifdef USE_DAWN_WEBGPU
-	InitializeWebGPU(Window);
-#else
-	glfwMakeContextCurrent(Window->GetGlfwWindow());
-	glewInit();
-#endif
-
-	SetWindowCallbacks(Window);
 	Window->InitializeImGui();
+	SetWindowCallbacks(Window);
 }
 
 FEWindow* FEBasicApplication::AddWindow(const int Width, const int Height, std::string WindowTitle)
 {
-	FEWindow* NewWindow = new FEWindow(Width, Height, WindowTitle);
-	if (NewWindow->GetGlfwWindow() == nullptr)
+	FEPlatformWindowInterface* NewPlatformWindow = Platform->OpenWindow(Width, Height, WindowTitle, Device->GetGraphicsAPI());
+	if (NewPlatformWindow == nullptr)
 		return nullptr;
+
+	if (NewPlatformWindow->GetNativeHandle() == nullptr)
+	{
+		delete NewPlatformWindow;
+		return nullptr;
+	}
+
+	if (!bDeviceInitialized)
+	{
+		if (!Device->Initialize(NewPlatformWindow))
+		{
+			delete NewPlatformWindow;
+			return nullptr;
+		}
+		bDeviceInitialized = true;
+	}
+
+	FEDeviceSurfaceInterface* NewDeviceSurface = Device->CreateSurface(NewPlatformWindow);
+	if (NewDeviceSurface == nullptr)
+	{
+		delete NewPlatformWindow;
+		return nullptr;
+	}
+
+	FEWindow* NewWindow = new FEWindow();
+	NewWindow->PlatformWindow = NewPlatformWindow;
+	NewWindow->DeviceSurface = NewDeviceSurface;
 
 	Windows.push_back(NewWindow);
 	InitializeWindow(NewWindow);
@@ -203,9 +142,36 @@ FEWindow* FEBasicApplication::AddFullScreenWindow(size_t MonitorIndex)
 
 FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
 {
-	FEWindow* NewWindow = new FEWindow(Monitor);
-	if (NewWindow->GetGlfwWindow() == nullptr)
+	FEPlatformWindowInterface* NewPlatformWindow = Platform->OpenFullscreenWindow(Monitor, Device->GetGraphicsAPI());
+	if (NewPlatformWindow == nullptr)
 		return nullptr;
+
+	if (NewPlatformWindow->GetNativeHandle() == nullptr)
+	{
+		delete NewPlatformWindow;
+		return nullptr;
+	}
+
+	if (!bDeviceInitialized)
+	{
+		if (!Device->Initialize(NewPlatformWindow))
+		{
+			delete NewPlatformWindow;
+			return nullptr;
+		}
+		bDeviceInitialized = true;
+	}
+
+	FEDeviceSurfaceInterface* NewDeviceSurface = Device->CreateSurface(NewPlatformWindow);
+	if (NewDeviceSurface == nullptr)
+	{
+		delete NewPlatformWindow;
+		return nullptr;
+	}
+
+	FEWindow* NewWindow = new FEWindow();
+	NewWindow->PlatformWindow = NewPlatformWindow;
+	NewWindow->DeviceSurface = NewDeviceSurface;
 
 	Windows.push_back(NewWindow);
 	InitializeWindow(NewWindow);
@@ -274,7 +240,7 @@ void FEBasicApplication::BeginFrame()
 
 void FEBasicApplication::EndFrame() const
 {
-	glfwPollEvents();
+	Platform->PollEvents();
 
 	if (APPLICATION.bHasToTerminate)
 	{
@@ -424,49 +390,18 @@ std::string FEBasicApplication::GetUniqueHexID()
 
 bool FEBasicApplication::SetClipboardText(const std::string Text)
 {
-	if (OpenClipboard(nullptr))
-	{
-		EmptyClipboard();
+	if (Platform == nullptr)
+		return false;
 
-		const HGLOBAL MemoryHandle = GlobalAlloc(GMEM_MOVEABLE, Text.size() + 1);
-		if (MemoryHandle == nullptr)
-		{
-			LOG.Add("Failed to allocate memory for clipboard", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
-			CloseClipboard();
-			return false;
-		}
-
-		memcpy(GlobalLock(MemoryHandle), Text.c_str(), Text.size() + 1);
-		GlobalUnlock(MemoryHandle);
-
-		SetClipboardData(CF_TEXT, MemoryHandle);
-
-		CloseClipboard();
-		return true;
-	}
-
-	return false;
+	return Platform->SetClipboardText(Text);
 }
 
 std::string FEBasicApplication::GetClipboardText()
 {
-	std::string Result;
+	if (Platform == nullptr)
+		return std::string();
 
-	if (OpenClipboard(nullptr))
-	{
-		HANDLE ClipboardData = nullptr;
-		ClipboardData = GetClipboardData(CF_TEXT);
-		if (ClipboardData != nullptr)
-		{
-			const char* ClipboardText = static_cast<char*>(GlobalLock(ClipboardData));
-			if (ClipboardText != nullptr)
-				Result = ClipboardText;
-		}
-
-		CloseClipboard();
-	}
-
-	return Result;
+	return Platform->GetClipboardText();
 }
 
 BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
@@ -520,7 +455,13 @@ void FEBasicApplication::OnTerminate()
 	{
 		// Post a message to the console window to close it
 		PostMessage(ConsoleWindow->GetHandle(), WM_CLOSE, 0, 0);
+		delete ConsoleWindow;
+		ConsoleWindow = nullptr;
 	}
+
+	for (FEVirtualUI* VirtualUI : VirtualUIs)
+		delete VirtualUI;
+	VirtualUIs.clear();
 
 	for (size_t i = 0; i < Windows.size(); i++)
 	{
@@ -531,7 +472,21 @@ void FEBasicApplication::OnTerminate()
 	}
 	Windows.clear();
 
-	glfwTerminate();
+	UserOnTerminateCallbackFunc.clear();
+
+	if (Device != nullptr)
+	{
+		Device->Shutdown();
+		delete Device;
+		Device = nullptr;
+	}
+
+	if (Platform != nullptr)
+	{
+		Platform->Shutdown();
+		delete Platform;
+		Platform = nullptr;
+	}
 
 	bIsReadyToTerminate = true;
 }
@@ -669,30 +624,15 @@ bool FEBasicApplication::HaveAnyWindow() const
 
 std::vector<MonitorInfo> FEBasicApplication::GetMonitors()
 {
-	std::vector<MonitorInfo> Result;
+	return Platform->GetMonitors();
+}
 
-	int MonitorCount;
-	GLFWmonitor** Monitors = glfwGetMonitors(&MonitorCount);
+MonitorInfo FEBasicApplication::GetMonitorContainingWindow(FEWindow* Window)
+{
+	if (Window == nullptr || Window->PlatformWindow == nullptr)
+		return MonitorInfo();
 
-	if (Monitors == nullptr || MonitorCount == 0)
-		return Result;
-
-	for (int i = 0; i < MonitorCount; i++)
-	{
-		if (Monitors[i] != nullptr)
-		{
-			MonitorInfo Info;
-
-			Info.Monitor = Monitors[i];
-			Info.VideoMode = glfwGetVideoMode(Monitors[i]);
-			Info.Name = glfwGetMonitorName(Monitors[i]);
-			glfwGetMonitorPos(Monitors[i], &Info.VirtualX, &Info.VirtualY);
-
-			Result.push_back(Info);
-		}
-	}
-
-	return Result;
+	return Platform->GetMonitorContainingWindow(Window->PlatformWindow);
 }
 
 size_t FEBasicApplication::MonitorInfoToMonitorIndex(MonitorInfo* Monitor)

@@ -1,51 +1,14 @@
 #include "FEWindow.h"
+#include "FEBasicApplication.h"
 using namespace FocalEngine;
-
-#ifdef USE_DAWN_WEBGPU
-wgpu::Device FEWindow::DawnDevice;
-#endif
-
-FEWindow::FEWindow(int Width, int Height, std::string WindowTitle)
-{
-	GLFWWindow = glfwCreateWindow(Width, Height, WindowTitle.c_str(), nullptr, nullptr);
-}
-
-FEWindow::FEWindow(MonitorInfo* MonitorInfoToUse)
-{
-	glfwWindowHint(GLFW_RED_BITS, MonitorInfoToUse->VideoMode->redBits);
-	glfwWindowHint(GLFW_GREEN_BITS, MonitorInfoToUse->VideoMode->greenBits);
-	glfwWindowHint(GLFW_BLUE_BITS, MonitorInfoToUse->VideoMode->blueBits);
-	glfwWindowHint(GLFW_REFRESH_RATE, MonitorInfoToUse->VideoMode->refreshRate);
-	glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-
-	GLFWWindow = glfwCreateWindow(MonitorInfoToUse->VideoMode->width, MonitorInfoToUse->VideoMode->height, "", MonitorInfoToUse->Monitor, nullptr);
-	glfwSetWindowMonitor(GLFWWindow, MonitorInfoToUse->Monitor, 0, 0, MonitorInfoToUse->VideoMode->width, MonitorInfoToUse->VideoMode->height, MonitorInfoToUse->VideoMode->refreshRate);
-
-	glfwDefaultWindowHints();
-}
 
 void FEWindow::InitializeImGui()
 {
 	ImguiContext = ImGui::CreateContext();
 	ImGui::SetCurrentContext(ImguiContext);
 
-#ifdef USE_DAWN_WEBGPU
-	// We are asking ImGui not to install callbacks
-	// We will do it manually because with multiple contexts we need to manage it manually
-	ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
-
-	ImGui_ImplWGPU_InitInfo initInfo{};
-	initInfo.Device = FEWindow::DawnDevice.Get();
-	initInfo.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
-	initInfo.DepthStencilFormat = WGPUTextureFormat_Undefined;
-	initInfo.NumFramesInFlight = 3;
-	ImGui_ImplWGPU_Init(&initInfo);
-#else
-	// We are asking ImGui not to install callbacks
-	// We will do it manually because with multiple contexts we need to manage it manuallye
-	ImGui_ImplGlfw_InitForOpenGL(GLFWWindow, false);
-	ImGui_ImplOpenGL3_Init("#version 410");
-#endif
+	PlatformWindow->ImGuiPlatformInit(ImguiContext);
+	DeviceSurface->ImGuiInit();
 }
 
 ImGuiContext* FEWindow::GetImGuiContext() const
@@ -56,21 +19,24 @@ ImGuiContext* FEWindow::GetImGuiContext() const
 void FEWindow::TerminateImGui()
 {
 	ImGui::SetCurrentContext(ImguiContext);
-#ifdef USE_DAWN_WEBGPU
-	ImGui_ImplWGPU_Shutdown();
-#else
-	ImGui_ImplOpenGL3_Shutdown();
-#endif
-	ImGui_ImplGlfw_Shutdown();
+
+	DeviceSurface->ImGuiShutdown();
+	PlatformWindow->ImGuiPlatformShutdown();
+
 	ImGui::DestroyContext(ImguiContext);
 	ImGui::SetCurrentContext(nullptr);
 }
 
 FEWindow::~FEWindow()
 {
-	glfwMakeContextCurrent(GLFWWindow);
+	if (PlatformWindow != nullptr)
+		PlatformWindow->MakeContextCurrent();
 	TerminateImGui();
-	glfwDestroyWindow(GLFWWindow);
+
+	delete DeviceSurface;
+	DeviceSurface = nullptr;
+	delete PlatformWindow;
+	PlatformWindow = nullptr;
 }
 
 std::string FEWindow::GetTitle() const
@@ -81,12 +47,12 @@ std::string FEWindow::GetTitle() const
 void FEWindow::SetTitle(const std::string NewValue)
 {
 	Title = NewValue;
-	glfwSetWindowTitle(GLFWWindow, Title.c_str());
+	PlatformWindow->SetTitle(Title);
 }
 
 GLFWwindow* FEWindow::GetGlfwWindow() const
 {
-	return GLFWWindow;
+	return static_cast<GLFWwindow*>(PlatformWindow->GetNativeHandle());
 }
 
 std::function<void()> FEWindow::GetRenderFunction()
@@ -106,20 +72,13 @@ void FEWindow::ClearRenderFunction()
 
 void FEWindow::BeginFrame()
 {
-#ifdef USE_DAWN_WEBGPU
-
-#else
-	glfwMakeContextCurrent(GLFWWindow);
-#endif
+	PlatformWindow->MakeContextCurrent();
 	ImGui::SetCurrentContext(ImguiContext);
 
 	ImGui::GetIO().DeltaTime = 1.0f / 60.0f;
-#ifdef USE_DAWN_WEBGPU
-	ImGui_ImplWGPU_NewFrame();
-#else
-	ImGui_ImplOpenGL3_NewFrame();
-#endif
-	ImGui_ImplGlfw_NewFrame();
+	DeviceSurface->BeginFrame();
+	DeviceSurface->ImGuiNewFrame();
+	PlatformWindow->ImGuiPlatformNewFrame();
 	ImGui::NewFrame();
 
 	if (bDefaultDockspaceEnabled)
@@ -135,43 +94,19 @@ void FEWindow::Render()
 void FEWindow::EndFrame()
 {
 	ImGui::Render();
-#ifdef USE_DAWN_WEBGPU
-	// Get the current texture from the surface
-	wgpu::SurfaceTexture surfaceTexture;
-	Surface.GetCurrentTexture(&surfaceTexture);
-
-	wgpu::TextureViewDescriptor viewDesc{};
-	wgpu::TextureView targetView = surfaceTexture.texture.CreateView(&viewDesc);
-
-	wgpu::RenderPassColorAttachment colorAttachment{};
-	colorAttachment.view = targetView;
-	colorAttachment.loadOp = wgpu::LoadOp::Clear;
-	colorAttachment.storeOp = wgpu::StoreOp::Store;
-	colorAttachment.clearValue = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-	wgpu::RenderPassDescriptor renderPassDesc{};
-	renderPassDesc.colorAttachmentCount = 1;
-	renderPassDesc.colorAttachments = &colorAttachment;
-
-	wgpu::CommandEncoder encoder = FEWindow::DawnDevice.CreateCommandEncoder();
-	wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPassDesc);
-
-	ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), pass.Get());
-
-	pass.End();
-	wgpu::CommandBuffer commands = encoder.Finish();
-	FEWindow::DawnDevice.GetQueue().Submit(1, &commands);
-
-	Surface.Present();
-#else
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	glfwSwapBuffers(GLFWWindow);
-#endif
+	DeviceSurface->ImGuiRenderDrawData();
+	DeviceSurface->EndFrame();
+	PlatformWindow->SwapBuffers();
 }
 
 bool FEWindow::IsInFocus() const
 {
-	return glfwGetWindowAttrib(GLFWWindow, GLFW_FOCUSED);
+	return PlatformWindow->IsInFocus();
+}
+
+void FEWindow::SetClearColor(float R, float G, float B, float A)
+{
+	DeviceSurface->SetClearColor(R, G, B, A);
 }
 
 void FEWindow::EnableDefaultDockspace()
@@ -191,22 +126,25 @@ ImGuiID FEWindow::GetDefaultDockspaceID() const
 
 void FEWindow::EnsureCorrectContextBegin()
 {
-	TempImguiContext = ImGui::GetCurrentContext();
-	if (TempImguiContext != ImguiContext)
+	if (ImguiContext == nullptr)
+		return;
+
+	TemporaryImguiContext = ImGui::GetCurrentContext();
+	if (TemporaryImguiContext != ImguiContext)
 		ImGui::SetCurrentContext(ImguiContext);
 
-	TempGLFWContext = glfwGetCurrentContext();
-	if (TempGLFWContext != GLFWWindow)
-		glfwMakeContextCurrent(GLFWWindow);
+	PlatformWindow->PushContext();
 }
 
 void FEWindow::EnsureCorrectContextEnd()
 {
-	if (TempImguiContext != ImguiContext)
-		ImGui::SetCurrentContext(TempImguiContext);
+	if (ImguiContext == nullptr)
+		return;
 
-	if (TempGLFWContext != GLFWWindow)
-		glfwMakeContextCurrent(TempGLFWContext);
+	if (TemporaryImguiContext != ImguiContext)
+		ImGui::SetCurrentContext(TemporaryImguiContext);
+
+	PlatformWindow->PopContext();
 }
 
 std::string FEWindow::AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback)
@@ -221,7 +159,7 @@ void FEWindow::InvokeMonitorCallback(GLFWmonitor* Monitor, int Event)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_MonitorCallback(Monitor, Event);
+	PlatformWindow->ImGuiForwardMonitor(Monitor, Event);
 
 	for (int i = 0; i < UserOnMonitorCallbackFuncs.size(); i++)
 		UserOnMonitorCallbackFuncs[i].second(Monitor, Event);
@@ -241,7 +179,7 @@ void FEWindow::InvokeOnFocusCallback(int Focused)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_WindowFocusCallback(GLFWWindow, Focused);
+	PlatformWindow->ImGuiForwardFocus(Focused);
 
 	for (int i = 0; i < UserOnFocusCallbackFuncs.size(); i++)
 		UserOnFocusCallbackFuncs[i].second(Focused);
@@ -281,12 +219,7 @@ void FEWindow::InvokeResizeCallback(int Width, int Height)
 		return;
 	}
 	
-#ifdef USE_DAWN_WEBGPU
-	// FE_FIX_ME: WebGPU equivalent
-#else
-	glViewport(0, 0, Width, Height);
-#endif
-
+	DeviceSurface->Resize(Width, Height);
 	ImGui::GetIO().DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 
 	for (int i = 0; i < UserOnResizeCallbackFuncs.size(); i++)
@@ -307,7 +240,7 @@ void FEWindow::InvokeMouseEnterCallback(int Entered)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_CursorEnterCallback(GLFWWindow, Entered);
+	PlatformWindow->ImGuiForwardMouseEnter(Entered);
 
 	for (int i = 0; i < UserOnMouseEnterCallbackFuncs.size(); i++)
 		UserOnMouseEnterCallbackFuncs[i].second(Entered);
@@ -327,7 +260,7 @@ void FEWindow::InvokeMouseButtonCallback(const int Button, const int Action, con
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_MouseButtonCallback(GLFWWindow, Button, Action, Mods);
+	PlatformWindow->ImGuiForwardMouseButton(Button, Action, Mods);
 
 	for (int i = 0; i < UserOnMouseButtonCallbackFuncs.size(); i++)
 		UserOnMouseButtonCallbackFuncs[i].second(Button, Action, Mods);
@@ -347,7 +280,7 @@ void FEWindow::InvokeMouseMoveCallback(const double Xpos, const double Ypos)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_CursorPosCallback(GLFWWindow, Xpos, Ypos);
+	PlatformWindow->ImGuiForwardMouseMove(Xpos, Ypos);
 
 	for (int i = 0; i < UserOnMouseMoveCallbackFuncs.size(); i++)
 		UserOnMouseMoveCallbackFuncs[i].second(Xpos, Ypos);
@@ -367,7 +300,7 @@ void FEWindow::InvokeCharCallback(unsigned int Codepoint)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_CharCallback(GLFWWindow, Codepoint);
+	PlatformWindow->ImGuiForwardChar(Codepoint);
 
 	for (int i = 0; i < UserOnCharCallbackFuncs.size(); i++)
 		UserOnCharCallbackFuncs[i].second(Codepoint);
@@ -387,7 +320,7 @@ void FEWindow::InvokeKeyCallback(const int Key, const int Scancode, const int Ac
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_KeyCallback(GLFWWindow, Key, Scancode, Action, Mods);
+	PlatformWindow->ImGuiForwardKey(Key, Scancode, Action, Mods);
 
 	for (int i = 0; i < UserOnKeyCallbackFuncs.size(); i++)
 		UserOnKeyCallbackFuncs[i].second(Key, Scancode, Action, Mods);
@@ -425,7 +358,7 @@ void FEWindow::InvokeScrollCallback(const double Xoffset, const double Yoffset)
 {
 	EnsureCorrectContextBegin();
 
-	ImGui_ImplGlfw_ScrollCallback(GLFWWindow, Xoffset, Yoffset);
+	PlatformWindow->ImGuiForwardScroll(Xoffset, Yoffset);
 
 	for (int i = 0; i < UserOnScrollCallbackFuncs.size(); i++)
 		UserOnScrollCallbackFuncs[i].second(Xoffset, Yoffset);
@@ -435,55 +368,55 @@ void FEWindow::InvokeScrollCallback(const double Xoffset, const double Yoffset)
 
 void FEWindow::GetPosition(int* Xpos, int* Ypos) const
 {
-	glfwGetWindowPos(GLFWWindow, Xpos, Ypos);
+	PlatformWindow->GetPosition(Xpos, Ypos);
 }
 
 int FEWindow::GetXPosition() const
 {
 	int X, Y;
-	glfwGetWindowPos(GLFWWindow, &X, &Y);
+	PlatformWindow->GetPosition(&X, &Y);
 	return X;
 }
 
 int FEWindow::GetYPosition() const
 {
 	int X, Y;
-	glfwGetWindowPos(GLFWWindow, &X, &Y);
+	PlatformWindow->GetPosition(&X, &Y);
 	return Y;
 }
 
 void FEWindow::GetSize(int* Width, int* Height) const
 {
-	glfwGetWindowSize(GLFWWindow, Width, Height);
+	PlatformWindow->GetSize(Width, Height);
 }
 
 void FEWindow::SetSize(int NewWidth, int NewHeight)
 {
-	glfwSetWindowSize(GLFWWindow, NewWidth, NewHeight);
+	PlatformWindow->SetSize(NewWidth, NewHeight);
 }
 
 int FEWindow::GetWidth() const
 {
 	int Width, Height;
-	glfwGetWindowSize(GLFWWindow, &Width, &Height);
+	PlatformWindow->GetSize(&Width, &Height);
 	return Width;
 }
 
 int FEWindow::GetHeight() const
 {
 	int Width, Height;
-	glfwGetWindowSize(GLFWWindow, &Width, &Height);
+	PlatformWindow->GetSize(&Width, &Height);
 	return Height;
 }
 
 void FEWindow::Minimize() const
 {
-	glfwIconifyWindow(GLFWWindow);
+	PlatformWindow->Minimize();
 }
 
 void FEWindow::Restore() const
 {
-	glfwRestoreWindow(GLFWWindow);
+	PlatformWindow->Restore();
 }
 
 std::string FEWindow::GetID() const
@@ -519,35 +452,7 @@ void FEWindow::Terminate()
 
 MonitorInfo FEWindow::DetermineCurrentMonitor()
 {
-	int X, Y, Width, Height;
-	glfwGetWindowPos(GLFWWindow, &X, &Y);
-	glfwGetWindowSize(GLFWWindow, &Width, &Height);
-
-	int MonitorsCount;
-	GLFWmonitor** Monitors = glfwGetMonitors(&MonitorsCount);
-
-	MonitorInfo BestMonitor;
-	int BestArea = 0;
-
-	for (int i = 0; i < MonitorsCount; i++)
-	{
-		int MonitorX, MonitorY, MonitorWidth, MonitorHeight;
-		glfwGetMonitorWorkarea(Monitors[i], &MonitorX, &MonitorY, &MonitorWidth, &MonitorHeight);
-
-		int MinX = max(X, MonitorX);
-		int MinY = max(Y, MonitorY);
-		int MaxX = min(X + Width, MonitorX + MonitorWidth);
-		int MaxY = min(Y + Height, MonitorY + MonitorHeight);
-
-		int Area = max(0, MaxX - MinX) * max(0, MaxY - MinY);
-
-		if (Area > BestArea)
-		{
-			BestArea = Area;
-			BestMonitor.Monitor = Monitors[i];
-			BestMonitor.VideoMode = glfwGetVideoMode(Monitors[i]);
-		}
-	}
+	MonitorInfo BestMonitor = APPLICATION.GetMonitorContainingWindow(this);
 
 	return BestMonitor;
 }
