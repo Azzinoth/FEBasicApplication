@@ -741,7 +741,7 @@ FEVirtualUI* FEBasicApplication::AddVirtualUI(unsigned int FrameBuffer, int Widt
 	if (Width <= 0 || Height <= 0)
 		return nullptr;
 
-	if (FrameBuffer == unsigned int(-1))
+	if (FrameBuffer == static_cast<unsigned int>(-1))
 		return nullptr;
 
 	FEVirtualUI* NewVirtualUI = new FEVirtualUI(Width, Height, Name);
