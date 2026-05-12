@@ -347,12 +347,22 @@ if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL" AND NOT USE_STATIC_RUNTIME)
     )
 endif()
 
+set(FE_BASIC_APPLICATION_VERSION_ARGS
+    -D PROJECT_VERSION_PREFIX=FE_BASIC_APPLICATION_
+    -D PROJECT_VERSION_MAJOR=0
+    -D PROJECT_VERSION_MINOR=4
+    -D PROJECT_VERSION_PATCH=4
+    -D PROJECT_VERSION_DIR=${CMAKE_CURRENT_SOURCE_DIR}/VersionInfo
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/VersionInfo/UpdateProjectVersion.cmake
+)
+
+# Generate version header at configure time so it exists before any compilation begins.
+# Observed with the Emscripten + Ninja build: dependent targets get compiled in parallel
+# with this library's sources and race the PRE_BUILD step, which fails with "FE_BASIC_APPLICATION_Version.h not found" on a clean build.
+execute_process(
+    COMMAND ${CMAKE_COMMAND} ${FE_BASIC_APPLICATION_VERSION_ARGS}
+)
+
 add_custom_command(TARGET FEBasicApplication PRE_BUILD
-    COMMAND ${CMAKE_COMMAND}
-        -D PROJECT_VERSION_PREFIX=FE_BASIC_APPLICATION_
-        -D PROJECT_VERSION_MAJOR=0
-        -D PROJECT_VERSION_MINOR=4
-        -D PROJECT_VERSION_PATCH=4
-        -D PROJECT_VERSION_DIR=${CMAKE_CURRENT_SOURCE_DIR}/VersionInfo
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/VersionInfo/UpdateProjectVersion.cmake
+    COMMAND ${CMAKE_COMMAND} ${FE_BASIC_APPLICATION_VERSION_ARGS}
 )
