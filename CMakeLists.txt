@@ -16,6 +16,7 @@ endif()
 
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
+option(FE_BASIC_APPLICATION_ENABLE_TESTS "Build the FEBasicApplicationTests executable" OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(MSVC)
@@ -151,12 +152,54 @@ if(USE_STATIC_RUNTIME)
     add_definitions(-DGLEW_STATIC)
 endif()
 
-target_link_libraries(FEBasicApplication 
+target_link_libraries(FEBasicApplication
     PRIVATE
 		${GLEW_LIBRARY}
 		${GLFW_LIBRARY}
 		opengl32.lib
 )
+
+# Opt-in GoogleTest target for downstream projects.
+# Consumers that want tests:
+#   target_link_libraries(YourApp PRIVATE FocalEngine::GTest)
+# This intentionally does NOT include gtest_main, consumers keep their own entry point (WinMain/main).
+if(NOT TARGET FocalEngine_GTest)
+	add_library(FocalEngine_GTest INTERFACE)
+	if(BUILD_SHARED_LIBS)
+		target_link_libraries(FocalEngine_GTest INTERFACE
+			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/Dynamic/gtest.lib
+			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/Dynamic/gtest.lib
+		)
+	else()
+		target_link_libraries(FocalEngine_GTest INTERFACE
+			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/gtest.lib
+			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/gtest.lib
+		)
+	endif()
+	target_include_directories(FocalEngine_GTest INTERFACE
+		${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/include
+	)
+	add_library(FocalEngine::GTest ALIAS FocalEngine_GTest)
+endif()
+
+# Separate test executable for FEBasicApplication.
+if(FE_BASIC_APPLICATION_ENABLE_TESTS)
+	file(GLOB BasicApplicationTests_SRC
+		"Tests/RunAllTests.cpp"
+		"Tests/FEThreadPoolTests.h"
+		"Tests/FEThreadPoolTests.cpp"
+	)
+
+	add_executable(FEBasicApplicationTests ${BasicApplicationTests_SRC})
+
+	target_link_libraries(FEBasicApplicationTests
+		PRIVATE
+			FEBasicApplication
+			FocalEngine::GTest
+	)
+
+	source_group("Source Files" FILES ${BasicApplicationTests_SRC})
+endif()
 
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
@@ -164,8 +207,12 @@ source_group("Source Files/SubSystems/Profiling" FILES ${BasicApplicationProfili
 # *************** THIRD_PARTY ***************
 source_group("Source Files/ThirdParty/imgui" FILES ${imgui_SRC})
 
-# set the startup project
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplication)
+# set the startup project (prefer the test exe when tests are enabled, so F5 runs them)
+if(FE_BASIC_APPLICATION_ENABLE_TESTS)
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplicationTests)
+else()
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplication)
+endif()
 
 set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include)
 set(BASICAPP_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)

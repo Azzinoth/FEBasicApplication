@@ -79,12 +79,11 @@ bool JobThread::AssignJob(const FEUnexecutedJob* NewJob)
 
 	Job = NewJob->Job;
 	CurrentCallBack = NewJob->CallBack;
-
 	delete NewJob;
 
-	bHaveNewJob = true;
 	bJobFinished = false;
 	bJobCollected = false;
+	bHaveNewJob = true;
 
 	return true;
 }
