@@ -34,13 +34,7 @@ void JobThread::ExecuteJob()
 		bHaveNewJob = false;
 
 		if (Job != nullptr)
-		{
 			Job(CurrentInputData, CurrentOutputData);
-		}
-		else
-		{
-			bJobCollected = true;
-		}
 
 		bJobFinished = true;
 
@@ -91,6 +85,7 @@ bool JobThread::AssignJob(const FEUnexecutedJob* NewJob)
 DedicatedJobThread::DedicatedJobThread()
 {
 	ThreadID = UNIQUE_ID.GetUniqueHexID();
+	bShutdownRequested = false;
 }
 
 DedicatedJobThread::~DedicatedJobThread() {}
@@ -123,6 +118,11 @@ FEThreadPool::~FEThreadPool()
 
 bool FEThreadPool::IsAnyThreadHaveActiveJob() const
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
+	if (!JobsList.empty())
+		return true;
+
 	for (size_t i = 0; i < Threads.size(); i++)
 	{
 		if (!Threads[i]->IsJobCollected())
@@ -134,6 +134,8 @@ bool FEThreadPool::IsAnyThreadHaveActiveJob() const
 
 bool FEThreadPool::SetConcurrentThreadCount(size_t NewValue)
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	if (NewValue > FE_MAX_CONCURRENT_THREADS)
 		NewValue = FE_MAX_CONCURRENT_THREADS;
 
@@ -151,6 +153,8 @@ bool FEThreadPool::SetConcurrentThreadCount(size_t NewValue)
 
 void FEThreadPool::Execute(const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	FEUnexecutedJob* NewJob = new FEUnexecutedJob();
 	NewJob->Job = Job;
 	NewJob->InputData = InputData;
@@ -181,6 +185,8 @@ void FEThreadPool::CollectJob(JobThread* FromThread)
 
 void FEThreadPool::Update()
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	for (size_t i = 0; i < Threads.size(); i++)
 	{
 		if (Threads[i]->IsJobFinished() && !Threads[i]->IsJobCollected())
@@ -217,17 +223,28 @@ void FEThreadPool::Update()
 
 	for (size_t i = 0; i < DedicatedThreads.size(); i++)
 	{
-		if (DedicatedThreads[i]->bNeedToExit || DedicatedThreads[i]->bReadyForDeletion)
+		DedicatedJobThread* CurrentDedicatedThread = DedicatedThreads[i];
+		if (CurrentDedicatedThread->bNeedToExit || CurrentDedicatedThread->bReadyForDeletion)
 			continue;
 
-		if (DedicatedThreads[i]->IsJobFinished() && !DedicatedThreads[i]->IsJobCollected())
+		if (CurrentDedicatedThread->IsJobFinished() && !CurrentDedicatedThread->IsJobCollected())
 		{
-			CollectJob(DedicatedThreads[i]);
+			CollectJob(CurrentDedicatedThread);
 		}
-		else if (!DedicatedThreads[i]->JobsList.empty() && DedicatedThreads[i]->IsJobFinished() && DedicatedThreads[i]->IsJobCollected())
+		else if (!CurrentDedicatedThread->JobsList.empty() && CurrentDedicatedThread->IsJobFinished() && CurrentDedicatedThread->IsJobCollected())
 		{
-			if (DedicatedThreads[i]->AssignJob(DedicatedThreads[i]->JobsList[0]))
-				DedicatedThreads[i]->JobsList.erase(DedicatedThreads[i]->JobsList.begin());
+			if (CurrentDedicatedThread->AssignJob(CurrentDedicatedThread->JobsList[0]))
+				CurrentDedicatedThread->JobsList.erase(CurrentDedicatedThread->JobsList.begin());
+		}
+
+		// If a graceful shutdown was requested and the thread has finished its queue, promote the request to a real exit signal.
+		if (CurrentDedicatedThread->bShutdownRequested
+			&& CurrentDedicatedThread->JobsList.empty()
+			&& CurrentDedicatedThread->IsJobFinished()
+			&& CurrentDedicatedThread->IsJobCollected())
+		{
+			CurrentDedicatedThread->bNeedToExit = true;
+			MarkDedicatedThreadForShutdown(CurrentDedicatedThread);
 		}
 	}
 }
@@ -239,20 +256,25 @@ unsigned int FEThreadPool::GetLogicalCoreCount() const
 
 unsigned int FEThreadPool::GetThreadCount() const
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 	return static_cast<int>(Threads.size());
 }
 
 std::string FEThreadPool::CreateDedicatedThread()
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	DedicatedThreads.push_back(new DedicatedJobThread());
 	return DedicatedThreads.back()->ThreadID;
 }
 
 bool FEThreadPool::IsAnyDedicatedThreadHaveActiveJob() const
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	for (size_t i = 0; i < DedicatedThreads.size(); i++)
 	{
-		if (!DedicatedThreads[i]->IsJobCollected())
+		if (!DedicatedThreads[i]->JobsList.empty() || !DedicatedThreads[i]->IsJobCollected())
 			return true;
 	}
 
@@ -272,11 +294,13 @@ DedicatedJobThread* FEThreadPool::GetDedicatedThread(const std::string& ThreadID
 
 void FEThreadPool::Execute(const std::string& DedicatedThreadID, const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
 	if (!Thread)
 		return;
 
-	if (Thread->bNeedToExit || Thread->bReadyForDeletion)
+	if (Thread->bShutdownRequested || Thread->bNeedToExit || Thread->bReadyForDeletion)
 		return;
 
 	FEUnexecutedJob* NewJob = new FEUnexecutedJob();
@@ -309,49 +333,77 @@ void FEThreadPool::MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedT
 
 bool FEThreadPool::ShutdownDedicatedThread(const std::string& DedicatedThreadID)
 {
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
 	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
 	if (!Thread)
 		return false;
 
-	Thread->bJobFinished = false;
-	Thread->bHaveNewJob = false;
-	Thread->bJobCollected = true;
+	// Request graceful shutdown. The dedicated-thread loop in Update() drains active jobs and any queued ones (firing their callbacks) before
+	// promoting this to bNeedToExit and freeing the slot.
+	Thread->bShutdownRequested = true;
+	return true;
+}
+
+bool FEThreadPool::ForceShutdownDedicatedThread(const std::string& DedicatedThreadID)
+{
+	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
+	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
+	if (!Thread)
+		return false;
+
+	// Reject any subsequent Execute(ID, ...) calls.
+	Thread->bShutdownRequested = true;
+
+	// Drop queued work without running it. Active job runs to completion but its pending callback is intentionally not fired.
+	for (size_t i = 0; i < Thread->JobsList.size(); i++)
+		delete Thread->JobsList[i];
 	Thread->JobsList.clear();
+
+	// Signal the worker to exit on its next inner sleep wake (every ~5 ms).
 	Thread->bNeedToExit = true;
 
 	MarkDedicatedThreadForShutdown(Thread);
-
 	return true;
 }
 
 bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 {
-	DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
-	if (!Thread)
-		return false;
-
-	while (!Thread->JobsList.empty() || !Thread->IsJobFinished())
+	while (true)
 	{
-		if (Thread->IsJobFinished() && !Thread->IsJobCollected())
 		{
-			CollectJob(Thread);
-			if (Thread->JobsList.empty())
+			std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+
+			// Look up again under the lock so a concurrent Shutdown+Update can not free the thread out from under us between iterations.
+			DedicatedJobThread* Thread = GetDedicatedThread(DedicatedThreadID);
+			if (!Thread)
+				return false;
+
+			if (Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
 				return true;
+
+			if (Thread->IsJobFinished() && !Thread->IsJobCollected())
+			{
+				CollectJob(Thread);
+				if (Thread->JobsList.empty())
+					return true;
+			}
+			else if (!Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
+			{
+				if (Thread->AssignJob(Thread->JobsList[0]))
+					Thread->JobsList.erase(Thread->JobsList.begin());
+			}
 		}
-		else if (!Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
-		{
-			if (Thread->AssignJob(Thread->JobsList[0]))
-				Thread->JobsList.erase(Thread->JobsList.begin());
-		}
+
+		// Sleep is in a separate block so we do not hold the lock while sleeping.
 		Sleep(10);
 	}
-
-	return true;
 }
 
 std::string FEThreadPool::CreateLightThread()
 {
-	std::lock_guard<std::mutex> Lock(LightThreadsMutex);
+	std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
 
 	LightThread* NewThread = new LightThread();
 	LightThreads.push_back(NewThread);
@@ -371,6 +423,8 @@ LightThread* FEThreadPool::GetLightThread(const std::string& ThreadID)
 
 bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
 {
+	std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
+
 	LightThread* Thread = GetLightThread(LightThreadID);
 	if (!Thread)
 		return false;
@@ -384,7 +438,7 @@ bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
 
 bool FEThreadPool::RemoveLightThread(const std::string& LightThreadID)
 {
-	std::lock_guard<std::mutex> Lock(LightThreadsMutex);
+	std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
 
 	WaitForLightThread(LightThreadID);
 
