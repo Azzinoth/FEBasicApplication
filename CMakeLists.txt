@@ -165,15 +165,15 @@ target_link_libraries(FEBasicApplication
 # This intentionally does NOT include gtest_main, consumers keep their own entry point (WinMain/main).
 if(NOT TARGET FocalEngine_GTest)
 	add_library(FocalEngine_GTest INTERFACE)
-	if(BUILD_SHARED_LIBS)
-		target_link_libraries(FocalEngine_GTest INTERFACE
-			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/Dynamic/gtest.lib
-			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/Dynamic/gtest.lib
-		)
-	else()
+	if(USE_STATIC_RUNTIME)
 		target_link_libraries(FocalEngine_GTest INTERFACE
 			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/gtest.lib
 			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/gtest.lib
+		)
+	else()
+		target_link_libraries(FocalEngine_GTest INTERFACE
+			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/Dynamic/gtest.lib
+			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/Dynamic/gtest.lib
 		)
 	endif()
 	target_include_directories(FocalEngine_GTest INTERFACE
