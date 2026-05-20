@@ -60,6 +60,7 @@ namespace FocalEngine
 	{
 		friend FEThreadPool;
 		std::string ThreadID;
+		std::atomic<bool> bShutdownRequested;
 
 		std::vector<FEUnexecutedJob*> JobsList;
 	public:
@@ -96,12 +97,15 @@ namespace FocalEngine
 		void Execute(const std::string& DedicatedThreadID, FE_THREAD_JOB_FUNC Job, void* InputData = nullptr, void* OutputData = nullptr, FE_THREAD_CALLBACK_FUNC CallBack = nullptr);
 		bool WaitForDedicatedThread(const std::string& DedicatedThreadID);
 		bool ShutdownDedicatedThread(const std::string& DedicatedThreadID);
+		bool ForceShutdownDedicatedThread(const std::string& DedicatedThreadID);
 
 		std::string CreateLightThread();
 
 		template <typename Callable, typename... Args>
 		bool ExecuteLightThread(const std::string& LightThreadID, Callable&& Func, Args&&... ArgsList)
 		{
+			std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
+
 			LightThread* Thread = GetLightThread(LightThreadID);
 			if (!Thread)
 				return false;
@@ -115,8 +119,8 @@ namespace FocalEngine
 	private:
 		SINGLETON_PRIVATE_PART(FEThreadPool)
 
-		std::mutex MainMutex;
-		std::mutex LightThreadsMutex;
+		mutable std::recursive_mutex MainMutex;
+		std::recursive_mutex LightThreadsMutex;
 
 		std::vector<JobThread*> Threads;
 		std::vector<FEUnexecutedJob*> JobsList;

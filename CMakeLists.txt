@@ -18,6 +18,7 @@ set(ALL_SOURCE_FILES "")
 
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
+option(FE_BASIC_APPLICATION_ENABLE_TESTS "Build the FEBasicApplicationTests executable" OFF)
 set(FE_PLATFORM_BACKEND "GLFW"  CACHE STRING "Platform backend: GLFW | Emscripten")
 set(FE_GRAPHIC_API_BACKEND "OpenGL" CACHE STRING "Renderer backend: OpenGL | WebGPU")
 set_property(CACHE FE_PLATFORM_BACKEND PROPERTY STRINGS GLFW Emscripten)
@@ -292,6 +293,48 @@ elseif(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
     endif()
 endif()
 
+# Opt-in GoogleTest target for downstream projects.
+# Consumers that want tests:
+#   target_link_libraries(YourApp PRIVATE FocalEngine::GTest)
+# This intentionally does NOT include gtest_main, consumers keep their own entry point (WinMain/main).
+if(NOT TARGET FocalEngine_GTest)
+	add_library(FocalEngine_GTest INTERFACE)
+	if(USE_STATIC_RUNTIME)
+		target_link_libraries(FocalEngine_GTest INTERFACE
+			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/gtest.lib
+			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/gtest.lib
+		)
+	else()
+		target_link_libraries(FocalEngine_GTest INTERFACE
+			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/Dynamic/gtest.lib
+			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/Dynamic/gtest.lib
+		)
+	endif()
+	target_include_directories(FocalEngine_GTest INTERFACE
+		${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/include
+	)
+	add_library(FocalEngine::GTest ALIAS FocalEngine_GTest)
+endif()
+
+# Separate test executable for FEBasicApplication.
+if(FE_BASIC_APPLICATION_ENABLE_TESTS)
+	file(GLOB BasicApplicationTests_SRC
+		"Tests/RunAllTests.cpp"
+		"Tests/FEThreadPoolTests.h"
+		"Tests/FEThreadPoolTests.cpp"
+	)
+
+	add_executable(FEBasicApplicationTests ${BasicApplicationTests_SRC})
+
+	target_link_libraries(FEBasicApplicationTests
+		PRIVATE
+			FEBasicApplication
+			FocalEngine::GTest
+	)
+
+	source_group("Source Files" FILES ${BasicApplicationTests_SRC})
+endif()
+
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
 source_group("Source Files/SubSystems/Profiling" FILES ${BasicApplicationProfilingSubSystem_SRC})
@@ -301,8 +344,12 @@ source_group("Source Files/Backends/GraphicsAPIs/${FE_GRAPHIC_API_BACKEND}" FILE
 # *************** THIRD_PARTY ***************
 source_group("Source Files/ThirdParty/imgui" FILES ${imgui_SRC})
 
-# set the startup project
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplication)
+# set the startup project (prefer the test exe when tests are enabled, so F5 runs them)
+if(FE_BASIC_APPLICATION_ENABLE_TESTS)
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplicationTests)
+else()
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT FEBasicApplication)
+endif()
 
 if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
     set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/include)
