@@ -37,8 +37,8 @@ namespace FocalEngine
 		std::atomic<bool> bJobFinished;
 		std::atomic<bool> bHaveNewJob;
 		std::atomic<bool> bJobCollected;
-		bool bNeedToExit = false;
-		bool bReadyForDeletion = false;
+		std::atomic<bool> bNeedToExit = false;
+		std::atomic<bool> bReadyForDeletion = false;
 
 		void* CurrentInputData = nullptr;
 		void* CurrentOutputData = nullptr;
@@ -110,6 +110,10 @@ namespace FocalEngine
 			if (!Thread)
 				return false;
 
+			// Already running, do not try to run it a second time.
+			if (Thread->ThreadHandler.joinable())
+				return false;
+
 			Thread->ThreadHandler = std::thread(std::forward<Callable>(Func), std::forward<Args>(ArgsList)...);
 			return true;
 		}
@@ -130,7 +134,8 @@ namespace FocalEngine
 		void MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedThread);
 		DedicatedJobThread* GetDedicatedThread(const std::string& ThreadID);
 
-		void CollectJob(JobThread* FromThread);
+		// Marks the job as collected and returns its callback with the output data.
+		std::pair<FE_THREAD_CALLBACK_FUNC, void*> CollectJob(JobThread* FromThread);
 
 		std::vector<LightThread*> LightThreads;
 		LightThread* GetLightThread(const std::string& ThreadID);

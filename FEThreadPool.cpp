@@ -16,10 +16,14 @@ JobThread::JobThread()
 	bNeedToExit = false;
 	bReadyForDeletion = false;
 	ThreadHandler = std::thread(&JobThread::ExecuteJob, this);
-	ThreadHandler.detach();
 }
 
-JobThread::~JobThread() {}
+JobThread::~JobThread()
+{
+	bNeedToExit = true;
+	if (ThreadHandler.joinable())
+		ThreadHandler.join();
+}
 
 void JobThread::ExecuteJob()
 {
@@ -34,7 +38,20 @@ void JobThread::ExecuteJob()
 		bHaveNewJob = false;
 
 		if (Job != nullptr)
-			Job(CurrentInputData, CurrentOutputData);
+		{
+			try
+			{
+				Job(CurrentInputData, CurrentOutputData);
+			}
+			catch (const std::exception& Exception)
+			{
+				LOG.Add(std::string("Exception in thread pool job: ") + Exception.what(), "FE_THREAD_POOL", FE_LOG_ERROR);
+			}
+			catch (...)
+			{
+				LOG.Add("Unknown exception in thread pool job.", "FE_THREAD_POOL", FE_LOG_ERROR);
+			}
+		}
 
 		bJobFinished = true;
 
@@ -88,7 +105,13 @@ DedicatedJobThread::DedicatedJobThread()
 	bShutdownRequested = false;
 }
 
-DedicatedJobThread::~DedicatedJobThread() {}
+DedicatedJobThread::~DedicatedJobThread()
+{
+	for (size_t i = 0; i < JobsList.size(); i++)
+		delete JobsList[i];
+	
+	JobsList.clear();
+}
 
 LightThread::LightThread()
 {
@@ -101,19 +124,36 @@ FEThreadPool::FEThreadPool()
 {
 	Threads.resize(4);
 	for (size_t i = 0; i < Threads.size(); i++)
-	{
 		Threads[i] = new JobThread();
-	}
 }
 
 FEThreadPool::~FEThreadPool()
 {
 	for (size_t i = 0; i < Threads.size(); i++)
-	{
 		delete Threads[i];
-	}
 
 	Threads.clear();
+
+	for (size_t i = 0; i < JobsList.size(); i++)
+		delete JobsList[i];
+
+	JobsList.clear();
+
+	for (size_t i = 0; i < DedicatedThreads.size(); i++)
+		delete DedicatedThreads[i];
+
+	DedicatedThreads.clear();
+	DedicatedThreadsToShutdown.clear();
+
+	for (size_t i = 0; i < LightThreads.size(); i++)
+	{
+		if (LightThreads[i]->ThreadHandler.joinable())
+			LightThreads[i]->ThreadHandler.join();
+
+		delete LightThreads[i];
+	}
+
+	LightThreads.clear();
 }
 
 bool FEThreadPool::IsAnyThreadHaveActiveJob() const
@@ -175,77 +215,91 @@ void FEThreadPool::Execute(const FE_THREAD_JOB_FUNC Job, void* InputData, void* 
 	JobsList.push_back(NewJob);
 }
 
-void FEThreadPool::CollectJob(JobThread* FromThread)
+std::pair<FE_THREAD_CALLBACK_FUNC, void*> FEThreadPool::CollectJob(JobThread* FromThread)
 {
-	if (FromThread->CurrentCallBack != nullptr)
-		FromThread->CurrentCallBack(FromThread->CurrentOutputData);
+	// Copy the callback data and mark the job as collected BEFORE the callback can run.
+	const FE_THREAD_CALLBACK_FUNC CallBack = FromThread->CurrentCallBack;
+	void* OutputData = FromThread->CurrentOutputData;
 
 	FromThread->bJobCollected.store(true);
+
+	return { CallBack, OutputData };
 }
 
 void FEThreadPool::Update()
 {
-	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
+	// Callbacks are gathered under the lock but invoked after it is released, so user callbacks do not block other threads that are using the pool.
+	std::vector<std::pair<FE_THREAD_CALLBACK_FUNC, void*>> CallBacksToInvoke;
 
-	for (size_t i = 0; i < Threads.size(); i++)
 	{
-		if (Threads[i]->IsJobFinished() && !Threads[i]->IsJobCollected())
-		{
-			CollectJob(Threads[i]);
-		}
-		else if (!JobsList.empty() && Threads[i]->IsJobFinished() && Threads[i]->IsJobCollected())
-		{
-			if (Threads[i]->AssignJob(JobsList[0]))
-				JobsList.erase(JobsList.begin());
-		}
-	}
+		std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 
-	for (size_t i = 0; i < DedicatedThreadsToShutdown.size(); i++)
-	{
-		if (DedicatedThreadsToShutdown[i]->bNeedToExit && DedicatedThreadsToShutdown[i]->bReadyForDeletion)
+		for (size_t i = 0; i < Threads.size(); i++)
 		{
-			for (size_t j = 0; j < DedicatedThreads.size(); j++)
+			if (Threads[i]->IsJobFinished() && !Threads[i]->IsJobCollected())
 			{
-				if (DedicatedThreads[j]->ThreadID == DedicatedThreadsToShutdown[i]->ThreadID)
+				CallBacksToInvoke.push_back(CollectJob(Threads[i]));
+			}
+			else if (!JobsList.empty() && Threads[i]->IsJobFinished() && Threads[i]->IsJobCollected())
+			{
+				if (Threads[i]->AssignJob(JobsList[0]))
+					JobsList.erase(JobsList.begin());
+			}
+		}
+
+		for (size_t i = 0; i < DedicatedThreadsToShutdown.size(); i++)
+		{
+			if (DedicatedThreadsToShutdown[i]->bNeedToExit && DedicatedThreadsToShutdown[i]->bReadyForDeletion)
+			{
+				for (size_t j = 0; j < DedicatedThreads.size(); j++)
 				{
-					DedicatedThreads.erase(DedicatedThreads.begin() + j, DedicatedThreads.begin() + j + 1);
-					break;
+					if (DedicatedThreads[j]->ThreadID == DedicatedThreadsToShutdown[i]->ThreadID)
+					{
+						DedicatedThreads.erase(DedicatedThreads.begin() + j, DedicatedThreads.begin() + j + 1);
+						break;
+					}
 				}
+
+				delete DedicatedThreadsToShutdown[i];
+				DedicatedThreadsToShutdown.erase(DedicatedThreadsToShutdown.begin() + i, DedicatedThreadsToShutdown.begin() + i + 1);
+				i--;
+				if (DedicatedThreads.empty())
+					break;
+			}
+		}
+
+		for (size_t i = 0; i < DedicatedThreads.size(); i++)
+		{
+			DedicatedJobThread* CurrentDedicatedThread = DedicatedThreads[i];
+			if (CurrentDedicatedThread->bNeedToExit || CurrentDedicatedThread->bReadyForDeletion)
+				continue;
+
+			if (CurrentDedicatedThread->IsJobFinished() && !CurrentDedicatedThread->IsJobCollected())
+			{
+				CallBacksToInvoke.push_back(CollectJob(CurrentDedicatedThread));
+			}
+			else if (!CurrentDedicatedThread->JobsList.empty() && CurrentDedicatedThread->IsJobFinished() && CurrentDedicatedThread->IsJobCollected())
+			{
+				if (CurrentDedicatedThread->AssignJob(CurrentDedicatedThread->JobsList[0]))
+					CurrentDedicatedThread->JobsList.erase(CurrentDedicatedThread->JobsList.begin());
 			}
 
-			delete DedicatedThreadsToShutdown[i];
-			DedicatedThreadsToShutdown.erase(DedicatedThreadsToShutdown.begin() + i, DedicatedThreadsToShutdown.begin() + i + 1);
-			i--;
-			if (DedicatedThreads.empty())
-				break;
+			// If a graceful shutdown was requested and the thread has finished its queue, promote the request to a real exit signal.
+			if (CurrentDedicatedThread->bShutdownRequested
+				&& CurrentDedicatedThread->JobsList.empty()
+				&& CurrentDedicatedThread->IsJobFinished()
+				&& CurrentDedicatedThread->IsJobCollected())
+			{
+				CurrentDedicatedThread->bNeedToExit = true;
+				MarkDedicatedThreadForShutdown(CurrentDedicatedThread);
+			}
 		}
 	}
 
-	for (size_t i = 0; i < DedicatedThreads.size(); i++)
+	for (size_t i = 0; i < CallBacksToInvoke.size(); i++)
 	{
-		DedicatedJobThread* CurrentDedicatedThread = DedicatedThreads[i];
-		if (CurrentDedicatedThread->bNeedToExit || CurrentDedicatedThread->bReadyForDeletion)
-			continue;
-
-		if (CurrentDedicatedThread->IsJobFinished() && !CurrentDedicatedThread->IsJobCollected())
-		{
-			CollectJob(CurrentDedicatedThread);
-		}
-		else if (!CurrentDedicatedThread->JobsList.empty() && CurrentDedicatedThread->IsJobFinished() && CurrentDedicatedThread->IsJobCollected())
-		{
-			if (CurrentDedicatedThread->AssignJob(CurrentDedicatedThread->JobsList[0]))
-				CurrentDedicatedThread->JobsList.erase(CurrentDedicatedThread->JobsList.begin());
-		}
-
-		// If a graceful shutdown was requested and the thread has finished its queue, promote the request to a real exit signal.
-		if (CurrentDedicatedThread->bShutdownRequested
-			&& CurrentDedicatedThread->JobsList.empty()
-			&& CurrentDedicatedThread->IsJobFinished()
-			&& CurrentDedicatedThread->IsJobCollected())
-		{
-			CurrentDedicatedThread->bNeedToExit = true;
-			MarkDedicatedThreadForShutdown(CurrentDedicatedThread);
-		}
+		if (CallBacksToInvoke[i].first != nullptr)
+			CallBacksToInvoke[i].first(CallBacksToInvoke[i].second);
 	}
 }
 
@@ -309,15 +363,22 @@ void FEThreadPool::Execute(const std::string& DedicatedThreadID, const FE_THREAD
 	NewJob->OutputData = OutputData;
 	NewJob->CallBack = CallBack;
 
-	// Check if we can start it right away
-	if (Thread->IsJobFinished() && Thread->IsJobCollected())
+	// Check if we can start it right away, but never ahead of already queued jobs, dedicated thread must run jobs in submission order.
+	if (Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
 	{
 		if (Thread->AssignJob(NewJob))
 			return;
 	}
 
-	// If all thread in pool are working we should save new job for later execution.
+	// The thread is busy or older jobs are waiting, so save the new job for later execution.
 	Thread->JobsList.push_back(NewJob);
+
+	// If the thread is idle while older jobs are waiting, start the oldest one now instead of waiting for the next Update().
+	if (Thread->IsJobFinished() && Thread->IsJobCollected())
+	{
+		if (Thread->AssignJob(Thread->JobsList[0]))
+			Thread->JobsList.erase(Thread->JobsList.begin());
+	}
 }
 
 void FEThreadPool::MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedThread)
@@ -372,6 +433,9 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 {
 	while (true)
 	{
+		std::pair<FE_THREAD_CALLBACK_FUNC, void*> CallBackToInvoke = { nullptr, nullptr };
+		bool bAllJobsDone = false;
+
 		{
 			std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 
@@ -380,14 +444,17 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 			if (!Thread)
 				return false;
 
+			// The thread is shutting down so, it is no longer waitable and its pending callback is intentionally suppressed.
+			if (Thread->bNeedToExit || Thread->bReadyForDeletion)
+				return false;
+
 			if (Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
 				return true;
 
 			if (Thread->IsJobFinished() && !Thread->IsJobCollected())
 			{
-				CollectJob(Thread);
-				if (Thread->JobsList.empty())
-					return true;
+				CallBackToInvoke = CollectJob(Thread);
+				bAllJobsDone = Thread->JobsList.empty();
 			}
 			else if (!Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
 			{
@@ -395,6 +462,13 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 					Thread->JobsList.erase(Thread->JobsList.begin());
 			}
 		}
+
+		// Invoke the callback outside of the lock, so user callbacks do not block other threads that are using the pool.
+		if (CallBackToInvoke.first != nullptr)
+			CallBackToInvoke.first(CallBackToInvoke.second);
+
+		if (bAllJobsDone)
+			return true;
 
 		// Sleep is in a separate block so we do not hold the lock while sleeping.
 		Sleep(10);
@@ -423,34 +497,53 @@ LightThread* FEThreadPool::GetLightThread(const std::string& ThreadID)
 
 bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
 {
-	std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
+	std::thread ThreadToJoin;
 
-	LightThread* Thread = GetLightThread(LightThreadID);
-	if (!Thread)
-		return false;
+	{
+		std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
 
-	if (!Thread->ThreadHandler.joinable())
-		return false;
+		LightThread* Thread = GetLightThread(LightThreadID);
+		if (!Thread)
+			return false;
 
-	Thread->ThreadHandler.join();
+		if (!Thread->ThreadHandler.joinable())
+			return false;
+
+		// Take ownership of the handle so the join can happen without holding the mutex.
+		ThreadToJoin = std::move(Thread->ThreadHandler);
+	}
+
+	ThreadToJoin.join();
 	return true;
 }
 
 bool FEThreadPool::RemoveLightThread(const std::string& LightThreadID)
 {
-	std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
+	std::thread ThreadToJoin;
+	bool bWasFound = false;
 
-	WaitForLightThread(LightThreadID);
-
-	for (size_t i = 0; i < LightThreads.size(); i++)
 	{
-		if (LightThreads[i]->ThreadID == LightThreadID)
+		std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
+
+		for (size_t i = 0; i < LightThreads.size(); i++)
 		{
-			delete LightThreads[i];
-			LightThreads.erase(LightThreads.begin() + i, LightThreads.begin() + i + 1);
-			return true;
+			if (LightThreads[i]->ThreadID == LightThreadID)
+			{
+				ThreadToJoin = std::move(LightThreads[i]->ThreadHandler);
+				delete LightThreads[i];
+				LightThreads.erase(LightThreads.begin() + i, LightThreads.begin() + i + 1);
+				bWasFound = true;
+				break;
+			}
 		}
 	}
 
-	return false;
+	if (!bWasFound)
+		return false;
+
+	// Join outside the mutex, to not deadlock with a light thread that uses the light thread API.
+	if (ThreadToJoin.joinable())
+		ThreadToJoin.join();
+
+	return true;
 }
