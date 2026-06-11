@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <chrono>
+#include <mutex>
 #include <time.h>
 #include <random>
 #include "FEBasicApplicationAPI.h"
@@ -49,6 +50,7 @@ namespace FocalEngine
 	{
 		SINGLETON_PRIVATE_PART(FEUniqueID)
 
+		std::mutex IDGenerationMutex;
 		std::string GetUniqueID();
 	public:
 		SINGLETON_PUBLIC_PART(FEUniqueID)

@@ -51,6 +51,8 @@ void JobThread::ExecuteJob()
 			{
 				LOG.Add("Unknown exception in thread pool job.", "FE_THREAD_POOL", FE_LOG_ERROR);
 			}
+
+			Job = nullptr;
 		}
 
 		bJobFinished = true;
@@ -165,7 +167,7 @@ bool FEThreadPool::IsAnyThreadHaveActiveJob() const
 
 	for (size_t i = 0; i < Threads.size(); i++)
 	{
-		if (!Threads[i]->IsJobCollected())
+		if (!Threads[i]->IsJobCollected() || Threads[i]->CallBacksInFlight.load() > 0)
 			return true;
 	}
 
@@ -215,21 +217,47 @@ void FEThreadPool::Execute(const FE_THREAD_JOB_FUNC Job, void* InputData, void* 
 	JobsList.push_back(NewJob);
 }
 
-std::pair<FE_THREAD_CALLBACK_FUNC, void*> FEThreadPool::CollectJob(JobThread* FromThread)
+FEThreadPool::FECollectedCallBack FEThreadPool::CollectJob(JobThread* FromThread)
 {
 	// Copy the callback data and mark the job as collected BEFORE the callback can run.
-	const FE_THREAD_CALLBACK_FUNC CallBack = FromThread->CurrentCallBack;
-	void* OutputData = FromThread->CurrentOutputData;
+	FECollectedCallBack CollectedCallBack;
+	CollectedCallBack.CallBack = FromThread->CurrentCallBack;
+	CollectedCallBack.OutputData = FromThread->CurrentOutputData;
+	CollectedCallBack.FromThread = FromThread;
 
+	FromThread->CurrentCallBack = nullptr;
+	FromThread->CallBacksInFlight.fetch_add(1);
 	FromThread->bJobCollected.store(true);
 
-	return { CallBack, OutputData };
+	return CollectedCallBack;
+}
+
+void FEThreadPool::InvokeCollectedCallBack(const FECollectedCallBack& CollectedCallBack)
+{
+	// bNeedToExit after collection can only mean a force shutdown, and its contract says the callback must not fire.
+	if (CollectedCallBack.CallBack != nullptr && !CollectedCallBack.FromThread->bNeedToExit)
+	{
+		try
+		{
+			CollectedCallBack.CallBack(CollectedCallBack.OutputData);
+		}
+		catch (const std::exception& Exception)
+		{
+			LOG.Add(std::string("Exception in thread pool callback: ") + Exception.what(), "FE_THREAD_POOL", FE_LOG_ERROR);
+		}
+		catch (...)
+		{
+			LOG.Add("Unknown exception in thread pool callback.", "FE_THREAD_POOL", FE_LOG_ERROR);
+		}
+	}
+
+	CollectedCallBack.FromThread->CallBacksInFlight.fetch_sub(1);
 }
 
 void FEThreadPool::Update()
 {
 	// Callbacks are gathered under the lock but invoked after it is released, so user callbacks do not block other threads that are using the pool.
-	std::vector<std::pair<FE_THREAD_CALLBACK_FUNC, void*>> CallBacksToInvoke;
+	std::vector<FECollectedCallBack> CallBacksToInvoke;
 
 	{
 		std::lock_guard<std::recursive_mutex> Lock(MainMutex);
@@ -249,7 +277,8 @@ void FEThreadPool::Update()
 
 		for (size_t i = 0; i < DedicatedThreadsToShutdown.size(); i++)
 		{
-			if (DedicatedThreadsToShutdown[i]->bNeedToExit && DedicatedThreadsToShutdown[i]->bReadyForDeletion)
+			// A thread with a callback still in flight can not be deleted yet, the invoker holds a pointer to it.
+			if (DedicatedThreadsToShutdown[i]->bNeedToExit && DedicatedThreadsToShutdown[i]->bReadyForDeletion && DedicatedThreadsToShutdown[i]->CallBacksInFlight.load() == 0)
 			{
 				for (size_t j = 0; j < DedicatedThreads.size(); j++)
 				{
@@ -288,7 +317,8 @@ void FEThreadPool::Update()
 			if (CurrentDedicatedThread->bShutdownRequested
 				&& CurrentDedicatedThread->JobsList.empty()
 				&& CurrentDedicatedThread->IsJobFinished()
-				&& CurrentDedicatedThread->IsJobCollected())
+				&& CurrentDedicatedThread->IsJobCollected()
+				&& CurrentDedicatedThread->CallBacksInFlight.load() == 0)
 			{
 				CurrentDedicatedThread->bNeedToExit = true;
 				MarkDedicatedThreadForShutdown(CurrentDedicatedThread);
@@ -297,10 +327,7 @@ void FEThreadPool::Update()
 	}
 
 	for (size_t i = 0; i < CallBacksToInvoke.size(); i++)
-	{
-		if (CallBacksToInvoke[i].first != nullptr)
-			CallBacksToInvoke[i].first(CallBacksToInvoke[i].second);
-	}
+		InvokeCollectedCallBack(CallBacksToInvoke[i]);
 }
 
 unsigned int FEThreadPool::GetLogicalCoreCount() const
@@ -328,7 +355,7 @@ bool FEThreadPool::IsAnyDedicatedThreadHaveActiveJob() const
 
 	for (size_t i = 0; i < DedicatedThreads.size(); i++)
 	{
-		if (!DedicatedThreads[i]->JobsList.empty() || !DedicatedThreads[i]->IsJobCollected())
+		if (!DedicatedThreads[i]->JobsList.empty() || !DedicatedThreads[i]->IsJobCollected() || DedicatedThreads[i]->CallBacksInFlight.load() > 0)
 			return true;
 	}
 
@@ -433,8 +460,7 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 {
 	while (true)
 	{
-		std::pair<FE_THREAD_CALLBACK_FUNC, void*> CallBackToInvoke = { nullptr, nullptr };
-		bool bAllJobsDone = false;
+		FECollectedCallBack CollectedCallBack;
 
 		{
 			std::lock_guard<std::recursive_mutex> Lock(MainMutex);
@@ -448,13 +474,13 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 			if (Thread->bNeedToExit || Thread->bReadyForDeletion)
 				return false;
 
-			if (Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
+			// A callback collected by a concurrent Update() may still be running, completion includes its delivery.
+			if (Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected() && Thread->CallBacksInFlight.load() == 0)
 				return true;
 
 			if (Thread->IsJobFinished() && !Thread->IsJobCollected())
 			{
-				CallBackToInvoke = CollectJob(Thread);
-				bAllJobsDone = Thread->JobsList.empty();
+				CollectedCallBack = CollectJob(Thread);
 			}
 			else if (!Thread->JobsList.empty() && Thread->IsJobFinished() && Thread->IsJobCollected())
 			{
@@ -463,12 +489,12 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 			}
 		}
 
-		// Invoke the callback outside of the lock, so user callbacks do not block other threads that are using the pool.
-		if (CallBackToInvoke.first != nullptr)
-			CallBackToInvoke.first(CallBackToInvoke.second);
-
-		if (bAllJobsDone)
-			return true;
+		if (CollectedCallBack.FromThread != nullptr)
+		{
+			// Invoke the callback outside of the lock, so user callbacks do not block other threads that are using the pool.
+			InvokeCollectedCallBack(CollectedCallBack);
+			continue;
+		}
 
 		// Sleep is in a separate block so we do not hold the lock while sleeping.
 		Sleep(10);
