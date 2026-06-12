@@ -38,7 +38,7 @@ std::string FEUniqueID::GetUniqueID()
 
 std::string FEUniqueID::GetUniqueHexID()
 {
-	//std::lock_guard<std::mutex> Lock(IDGenerationMutex);
+	std::lock_guard<std::mutex> Lock(IDGenerationMutex);
 
 	const std::string ID = GetUniqueID();
 	std::string IDinHex;
