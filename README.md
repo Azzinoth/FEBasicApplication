@@ -7,7 +7,7 @@ This repository serves as a base layer for applications that utilize OpenGL and 
 ## Features
 
 - Setting up GLFW and ImGui.
-- Providing unique 24-character IDs upon request (useful for resource identification).
+- Providing unique IDs upon request, in the form of random UUIDs generated with stduuid (useful for resource identification).
 - A basic class for time measurement.
 - A thread pool class that forms a solid base for creating a job system.
 - A logging system with topic categorization and optional file output.
@@ -41,3 +41,5 @@ This project uses the following third-party libraries:
 3) **Dear ImGui**: This library is licensed under the MIT License. The full license text can be found at [Dear ImGui's GitHub repository](https://github.com/ocornut/imgui/blob/master/LICENSE.txt).
 
 4) **googletest**: This library is under the BSD-3-Clause license. The full license text can be found at [googletest's GitHub repository](https://github.com/google/googletest?tab=BSD-3-Clause-1-ov-file).
+
+5) **stduuid**: This library is licensed under the MIT License. The full license text can be found at [stduuid's GitHub repository](https://github.com/mariusbancila/stduuid/blob/master/LICENSE). It includes a bundled copy of [Microsoft GSL](https://github.com/microsoft/GSL), which is also licensed under the MIT License.

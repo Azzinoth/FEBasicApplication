@@ -1,4 +1,5 @@
 #include "FEUniqueID.h"
+#include <algorithm>
 using namespace FocalEngine;
 
 #ifdef FEBASICAPPLICATION_SHARED
@@ -69,4 +70,18 @@ std::string FEUniqueID::GetUniqueHexID()
 	}
 
 	return FinalID;
+}
+
+std::string FEUniqueID::GetUniqueUUID()
+{
+	static std::mt19937 RandomEngine = []() {
+		std::random_device RandomDevice;
+		std::array<unsigned int, std::mt19937::state_size> SeedData;
+		std::generate(SeedData.begin(), SeedData.end(), std::ref(RandomDevice));
+		std::seed_seq Sequence(SeedData.begin(), SeedData.end());
+		return std::mt19937(Sequence);
+	}();
+	static uuids::uuid_random_generator Generator(RandomEngine);
+
+	return uuids::to_string(Generator());
 }

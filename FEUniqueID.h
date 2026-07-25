@@ -10,6 +10,8 @@
 #include "VersionInfo/FE_BASIC_APPLICATION_Version.h"
 #include "VersionInfo/FEVersionInfo.h"
 
+#include "ThirdParty/stduuid/uuid.h"
+
 #define SINGLETON_PUBLIC_PART(CLASS_NAME)		\
     static CLASS_NAME& GetInstance()			\
     {											\
@@ -56,6 +58,9 @@ namespace FocalEngine
 		// For most purposes it can be considered unique.
 		// ID is a 24 long string.
 		std::string GetUniqueHexID();
+
+		// Returns a random (version 4) UUID as a 36 character string.
+		std::string GetUniqueUUID();
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED

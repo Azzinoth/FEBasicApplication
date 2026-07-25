@@ -229,6 +229,8 @@ else()
     add_library(FEBasicApplication STATIC ${ALL_SOURCE_FILES})
 endif()
 
+target_include_directories(FEBasicApplication PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/stduuid)
+
 if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU" AND NOT EMSCRIPTEN)
     target_compile_definitions(FEBasicApplication PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 endif()
