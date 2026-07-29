@@ -117,6 +117,9 @@ void FEVirtualUI::EndFrame()
 	glClearColor(ClearColor[0], ClearColor[1], ClearColor[2], ClearColor[3]);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	if (bOverrideImGuiTextureFiltering)
+		RestoreImGuiTextureFilteringForCurrentFrame();
+
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -456,4 +459,14 @@ void FEVirtualUI::ExecuteFunctionToAddFont(std::function<void()> Func, std::func
 {
     FunctionsToToAddFont.push_back(Func);
     CallbacksOnFontReady.push_back(CallbackOnFontReady);
+}
+
+void FEVirtualUI::SetOverrideImGuiTextureFiltering(bool bNewValue)
+{
+	bOverrideImGuiTextureFiltering = bNewValue;
+}
+
+bool FEVirtualUI::GetOverrideImGuiTextureFiltering() const
+{
+	return bOverrideImGuiTextureFiltering;
 }

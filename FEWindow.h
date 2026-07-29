@@ -18,6 +18,10 @@
 
 namespace FocalEngine
 {
+	// Since 1.92.8 ImGui OpenGL3 backend binds its own mipmap-less sampler object, which overrides texture filtering.
+	// This function restores previous behavior.
+	void RestoreImGuiTextureFilteringForCurrentFrame();
+
 	struct MonitorInfo
 	{
 		GLFWmonitor* Monitor = nullptr;
@@ -38,6 +42,7 @@ namespace FocalEngine
 
 		bool bShouldClose = false;
 		bool bShouldTerminate = false;
+		bool bOverrideImGuiTextureFiltering = true;
 
 		bool bDefaultDockspaceEnabled = false;
 		ImGuiID DefaultDockspaceID = 0;
@@ -118,6 +123,9 @@ namespace FocalEngine
 		void EnableDefaultDockspace();
 		bool HasDefaultDockspace() const;
 		ImGuiID GetDefaultDockspaceID() const;
+
+		void SetOverrideImGuiTextureFiltering(bool bNewValue);
+		bool GetOverrideImGuiTextureFiltering() const;
 
 		void CancelClose();
 		void Terminate();
