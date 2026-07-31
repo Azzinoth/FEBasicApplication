@@ -16,13 +16,20 @@ namespace FocalEngine
 		int Width = 1280;
 		int Height = 720;
 		float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.00f };
+
+		bool bOverrideImGuiTextureFiltering = true;
 	public:
 		float LastMouseX = 0.0f, LastMouseY = 0.0f;
 		
 		FEVirtualUI(int Width = 1280, int Height = 720, std::string Name = "UnNamed");
+		// Prevent copying and assignment
+		FEVirtualUI(const FEVirtualUI&) = delete;
+		FEVirtualUI& operator=(const FEVirtualUI&) = delete;
 		void Initialize(unsigned int FrameBuffer, int Width, int Height);
 		void TerminateImGui();
 		~FEVirtualUI();
+
+		std::string GetID() const;
 
 		// User Callbacks
 		std::vector<std::function<void(int, int)>> UserOnResizeCallbackFuncs;
@@ -43,12 +50,6 @@ namespace FocalEngine
 
 		std::vector<std::function<void()>> FunctionsToToAddFont;
 		std::vector<std::function<void()>> CallbacksOnFontReady;
-	public:
-		// Prevent copying and assignment
-		FEVirtualUI(const FEVirtualUI&) = delete;
-		FEVirtualUI& operator=(const FEVirtualUI&) = delete;
-
-		std::string GetID() const;
 
 		// Properties Getters and Setters
 		std::string GetName() const;
@@ -94,5 +95,8 @@ namespace FocalEngine
 		// Use that instead of directly adding fonts to ImGui
 		// to ensure that font addition is done in the correct way.
 		void ExecuteFunctionToAddFont(std::function<void()> Func, std::function<void()> CallbackOnFontReady);
+
+		void SetOverrideImGuiTextureFiltering(bool bNewValue);
+		bool GetOverrideImGuiTextureFiltering() const;
 	};
 }

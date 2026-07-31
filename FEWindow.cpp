@@ -93,6 +93,9 @@ void FEWindow::Render()
 
 void FEWindow::EndFrame()
 {
+	if (bOverrideImGuiTextureFiltering)
+		RestoreImGuiTextureFilteringForCurrentFrame();
+
 	ImGui::Render();
 	DeviceSurface->ImGuiRenderDrawData();
 	DeviceSurface->EndFrame();
@@ -558,3 +561,31 @@ void FEWindow::RemoveCallback(std::string CallbackID)
 		}
 	}
 }
+
+void FEWindow::SetOverrideImGuiTextureFiltering(bool bNewValue)
+{
+	bOverrideImGuiTextureFiltering = bNewValue;
+}
+
+bool FEWindow::GetOverrideImGuiTextureFiltering() const
+{
+	return bOverrideImGuiTextureFiltering;
+}
+
+#ifdef FE_GRAPHICS_API_OPENGL
+static void DisableImGuiBackendSampler(const ImDrawList*, const ImDrawCmd*)
+{
+	ImGui_ImplOpenGL3_RenderState* RenderState = ImGui_ImplOpenGL3_GetRenderState();
+	if (RenderState != nullptr && RenderState->UseBindSampler)
+		glBindSampler(0, 0);
+}
+
+void FocalEngine::RestoreImGuiTextureFilteringForCurrentFrame()
+{
+	ImGuiPlatformIO& PlatformIO = ImGui::GetPlatformIO();
+	for (int i = 0; i < PlatformIO.Viewports.Size; i++)
+		ImGui::GetBackgroundDrawList(PlatformIO.Viewports[i])->AddCallback(DisableImGuiBackendSampler, nullptr);
+}
+#else
+void FocalEngine::RestoreImGuiTextureFilteringForCurrentFrame() {}
+#endif

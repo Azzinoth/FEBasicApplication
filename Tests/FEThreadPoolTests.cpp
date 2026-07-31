@@ -2,6 +2,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
+#include <memory>
 #include <random>
 #include <thread>
 
@@ -207,6 +209,33 @@ TEST_F(FEThreadPoolTest, InputAndOutputPointers_RoundtripCorrectly)
 	EXPECT_EQ(OutputValue, 1337);
 }
 
+TEST_F(FEThreadPoolTest, CompletedJob_CapturedResources_AreReleasedAfterCollection)
+{
+	std::shared_ptr<int> JobResource = std::make_shared<int>(1);
+	std::shared_ptr<int> CallbackResource = std::make_shared<int>(2);
+	std::weak_ptr<int> JobResourceWatcher = JobResource;
+	std::weak_ptr<int> CallbackResourceWatcher = CallbackResource;
+
+	std::atomic<bool> bCallbackFired{ false };
+	THREAD_POOL.Execute([JobResource](void*, void*) {}, nullptr, nullptr, [CallbackResource, &bCallbackFired](void*) {
+		bCallbackFired.store(true, std::memory_order_release);
+	});
+
+	JobResource.reset();
+	CallbackResource.reset();
+
+	auto Deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+	while (!bCallbackFired.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < Deadline)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+	ASSERT_TRUE(bCallbackFired.load());
+
+	EXPECT_TRUE(JobResourceWatcher.expired()) << "The pool still holds the job functor of a completed job";
+	EXPECT_TRUE(CallbackResourceWatcher.expired()) << "The pool still holds the callback functor of a completed job";
+}
+
 // Each callback synchronously submits the next job via Execute. The chain is many steps deep, so the
 // callback->Execute->AssignJob->worker->bJobFinished->collect->callback cycle runs back-to-back rapidly.
 TEST_F(FEThreadPoolTest, ChainedCallbackSubmits_DeepChainAllElementsFire)
@@ -271,6 +300,62 @@ TEST_F(FEThreadPoolTest, SubmitFromInsideCallback_NestedJobAlsoFires)
 	EXPECT_EQ(NestedCallbacksFired.load(), 1);
 }
 
+TEST_F(FEThreadPoolTest, CallbackThatReentersUpdate_FiresExactlyOnce)
+{
+	std::atomic<int> CallbacksFired{ 0 };
+
+	THREAD_POOL.Execute([](void*, void*) {}, nullptr, nullptr, [&CallbacksFired](void*) {
+		const int Count = CallbacksFired.fetch_add(1, std::memory_order_acq_rel) + 1;
+		if (Count == 1)
+			THREAD_POOL.Update(); // Re-enter the pump exactly once, from inside the callback.
+	});
+
+	auto Deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+	while (CallbacksFired.load(std::memory_order_acquire) == 0 && std::chrono::steady_clock::now() < Deadline)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	THREAD_POOL.Update();
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+	EXPECT_EQ(CallbacksFired.load(), 1);
+}
+
+TEST_F(FEThreadPoolTest, ExecuteFromAnotherThread_IsNotBlockedWhileCallbackRuns)
+{
+	std::atomic<bool> bCallbackStarted{ false };
+	std::atomic<bool> bHelperDone{ false };
+
+	THREAD_POOL.Execute([](void*, void*) {}, nullptr, nullptr, [&](void*) {
+		bCallbackStarted.store(true);
+
+		// Wait for the helper's Execute() to go through.
+		while (!bHelperDone.load())
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	});
+
+	std::thread Helper([&]() {
+		while (!bCallbackStarted.load())
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+		THREAD_POOL.Execute([](void*, void*) {});
+		bHelperDone.store(true);
+	});
+
+	auto Deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+	while (!bCallbackStarted.load() && std::chrono::steady_clock::now() < Deadline)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+
+	Helper.join();
+	EXPECT_TRUE(bHelperDone.load());
+}
+
 // Submit several jobs to the same dedicated thread, wait for the queue to drain, then shut it down.
 TEST_F(FEThreadPoolTest, DedicatedThread_ExecuteAndWait_RunsAllJobs)
 {
@@ -329,6 +414,82 @@ TEST_F(FEThreadPoolTest, DedicatedThread_InvalidID_DoesNothingGracefully)
 	EXPECT_FALSE(bRan);
 }
 
+TEST_F(FEThreadPoolTest, JobThatThrows_DoesNotTerminateProcess)
+{
+	std::atomic<int> CallbacksFired{ 0 };
+
+	THREAD_POOL.Execute([](void*, void*) {
+		throw std::runtime_error("job exception");
+	}, nullptr, nullptr, [&CallbacksFired](void*) {
+		CallbacksFired.fetch_add(1, std::memory_order_acq_rel);
+	});
+
+	auto Deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+	while (CallbacksFired.load(std::memory_order_acquire) == 0 && std::chrono::steady_clock::now() < Deadline)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+
+	EXPECT_EQ(CallbacksFired.load(), 1);
+
+	// The pool must still be functional after a job threw.
+	std::atomic<int> FollowUpCallbacksFired{ 0 };
+	THREAD_POOL.Execute([](void*, void*) {}, nullptr, nullptr, [&FollowUpCallbacksFired](void*) {
+		FollowUpCallbacksFired.fetch_add(1, std::memory_order_acq_rel);
+	});
+
+	Deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+	while (FollowUpCallbacksFired.load(std::memory_order_acquire) == 0 && std::chrono::steady_clock::now() < Deadline)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+
+	EXPECT_EQ(FollowUpCallbacksFired.load(), 1);
+}
+
+TEST_F(FEThreadPoolTest, DedicatedThread_SubmitWhileOlderJobIsQueued_PreservesSubmissionOrder)
+{
+	const std::string ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(ID.empty());
+	std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Let the worker reach its idle state.
+
+	std::mutex OrderMutex;
+	std::vector<int> ExecutionOrder;
+	auto Record = [&OrderMutex, &ExecutionOrder](int Value) {
+		std::lock_guard<std::mutex> Lock(OrderMutex);
+		ExecutionOrder.push_back(Value);
+	};
+
+	THREAD_POOL.Execute(ID, [&](void*, void*) { Record(1); std::this_thread::sleep_for(std::chrono::milliseconds(50)); }); // Started right away.
+	THREAD_POOL.Execute(ID, [&](void*, void*) { Record(2); }); // Queued behind job 1.
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // Job 1 finished.
+	THREAD_POOL.Update(); // Collect job 1; the worker can be idle while job 2 is still queued.
+
+	THREAD_POOL.Execute(ID, [&](void*, void*) { Record(3); }); // Must run after job 2.
+
+	EXPECT_TRUE(THREAD_POOL.WaitForDedicatedThread(ID));
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	THREAD_POOL.Update();
+
+	{
+		std::lock_guard<std::mutex> Lock(OrderMutex);
+		ASSERT_EQ(ExecutionOrder.size(), 3);
+		EXPECT_EQ(ExecutionOrder[0], 1);
+		EXPECT_EQ(ExecutionOrder[1], 2);
+		EXPECT_EQ(ExecutionOrder[2], 3);
+	}
+
+	EXPECT_TRUE(THREAD_POOL.ShutdownDedicatedThread(ID));
+	for (int i = 0; i < 20; i++)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+}
+
 TEST_F(FEThreadPoolTest, LightThread_RunsAndJoins)
 {
 	const std::string ID = THREAD_POOL.CreateLightThread();
@@ -361,6 +522,58 @@ TEST_F(FEThreadPoolTest, LightThread_InvalidID_ReturnsFalse)
 	ASSERT_FALSE(ID.empty());
 	EXPECT_FALSE(THREAD_POOL.WaitForLightThread(ID));
 	EXPECT_TRUE(THREAD_POOL.RemoveLightThread(ID));
+}
+
+TEST_F(FEThreadPoolTest, ExecuteLightThread_SecondCallBeforeJoin_ReturnsFalse)
+{
+	const std::string ID = THREAD_POOL.CreateLightThread();
+	ASSERT_FALSE(ID.empty());
+
+	std::atomic<int> JobsRan{ 0 };
+	ASSERT_TRUE(THREAD_POOL.ExecuteLightThread(ID, [&JobsRan]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		JobsRan.fetch_add(1, std::memory_order_acq_rel);
+	}));
+
+	// While the first function is still running.
+	EXPECT_FALSE(THREAD_POOL.ExecuteLightThread(ID, [&JobsRan]() {
+		JobsRan.fetch_add(1, std::memory_order_acq_rel);
+	}));
+
+	// After the first function finished but before anyone joined it, the handle is still joinable.
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	EXPECT_FALSE(THREAD_POOL.ExecuteLightThread(ID, [&JobsRan]() {
+		JobsRan.fetch_add(1, std::memory_order_acq_rel);
+	}));
+
+	EXPECT_TRUE(THREAD_POOL.WaitForLightThread(ID));
+	EXPECT_EQ(JobsRan.load(), 1);
+
+	// After a join the same ID is reusable.
+	EXPECT_TRUE(THREAD_POOL.ExecuteLightThread(ID, [&JobsRan]() {
+		JobsRan.fetch_add(1, std::memory_order_acq_rel);
+	}));
+	EXPECT_TRUE(THREAD_POOL.WaitForLightThread(ID));
+	EXPECT_EQ(JobsRan.load(), 2);
+
+	EXPECT_TRUE(THREAD_POOL.RemoveLightThread(ID));
+}
+
+TEST_F(FEThreadPoolTest, WaitForLightThread_LightThreadBodyUsesLightThreadAPI_DoesNotDeadlock)
+{
+	const std::string ID = THREAD_POOL.CreateLightThread();
+	ASSERT_FALSE(ID.empty());
+
+	std::string SpawnedID;
+	ASSERT_TRUE(THREAD_POOL.ExecuteLightThread(ID, [&SpawnedID]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(60));
+		SpawnedID = THREAD_POOL.CreateLightThread();
+	}));
+
+	EXPECT_TRUE(THREAD_POOL.WaitForLightThread(ID));
+
+	EXPECT_TRUE(THREAD_POOL.RemoveLightThread(ID));
+	EXPECT_TRUE(THREAD_POOL.RemoveLightThread(SpawnedID));
 }
 
 TEST_F(FEThreadPoolTest, SetConcurrentThreadCount_OnlyGrows)
@@ -524,7 +737,83 @@ TEST_F(FEThreadPoolTest, ForceShutdownDedicatedThread_DropsQueueAndReturnsImmedi
 	EXPECT_FALSE(bLateRan.load());
 }
 
-// Stress-tests the worker-shutdown signal path.
+TEST_F(FEThreadPoolTest, ForceShutdownThenWait_DoesNotFireSuppressedCallback)
+{
+	std::atomic<int> CallbacksFired{ 0 };
+
+	const std::string ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(ID.empty());
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+	THREAD_POOL.Execute(ID, [](void*, void*) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}, nullptr, nullptr, [&CallbacksFired](void*) {
+		CallbacksFired.fetch_add(1, std::memory_order_acq_rel);
+	});
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(30)); // The job is assigned and running.
+	ASSERT_TRUE(THREAD_POOL.ForceShutdownDedicatedThread(ID));
+
+	EXPECT_FALSE(THREAD_POOL.WaitForDedicatedThread(ID));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	for (int i = 0; i < 20; i++)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+
+	EXPECT_EQ(CallbacksFired.load(), 0);
+}
+
+TEST_F(FEThreadPoolTest, DedicatedThread_WaitWithConcurrentUpdatePump_ReturnsOnlyAfterCallbackRan)
+{
+	const std::string ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(ID.empty());
+
+	std::atomic<bool> bStopPumping{ false };
+	std::thread Pumper([&bStopPumping]() {
+		while (!bStopPumping.load(std::memory_order_acquire))
+			THREAD_POOL.Update();
+	});
+
+	constexpr int Iterations = 200;
+	std::atomic<bool> bCallbackDone{ false };
+	int FailedIteration = -1;
+	bool bWaitFailed = false;
+
+	for (int i = 0; i < Iterations; i++)
+	{
+		bCallbackDone.store(false, std::memory_order_release);
+		THREAD_POOL.Execute(ID, [](void*, void*) {}, nullptr, nullptr, [&bCallbackDone](void*) {
+			// Widen the window between the collection and the invocation of the callback.
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			bCallbackDone.store(true, std::memory_order_release);
+		});
+
+		const bool bWaitResult = THREAD_POOL.WaitForDedicatedThread(ID);
+		if (!bWaitResult || !bCallbackDone.load(std::memory_order_acquire))
+		{
+			FailedIteration = i;
+			bWaitFailed = !bWaitResult;
+			break;
+		}
+	}
+
+	bStopPumping.store(true, std::memory_order_release);
+	Pumper.join();
+
+	EXPECT_EQ(FailedIteration, -1) << (bWaitFailed ? "WaitForDedicatedThread returned false" : "WaitForDedicatedThread returned before the callback completed")
+		<< " at iteration " << FailedIteration;
+
+	EXPECT_TRUE(THREAD_POOL.ShutdownDedicatedThread(ID));
+	for (int i = 0; i < 20; i++)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+}
+
 TEST_F(FEThreadPoolTest, ForceShutdownSignal_ReachesWorkerPromptly)
 {
 	constexpr int ThreadCount = 64;
@@ -564,8 +853,7 @@ TEST_F(FEThreadPoolTest, ForceShutdownSignal_ReachesWorkerPromptly)
 		std::this_thread::sleep_for(std::chrono::milliseconds(2));
 	}
 
-	EXPECT_FALSE(THREAD_POOL.IsAnyDedicatedThreadHaveActiveJob()) << "At least one dedicated worker did not observe bNeedToExit and never reached bReadyForDeletion within " << ExitDeadlineMs
-		<< " ms, consistent with the worker missing the non-atomic signal.";
+	EXPECT_FALSE(THREAD_POOL.IsAnyDedicatedThreadHaveActiveJob());
 }
 
 TEST_F(FEThreadPoolTest, SetConcurrentThreadCount_ClampsAtMaximum)
@@ -626,6 +914,58 @@ TEST_F(FEThreadPoolTest, ConcurrentCreateDedicatedThread)
 	for (const auto& CurrentIDList : IDs)
 		for (const auto& CurrentID : CurrentIDList)
 			THREAD_POOL.ShutdownDedicatedThread(CurrentID);
+
+	for (int i = 0; i < 50; i++)
+	{
+		THREAD_POOL.Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
+	}
+}
+
+TEST_F(FEThreadPoolTest, ConcurrentDedicatedAndLightThreadCreation_ProducesUniqueIDs)
+{
+	constexpr int ThreadsPerKind = 50;
+
+	std::vector<std::string> DedicatedIDs;
+	std::vector<std::string> LightIDs;
+	DedicatedIDs.reserve(ThreadsPerKind);
+	LightIDs.reserve(ThreadsPerKind);
+
+	std::atomic<bool> bCanStart{ false };
+	std::thread DedicatedCreator([&]() {
+		while (!bCanStart.load())
+			std::this_thread::yield();
+
+		for (int i = 0; i < ThreadsPerKind; i++)
+			DedicatedIDs.push_back(THREAD_POOL.CreateDedicatedThread());
+	});
+	std::thread LightCreator([&]() {
+		while (!bCanStart.load())
+			std::this_thread::yield();
+
+		for (int i = 0; i < ThreadsPerKind; i++)
+			LightIDs.push_back(THREAD_POOL.CreateLightThread());
+	});
+	bCanStart.store(true);
+
+	DedicatedCreator.join();
+	LightCreator.join();
+
+	std::unordered_map<std::string, int> Counts;
+	int Empty = 0;
+	for (const auto& CurrentID : DedicatedIDs)
+		CurrentID.empty() ? Empty++ : Counts[CurrentID]++;
+	for (const auto& CurrentID : LightIDs)
+		CurrentID.empty() ? Empty++ : Counts[CurrentID]++;
+
+	EXPECT_EQ(Empty, 0);
+	EXPECT_EQ(static_cast<int>(Counts.size()), ThreadsPerKind * 2) << "Concurrent creation produced duplicate thread IDs";
+
+	for (const auto& CurrentID : DedicatedIDs)
+		THREAD_POOL.ShutdownDedicatedThread(CurrentID);
+
+	for (const auto& CurrentID : LightIDs)
+		THREAD_POOL.RemoveLightThread(CurrentID);
 
 	for (int i = 0; i < 50; i++)
 	{
@@ -717,7 +1057,7 @@ TEST_F(FEThreadPoolTest, ConcurrentWaitAndRemoveLightThread)
 	for (int i = 0; i < WaiterThreadCount; i++)
 	{
 		Workers.emplace_back([&, i]() {
-			std::mt19937 RandomGenerator(static_cast<unsigned int>(i) * 1000u + 42u);
+			std::mt19937 RandomGenerator(static_cast<unsigned int>(i) * 1000 + 42);
 			while (!bStop.load(std::memory_order_acquire))
 			{
 				const size_t Index = RandomGenerator() % IDs.size();
@@ -729,7 +1069,7 @@ TEST_F(FEThreadPoolTest, ConcurrentWaitAndRemoveLightThread)
 	for (int i = 0; i < RemoverThreadCount; i++)
 	{
 		Workers.emplace_back([&, i]() {
-			std::mt19937 RandomGenerator(static_cast<unsigned int>(i) * 1000u + 99u);
+			std::mt19937 RandomGenerator(static_cast<unsigned int>(i) * 1000 + 99);
 			while (!bStop.load(std::memory_order_acquire))
 			{
 				const size_t Index = RandomGenerator() % IDs.size();
@@ -746,4 +1086,64 @@ TEST_F(FEThreadPoolTest, ConcurrentWaitAndRemoveLightThread)
 
 	for (const auto& CurrentID : IDs)
 		THREAD_POOL.RemoveLightThread(CurrentID);
+}
+
+// Deleting a JobThread must stop and join its worker.
+TEST_F(FEThreadPoolTest, DeletedJobThread_DetachedWorkerDoesNotTouchFreedMemory)
+{
+	SuppressCrashDialogs(); // Route any CRT heap report to stderr instead of a dialog.
+
+	const int OldDebugFlags = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+	_CrtSetDbgFlag(OldDebugFlags | _CRTDBG_ALLOC_MEM_DF | _CRTDBG_DELAY_FREE_MEM_DF);
+
+	JobThread* Thread = new JobThread();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100)); // The worker is parked in its 5 ms polling loop.
+	delete Thread;
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+	EXPECT_TRUE(_CrtCheckMemory()) << "The worker wrote into the freed JobThread block";
+
+	_CrtSetDbgFlag(OldDebugFlags);
+}
+
+namespace
+{
+	// The singleton's first touch must construct exactly one instance even when it happens on several threads at once.
+	// This has to run in a death-test child process, in the main test process the pool is already constructed.
+	[[noreturn]] void RunConcurrentSingletonFirstTouchScenario()
+	{
+		SuppressCrashDialogs();
+
+		constexpr int ThreadCount = 8;
+		void* Pointers[ThreadCount] = {};
+		std::atomic<bool> bCanStart{ false };
+
+		std::vector<std::thread> Threads;
+		for (int i = 0; i < ThreadCount; i++)
+		{
+			Threads.emplace_back([&Pointers, &bCanStart, i]() {
+				while (!bCanStart.load())
+					std::this_thread::yield();
+
+				Pointers[i] = FEThreadPool::GetInstancePointer();
+			});
+		}
+		bCanStart.store(true);
+
+		for (auto& CurrentThread : Threads)
+			CurrentThread.join();
+
+		for (int i = 1; i < ThreadCount; i++)
+		{
+			if (Pointers[i] != Pointers[0])
+				::_exit(86);
+		}
+
+		::_exit(0);
+	}
+}
+
+TEST(FEThreadPoolDeathTest, ConcurrentFirstTouchOfSingleton_CreatesExactlyOneInstance)
+{
+	EXPECT_EXIT(RunConcurrentSingletonFirstTouchScenario(), ::testing::ExitedWithCode(0), "");
 }

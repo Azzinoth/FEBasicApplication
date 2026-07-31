@@ -37,8 +37,10 @@ namespace FocalEngine
 		std::atomic<bool> bJobFinished;
 		std::atomic<bool> bHaveNewJob;
 		std::atomic<bool> bJobCollected;
-		bool bNeedToExit = false;
-		bool bReadyForDeletion = false;
+		std::atomic<bool> bNeedToExit = false;
+		std::atomic<bool> bReadyForDeletion = false;
+		// Callbacks that were collected but not invoked yet, a job counts as fully completed only when this is zero.
+		std::atomic<int> CallBacksInFlight = 0;
 
 		void* CurrentInputData = nullptr;
 		void* CurrentOutputData = nullptr;
@@ -110,6 +112,10 @@ namespace FocalEngine
 			if (!Thread)
 				return false;
 
+			// Already running, do not try to run it a second time.
+			if (Thread->ThreadHandler.joinable())
+				return false;
+
 			Thread->ThreadHandler = std::thread(std::forward<Callable>(Func), std::forward<Args>(ArgsList)...);
 			return true;
 		}
@@ -130,7 +136,17 @@ namespace FocalEngine
 		void MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedThread);
 		DedicatedJobThread* GetDedicatedThread(const std::string& ThreadID);
 
-		void CollectJob(JobThread* FromThread);
+		struct FECollectedCallBack
+		{
+			FE_THREAD_CALLBACK_FUNC CallBack = nullptr;
+			void* OutputData = nullptr;
+			JobThread* FromThread = nullptr;
+		};
+
+		// Marks the job as collected and returns its callback with the output data.
+		FECollectedCallBack CollectJob(JobThread* FromThread);
+		// Invokes a collected callback (outside of MainMutex) and marks it as no longer in flight.
+		void InvokeCollectedCallBack(const FECollectedCallBack& CollectedCallBack);
 
 		std::vector<LightThread*> LightThreads;
 		LightThread* GetLightThread(const std::string& ThreadID);
