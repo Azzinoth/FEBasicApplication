@@ -37,6 +37,10 @@ if(FE_PLATFORM_BACKEND STREQUAL "Emscripten" AND FE_GRAPHIC_API_BACKEND STREQUAL
     message(FATAL_ERROR "Emscripten + OpenGL (WebGL2) is not supported")
 endif()
 
+if(EMSCRIPTEN AND FE_BASIC_APPLICATION_ENABLE_TESTS)
+    message(FATAL_ERROR "FE_BASIC_APPLICATION_ENABLE_TESTS is currently not supported for Emscripten builds")
+endif()
+
 file(GLOB imgui_SRC
 	"ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp"
 	"ThirdParty/imgui/imgui.cpp"
