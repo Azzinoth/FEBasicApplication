@@ -19,21 +19,21 @@ set(ALL_SOURCE_FILES "")
 option(BUILD_SHARED_LIBS "Build FEBasicApplication as a shared library" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (/MT) instead of dynamic (/MD)" ON)
 option(FE_BASIC_APPLICATION_ENABLE_TESTS "Build the FEBasicApplicationTests executable" OFF)
-set(FE_PLATFORM_BACKEND "GLFW"  CACHE STRING "Platform backend: GLFW | Emscripten")
+set(FE_WINDOW_SYSTEM_BACKEND "GLFW" CACHE STRING "Window system backend: GLFW | Emscripten")
 set(FE_GRAPHIC_API_BACKEND "OpenGL" CACHE STRING "Renderer backend: OpenGL | WebGPU")
-set_property(CACHE FE_PLATFORM_BACKEND PROPERTY STRINGS GLFW Emscripten)
+set_property(CACHE FE_WINDOW_SYSTEM_BACKEND PROPERTY STRINGS GLFW Emscripten)
 set_property(CACHE FE_GRAPHIC_API_BACKEND PROPERTY STRINGS OpenGL WebGPU)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# When targeting Emscripten, force Emscripten platform + WebGPU graphics.
+# When targeting Emscripten, force the Emscripten window system + WebGPU graphics.
 if(EMSCRIPTEN)
-    set(FE_PLATFORM_BACKEND    "Emscripten" CACHE STRING "Platform backend: GLFW | Emscripten" FORCE)
-    set(FE_GRAPHIC_API_BACKEND "WebGPU"     CACHE STRING "Renderer backend: OpenGL | WebGPU"   FORCE)
-    message(STATUS "Emscripten detected: forcing FE_PLATFORM_BACKEND=Emscripten, FE_GRAPHIC_API_BACKEND=WebGPU")
+    set(FE_WINDOW_SYSTEM_BACKEND "Emscripten" CACHE STRING "Window system backend: GLFW | Emscripten" FORCE)
+    set(FE_GRAPHIC_API_BACKEND   "WebGPU"     CACHE STRING "Renderer backend: OpenGL | WebGPU"        FORCE)
+    message(STATUS "Emscripten detected: forcing FE_WINDOW_SYSTEM_BACKEND=Emscripten, FE_GRAPHIC_API_BACKEND=WebGPU")
 endif()
 
 # Validate combos
-if(FE_PLATFORM_BACKEND STREQUAL "Emscripten" AND FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
+if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "Emscripten" AND FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
     message(FATAL_ERROR "Emscripten + OpenGL (WebGL2) is not supported")
 endif()
 
@@ -50,20 +50,20 @@ file(GLOB imgui_SRC
 	"ThirdParty/imgui/imgui_widgets.cpp"
 )
 
-# Platform code
-if(FE_PLATFORM_BACKEND STREQUAL "GLFW")
-    set(FE_PLATFORM_SRC
-        Backends/Platforms/GLFW/FEPlatformGLFW.cpp
-        Backends/Platforms/GLFW/FEPlatformGLFW.h
-        Backends/Platforms/GLFW/FEPlatformWindowGLFW.cpp
-        Backends/Platforms/GLFW/FEPlatformWindowGLFW.h)
+# Window system code
+if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW")
+    set(FE_WINDOW_SYSTEM_SRC
+        Backends/WindowSystems/GLFW/FEWindowSystemGLFW.cpp
+        Backends/WindowSystems/GLFW/FEWindowSystemGLFW.h
+        Backends/WindowSystems/GLFW/FEWindowSystemWindowGLFW.cpp
+        Backends/WindowSystems/GLFW/FEWindowSystemWindowGLFW.h)
     list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_glfw.cpp)
-elseif(FE_PLATFORM_BACKEND STREQUAL "Emscripten")
-    set(FE_PLATFORM_SRC
-        Backends/Platforms/Emscripten/FEPlatformEmscripten.cpp
-        Backends/Platforms/Emscripten/FEPlatformEmscripten.h
-        Backends/Platforms/Emscripten/FEPlatformWindowEmscripten.cpp
-        Backends/Platforms/Emscripten/FEPlatformWindowEmscripten.h)
+elseif(FE_WINDOW_SYSTEM_BACKEND STREQUAL "Emscripten")
+    set(FE_WINDOW_SYSTEM_SRC
+        Backends/WindowSystems/Emscripten/FEWindowSystemEmscripten.cpp
+        Backends/WindowSystems/Emscripten/FEWindowSystemEmscripten.h
+        Backends/WindowSystems/Emscripten/FEWindowSystemWindowEmscripten.cpp
+        Backends/WindowSystems/Emscripten/FEWindowSystemWindowEmscripten.h)
     # Emscripten code currently uses GLFW emulation (via -sUSE_GLFW=3) and ImGui's GLFW glue.
     list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_glfw.cpp)
 endif()
@@ -85,7 +85,7 @@ elseif(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
     list(APPEND imgui_SRC ThirdParty/imgui/imgui_impl_wgpu.cpp)
 endif()
 
-list(APPEND ALL_SOURCE_FILES ${FE_PLATFORM_SRC} ${FE_GRAPHIC_API_SRC})
+list(APPEND ALL_SOURCE_FILES ${FE_WINDOW_SYSTEM_SRC} ${FE_GRAPHIC_API_SRC})
 
 if(MSVC)
 	# Disable C4251 warning
@@ -146,7 +146,10 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FETime.h"
 	"FEUniqueID.cpp"
 	"FEUniqueID.h"
+	"FEOS.cpp"
+	"FEOS.h"
 	"FEBasicApplicationAPI.h"
+	"FEPlatform.h"
 )
 
 # FEConsoleWindow is Win32-only (HWND, WORD, console color API). Web has no OS console.
@@ -160,8 +163,8 @@ endif()
 file(GLOB Backends_SRC
 	"Backends/FEGraphicsAPI.h"
 	"Backends/FEMonitorInfo.h"
-	"Backends/Platforms/FEPlatformInterface.h"
-	"Backends/Platforms/FEPlatformWindowInterface.h"
+	"Backends/WindowSystems/FEWindowSystemInterface.h"
+	"Backends/WindowSystems/FEWindowSystemWindowInterface.h"
 	"Backends/GraphicsAPIs/FEDeviceInterface.h"
 	"Backends/GraphicsAPIs/FEDeviceSurfaceInterface.h"
 )
@@ -239,8 +242,8 @@ if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU" AND NOT EMSCRIPTEN)
     target_compile_definitions(FEBasicApplication PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 endif()
 
-# Platform dependency linking
-if(FE_PLATFORM_BACKEND STREQUAL "GLFW")
+# Window system dependency linking
+if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW")
     if(BUILD_SHARED_LIBS)
         if(USE_STATIC_RUNTIME)
             set(GLFW_LIBRARY "glfw3_mt.lib")
@@ -259,7 +262,7 @@ if(FE_PLATFORM_BACKEND STREQUAL "GLFW")
         PRIVATE
             ${GLFW_LIBRARY}
     )
-elseif(FE_PLATFORM_BACKEND STREQUAL "Emscripten")
+elseif(FE_WINDOW_SYSTEM_BACKEND STREQUAL "Emscripten")
     # PUBLIC so the parent executable also gets the flag at its link step.
     # GLFW headers are in Emscripten's default sysroot; -sUSE_GLFW=3 only affects linking.
     target_link_options(FEBasicApplication PUBLIC "-sUSE_GLFW=3")
@@ -345,7 +348,7 @@ source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
 source_group("Source Files/SubSystems/Profiling" FILES ${BasicApplicationProfilingSubSystem_SRC})
 source_group("Source Files/Backends" FILES ${Backends_SRC})
-source_group("Source Files/Backends/Platforms/${FE_PLATFORM_BACKEND}" FILES ${FE_PLATFORM_SRC})
+source_group("Source Files/Backends/WindowSystems/${FE_WINDOW_SYSTEM_BACKEND}" FILES ${FE_WINDOW_SYSTEM_SRC})
 source_group("Source Files/Backends/GraphicsAPIs/${FE_GRAPHIC_API_BACKEND}" FILES ${FE_GRAPHIC_API_SRC})
 # *************** THIRD_PARTY ***************
 source_group("Source Files/ThirdParty/imgui" FILES ${imgui_SRC})
@@ -381,10 +384,10 @@ set(USE_STATIC_RUNTIME ${USE_STATIC_RUNTIME} PARENT_SCOPE)
 set(GLEW_LIBRARY ${GLEW_LIBRARY} PARENT_SCOPE)
 set(GLFW_LIBRARY ${GLFW_LIBRARY} PARENT_SCOPE)
 
-set(FE_PLATFORM_BACKEND    ${FE_PLATFORM_BACKEND}    PARENT_SCOPE)
-set(FE_GRAPHIC_API_BACKEND ${FE_GRAPHIC_API_BACKEND} PARENT_SCOPE)
+set(FE_WINDOW_SYSTEM_BACKEND ${FE_WINDOW_SYSTEM_BACKEND} PARENT_SCOPE)
+set(FE_GRAPHIC_API_BACKEND   ${FE_GRAPHIC_API_BACKEND}   PARENT_SCOPE)
 
-if(FE_PLATFORM_BACKEND STREQUAL "GLFW" AND BUILD_SHARED_LIBS AND NOT USE_STATIC_RUNTIME)
+if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW" AND BUILD_SHARED_LIBS AND NOT USE_STATIC_RUNTIME)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLFW_LIB_DIR}/glfw3.dll"

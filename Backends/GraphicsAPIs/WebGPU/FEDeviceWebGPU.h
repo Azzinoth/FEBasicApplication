@@ -15,10 +15,10 @@ namespace FocalEngine
 
 		GraphicsAPI GetGraphicsAPI() const override;
 
-		bool Initialize(FEPlatformWindowInterface* PrimaryWindow) override;
+		bool Initialize(FEWindowSystemWindowInterface* PrimaryWindow) override;
 		void Shutdown() override;
 
-		FEDeviceSurfaceInterface* CreateSurface(FEPlatformWindowInterface* Window) override;
+		FEDeviceSurfaceInterface* CreateSurface(FEWindowSystemWindowInterface* Window) override;
 		void* GetNativeDevice() override;
 
 		const wgpu::Device&  GetWGPUDevice()  const { return Device; }

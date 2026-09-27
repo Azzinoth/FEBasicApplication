@@ -1,84 +1,84 @@
-#include "FEPlatformWindowEmscripten.h"
+#include "FEWindowSystemWindowEmscripten.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 
 namespace FocalEngine
 {
-	FEPlatformWindowEmscripten::~FEPlatformWindowEmscripten()
+	FEWindowSystemWindowEmscripten::~FEWindowSystemWindowEmscripten()
 	{
 		if (GLFWWindow != nullptr)
 			glfwDestroyWindow(GLFWWindow);
 	}
 
-	void* FEPlatformWindowEmscripten::GetNativeHandle()
+	void* FEWindowSystemWindowEmscripten::GetNativeHandle()
 	{
 		return GLFWWindow;
 	}
 
-	void FEPlatformWindowEmscripten::MakeContextCurrent()
+	void FEWindowSystemWindowEmscripten::MakeContextCurrent()
 	{
 		if (API == GraphicsAPI::OpenGL)
 			glfwMakeContextCurrent(GLFWWindow);
 	}
 
-	void FEPlatformWindowEmscripten::SwapBuffers()
+	void FEWindowSystemWindowEmscripten::SwapBuffers()
 	{
 		if (API == GraphicsAPI::OpenGL)
 			glfwSwapBuffers(GLFWWindow);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiPlatformInit(ImGuiContext* Context)
+	void FEWindowSystemWindowEmscripten::ImGuiPlatformInit(ImGuiContext* Context)
 	{
 		ImGui::SetCurrentContext(Context);
 		ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiPlatformShutdown()
+	void FEWindowSystemWindowEmscripten::ImGuiPlatformShutdown()
 	{
 		ImGui_ImplGlfw_Shutdown();
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiPlatformNewFrame()
+	void FEWindowSystemWindowEmscripten::ImGuiPlatformNewFrame()
 	{
 		ImGui_ImplGlfw_NewFrame();
 	}
 
-	void FEPlatformWindowEmscripten::SetTitle(const std::string& Title)
+	void FEWindowSystemWindowEmscripten::SetTitle(const std::string& Title)
 	{
 		glfwSetWindowTitle(GLFWWindow, Title.c_str());
 	}
 
-	bool FEPlatformWindowEmscripten::IsInFocus() const
+	bool FEWindowSystemWindowEmscripten::IsInFocus() const
 	{
 		return glfwGetWindowAttrib(GLFWWindow, GLFW_FOCUSED);
 	}
 
-	void FEPlatformWindowEmscripten::GetPosition(int* Xpos, int* Ypos) const
+	void FEWindowSystemWindowEmscripten::GetPosition(int* Xpos, int* Ypos) const
 	{
 		glfwGetWindowPos(GLFWWindow, Xpos, Ypos);
 	}
 
-	void FEPlatformWindowEmscripten::GetSize(int* Width, int* Height) const
+	void FEWindowSystemWindowEmscripten::GetSize(int* Width, int* Height) const
 	{
 		glfwGetWindowSize(GLFWWindow, Width, Height);
 	}
 
-	void FEPlatformWindowEmscripten::SetSize(int Width, int Height)
+	void FEWindowSystemWindowEmscripten::SetSize(int Width, int Height)
 	{
 		glfwSetWindowSize(GLFWWindow, Width, Height);
 	}
 
-	void FEPlatformWindowEmscripten::Minimize() const
+	void FEWindowSystemWindowEmscripten::Minimize() const
 	{
 		glfwIconifyWindow(GLFWWindow);
 	}
 
-	void FEPlatformWindowEmscripten::Restore() const
+	void FEWindowSystemWindowEmscripten::Restore() const
 	{
 		glfwRestoreWindow(GLFWWindow);
 	}
 
-	void FEPlatformWindowEmscripten::PushContext()
+	void FEWindowSystemWindowEmscripten::PushContext()
 	{
 		if (API != GraphicsAPI::OpenGL)
 			return;
@@ -88,7 +88,7 @@ namespace FocalEngine
 			glfwMakeContextCurrent(GLFWWindow);
 	}
 
-	void FEPlatformWindowEmscripten::PopContext()
+	void FEWindowSystemWindowEmscripten::PopContext()
 	{
 		if (API != GraphicsAPI::OpenGL)
 			return;
@@ -97,42 +97,42 @@ namespace FocalEngine
 			glfwMakeContextCurrent(SavedContext);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardMonitor(void* NativeMonitor, int Event)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardMonitor(void* NativeMonitor, int Event)
 	{
 		ImGui_ImplGlfw_MonitorCallback(static_cast<GLFWmonitor*>(NativeMonitor), Event);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardFocus(int Focused)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardFocus(int Focused)
 	{
 		ImGui_ImplGlfw_WindowFocusCallback(GLFWWindow, Focused);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardMouseEnter(int Entered)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardMouseEnter(int Entered)
 	{
 		ImGui_ImplGlfw_CursorEnterCallback(GLFWWindow, Entered);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardMouseButton(int Button, int Action, int Mods)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardMouseButton(int Button, int Action, int Mods)
 	{
 		ImGui_ImplGlfw_MouseButtonCallback(GLFWWindow, Button, Action, Mods);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardMouseMove(double Xpos, double Ypos)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardMouseMove(double Xpos, double Ypos)
 	{
 		ImGui_ImplGlfw_CursorPosCallback(GLFWWindow, Xpos, Ypos);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardChar(unsigned int Codepoint)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardChar(unsigned int Codepoint)
 	{
 		ImGui_ImplGlfw_CharCallback(GLFWWindow, Codepoint);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardKey(int Key, int Scancode, int Action, int Mods)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardKey(int Key, int Scancode, int Action, int Mods)
 	{
 		ImGui_ImplGlfw_KeyCallback(GLFWWindow, Key, Scancode, Action, Mods);
 	}
 
-	void FEPlatformWindowEmscripten::ImGuiForwardScroll(double Xoffset, double Yoffset)
+	void FEWindowSystemWindowEmscripten::ImGuiForwardScroll(double Xoffset, double Yoffset)
 	{
 		ImGui_ImplGlfw_ScrollCallback(GLFWWindow, Xoffset, Yoffset);
 	}

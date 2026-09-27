@@ -30,7 +30,7 @@ namespace FocalEngine
 
 	}
 
-	bool FEDeviceWebGPU::Initialize(FEPlatformWindowInterface* PrimaryWindow)
+	bool FEDeviceWebGPU::Initialize(FEWindowSystemWindowInterface* PrimaryWindow)
 	{
 		// 1. Create instance
 		wgpu::InstanceDescriptor InstanceDesc{};
@@ -90,7 +90,7 @@ namespace FocalEngine
 
 	}
 
-	FEDeviceSurfaceInterface* FEDeviceWebGPU::CreateSurface(FEPlatformWindowInterface* Window)
+	FEDeviceSurfaceInterface* FEDeviceWebGPU::CreateSurface(FEWindowSystemWindowInterface* Window)
 	{
 		if (!Instance || !Adapter || !Device || Window == nullptr)
 			return nullptr;

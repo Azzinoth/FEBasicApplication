@@ -15,10 +15,10 @@ namespace FocalEngine
 
 		GraphicsAPI GetGraphicsAPI() const override;
 
-		bool Initialize(FEPlatformWindowInterface* PrimaryWindow);
+		bool Initialize(FEWindowSystemWindowInterface* PrimaryWindow);
 		void Shutdown();
 
-		FEDeviceSurfaceInterface* CreateSurface(FEPlatformWindowInterface* Window);
+		FEDeviceSurfaceInterface* CreateSurface(FEWindowSystemWindowInterface* Window);
 		void* GetNativeDevice();
 	};
 }

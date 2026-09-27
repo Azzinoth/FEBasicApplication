@@ -7,7 +7,7 @@
 #include "imgui/misc/cpp/imgui_stdlib.h"
 #include "imgui/imgui_internal.h"
 
-#include "Backends/Platforms/FEPlatformWindowInterface.h"
+#include "Backends/WindowSystems/FEWindowSystemWindowInterface.h"
 #include "Backends/GraphicsAPIs/FEDeviceSurfaceInterface.h"
 #include "Backends/FEMonitorInfo.h"
 
@@ -26,7 +26,7 @@ namespace FocalEngine
 	{
 		friend class FEBasicApplication;
 
-		FEPlatformWindowInterface* PlatformWindow = nullptr;
+		FEWindowSystemWindowInterface* WindowSystemWindow = nullptr;
 		FEDeviceSurfaceInterface* DeviceSurface = nullptr;
 
 		ImGuiContext* ImguiContext = nullptr;

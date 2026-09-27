@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Platforms/FEPlatformWindowInterface.h"
+#include "../WindowSystems/FEWindowSystemWindowInterface.h"
 
 namespace FocalEngine
 {

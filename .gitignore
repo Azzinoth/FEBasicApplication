@@ -20,6 +20,7 @@ CMakeCache.txt
 cmake_install.cmake
 VersionInfo/FE_BASIC_APPLICATION_Version.h
 FEBasicApplicationTests.xml
+.DS_Store
 
 #Folders
 Debug/

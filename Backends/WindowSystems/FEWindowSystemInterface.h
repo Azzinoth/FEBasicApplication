@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../FEGraphicsAPI.h"
-#include "FEPlatformWindowInterface.h"
+#include "FEWindowSystemWindowInterface.h"
 #include "../FEMonitorInfo.h"
 #include <functional>
 #include <string>
@@ -9,10 +9,10 @@
 
 namespace FocalEngine
 {
-	class FEPlatformInterface
+	class FEWindowSystemInterface
 	{
 	public:
-		virtual ~FEPlatformInterface() = default;
+		virtual ~FEWindowSystemInterface() = default;
 
 		virtual bool Initialize() = 0;
 		virtual void Shutdown() = 0;
@@ -21,11 +21,11 @@ namespace FocalEngine
 
 		virtual double GetTime() = 0;
 
-		virtual FEPlatformWindowInterface* OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API) = 0;
-		virtual FEPlatformWindowInterface* OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API) = 0;
+		virtual FEWindowSystemWindowInterface* OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API) = 0;
+		virtual FEWindowSystemWindowInterface* OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API) = 0;
 
 		virtual std::vector<MonitorInfo> GetMonitors() = 0;
-		virtual MonitorInfo GetMonitorContainingWindow(FEPlatformWindowInterface* Window) = 0;
+		virtual MonitorInfo GetMonitorContainingWindow(FEWindowSystemWindowInterface* Window) = 0;
 
 		// Register a process-global callback for monitor connect/disconnect events.
 		// NativeMonitor is the opaque native handle (GLFWmonitor* for the GLFW backend).
@@ -36,5 +36,5 @@ namespace FocalEngine
 		virtual std::string GetClipboardText() = 0;
 	};
 
-	FEPlatformInterface* CreatePlatform();
+	FEWindowSystemInterface* CreateWindowSystem();
 }

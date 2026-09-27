@@ -1,4 +1,4 @@
-#include "FEPlatformEmscripten.h"
+#include "FEWindowSystemEmscripten.h"
 #include <algorithm>
 #include <emscripten.h>
 
@@ -11,24 +11,24 @@ namespace FocalEngine
 			RegisteredMonitorCallback(static_cast<void*>(Monitor), Event);
 	}
 
-	FEPlatformInterface* CreatePlatform()
+	FEWindowSystemInterface* CreateWindowSystem()
 	{
-		return new FEPlatformEmscripten();
+		return new FEWindowSystemEmscripten();
 	}
 
-	FEPlatformEmscripten::~FEPlatformEmscripten() {}
+	FEWindowSystemEmscripten::~FEWindowSystemEmscripten() {}
 
-	bool FEPlatformEmscripten::Initialize()
+	bool FEWindowSystemEmscripten::Initialize()
 	{
 		return glfwInit() == GLFW_TRUE;
 	}
 
-	void FEPlatformEmscripten::Shutdown()
+	void FEWindowSystemEmscripten::Shutdown()
 	{
 		glfwTerminate();
 	}
 
-	void FEPlatformEmscripten::PollEvents()
+	void FEWindowSystemEmscripten::PollEvents()
 	{
 		glfwPollEvents();
 	}
@@ -38,32 +38,32 @@ namespace FocalEngine
 	static std::function<void()> StoredMainLoopTick;
 	static void DispatchMainLoopTick() { if (StoredMainLoopTick) StoredMainLoopTick(); }
 
-	void FEPlatformEmscripten::RunMainLoop(std::function<void()> Tick)
+	void FEWindowSystemEmscripten::RunMainLoop(std::function<void()> Tick)
 	{
 		StoredMainLoopTick = std::move(Tick);
 		// fps=0 -> use requestAnimationFrame, simulate_infinite_loop=1 -> never returns to caller.
 		emscripten_set_main_loop(DispatchMainLoopTick, 0, 1);
 	}
 
-	double FEPlatformEmscripten::GetTime()
+	double FEWindowSystemEmscripten::GetTime()
 	{
 		return glfwGetTime();
 	}
 
-	FEPlatformWindowInterface* FEPlatformEmscripten::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
+	FEWindowSystemWindowInterface* FEWindowSystemEmscripten::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
 	{
 		if (API == GraphicsAPI::WebGPU)
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		FEPlatformWindowEmscripten* PlatformWindow = new FEPlatformWindowEmscripten();
-		PlatformWindow->GLFWWindow = glfwCreateWindow(Width, Height, Title.c_str(), nullptr, nullptr);
-		PlatformWindow->API = API;
+		FEWindowSystemWindowEmscripten* WindowSystemWindow = new FEWindowSystemWindowEmscripten();
+		WindowSystemWindow->GLFWWindow = glfwCreateWindow(Width, Height, Title.c_str(), nullptr, nullptr);
+		WindowSystemWindow->API = API;
 
 		glfwDefaultWindowHints();
-		return PlatformWindow;
+		return WindowSystemWindow;
 	}
 
-	FEPlatformWindowInterface* FEPlatformEmscripten::OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API)
+	FEWindowSystemWindowInterface* FEWindowSystemEmscripten::OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API)
 	{
 		if (Monitor == nullptr || Monitor->Monitor == nullptr || Monitor->VideoMode == nullptr)
 			return nullptr;
@@ -77,17 +77,17 @@ namespace FocalEngine
 		glfwWindowHint(GLFW_REFRESH_RATE,  Monitor->VideoMode->refreshRate);
 		glfwWindowHint(GLFW_DECORATED,     GLFW_FALSE);
 
-		FEPlatformWindowEmscripten* PlatformWindow = new FEPlatformWindowEmscripten();
-		PlatformWindow->GLFWWindow = glfwCreateWindow(
+		FEWindowSystemWindowEmscripten* WindowSystemWindow = new FEWindowSystemWindowEmscripten();
+		WindowSystemWindow->GLFWWindow = glfwCreateWindow(
 			Monitor->VideoMode->width,
 			Monitor->VideoMode->height,
 			"",
 			Monitor->Monitor,
 			nullptr);
-		PlatformWindow->API = API;
+		WindowSystemWindow->API = API;
 
 		glfwSetWindowMonitor(
-			PlatformWindow->GLFWWindow,
+			WindowSystemWindow->GLFWWindow,
 			Monitor->Monitor,
 			0, 0,
 			Monitor->VideoMode->width,
@@ -95,22 +95,22 @@ namespace FocalEngine
 			Monitor->VideoMode->refreshRate);
 
 		glfwDefaultWindowHints();
-		return PlatformWindow;
+		return WindowSystemWindow;
 	}
 
-	bool FEPlatformEmscripten::SetClipboardText(std::string Text)
+	bool FEWindowSystemEmscripten::SetClipboardText(std::string Text)
 	{
 		glfwSetClipboardString(nullptr, Text.c_str());
 		return true;
 	}
 
-	std::string FEPlatformEmscripten::GetClipboardText()
+	std::string FEWindowSystemEmscripten::GetClipboardText()
 	{
 		const char* Clipboard = glfwGetClipboardString(nullptr);
 		return Clipboard ? std::string(Clipboard) : std::string();
 	}
 
-	std::vector<MonitorInfo> FEPlatformEmscripten::GetMonitors()
+	std::vector<MonitorInfo> FEWindowSystemEmscripten::GetMonitors()
 	{
 		std::vector<MonitorInfo> Result;
 
@@ -137,7 +137,7 @@ namespace FocalEngine
 		return Result;
 	}
 
-	MonitorInfo FEPlatformEmscripten::GetMonitorContainingWindow(FEPlatformWindowInterface* Window)
+	MonitorInfo FEWindowSystemEmscripten::GetMonitorContainingWindow(FEWindowSystemWindowInterface* Window)
 	{
 		MonitorInfo BestMonitor;
 		if (Window == nullptr)
@@ -178,7 +178,7 @@ namespace FocalEngine
 		return BestMonitor;
 	}
 
-	void FEPlatformEmscripten::SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback)
+	void FEWindowSystemEmscripten::SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback)
 	{
 		RegisteredMonitorCallback = std::move(Callback);
 		glfwSetMonitorCallback(RegisteredMonitorCallback ? MonitorCallbackBridge : nullptr);

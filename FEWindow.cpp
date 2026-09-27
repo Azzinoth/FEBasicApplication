@@ -7,7 +7,7 @@ void FEWindow::InitializeImGui()
 	ImguiContext = ImGui::CreateContext();
 	ImGui::SetCurrentContext(ImguiContext);
 
-	PlatformWindow->ImGuiPlatformInit(ImguiContext);
+	WindowSystemWindow->ImGuiPlatformInit(ImguiContext);
 	DeviceSurface->ImGuiInit();
 }
 
@@ -21,7 +21,7 @@ void FEWindow::TerminateImGui()
 	ImGui::SetCurrentContext(ImguiContext);
 
 	DeviceSurface->ImGuiShutdown();
-	PlatformWindow->ImGuiPlatformShutdown();
+	WindowSystemWindow->ImGuiPlatformShutdown();
 
 	ImGui::DestroyContext(ImguiContext);
 	ImGui::SetCurrentContext(nullptr);
@@ -29,14 +29,14 @@ void FEWindow::TerminateImGui()
 
 FEWindow::~FEWindow()
 {
-	if (PlatformWindow != nullptr)
-		PlatformWindow->MakeContextCurrent();
+	if (WindowSystemWindow != nullptr)
+		WindowSystemWindow->MakeContextCurrent();
 	TerminateImGui();
 
 	delete DeviceSurface;
 	DeviceSurface = nullptr;
-	delete PlatformWindow;
-	PlatformWindow = nullptr;
+	delete WindowSystemWindow;
+	WindowSystemWindow = nullptr;
 }
 
 std::string FEWindow::GetTitle() const
@@ -47,12 +47,12 @@ std::string FEWindow::GetTitle() const
 void FEWindow::SetTitle(const std::string NewValue)
 {
 	Title = NewValue;
-	PlatformWindow->SetTitle(Title);
+	WindowSystemWindow->SetTitle(Title);
 }
 
 GLFWwindow* FEWindow::GetGlfwWindow() const
 {
-	return static_cast<GLFWwindow*>(PlatformWindow->GetNativeHandle());
+	return static_cast<GLFWwindow*>(WindowSystemWindow->GetNativeHandle());
 }
 
 std::function<void()> FEWindow::GetRenderFunction()
@@ -72,13 +72,13 @@ void FEWindow::ClearRenderFunction()
 
 void FEWindow::BeginFrame()
 {
-	PlatformWindow->MakeContextCurrent();
+	WindowSystemWindow->MakeContextCurrent();
 	ImGui::SetCurrentContext(ImguiContext);
 
 	ImGui::GetIO().DeltaTime = 1.0f / 60.0f;
 	DeviceSurface->BeginFrame();
 	DeviceSurface->ImGuiNewFrame();
-	PlatformWindow->ImGuiPlatformNewFrame();
+	WindowSystemWindow->ImGuiPlatformNewFrame();
 	ImGui::NewFrame();
 
 	if (bDefaultDockspaceEnabled)
@@ -99,12 +99,12 @@ void FEWindow::EndFrame()
 	ImGui::Render();
 	DeviceSurface->ImGuiRenderDrawData();
 	DeviceSurface->EndFrame();
-	PlatformWindow->SwapBuffers();
+	WindowSystemWindow->SwapBuffers();
 }
 
 bool FEWindow::IsInFocus() const
 {
-	return PlatformWindow->IsInFocus();
+	return WindowSystemWindow->IsInFocus();
 }
 
 void FEWindow::SetClearColor(float R, float G, float B, float A)
@@ -136,7 +136,7 @@ void FEWindow::EnsureCorrectContextBegin()
 	if (TemporaryImguiContext != ImguiContext)
 		ImGui::SetCurrentContext(ImguiContext);
 
-	PlatformWindow->PushContext();
+	WindowSystemWindow->PushContext();
 }
 
 void FEWindow::EnsureCorrectContextEnd()
@@ -147,7 +147,7 @@ void FEWindow::EnsureCorrectContextEnd()
 	if (TemporaryImguiContext != ImguiContext)
 		ImGui::SetCurrentContext(TemporaryImguiContext);
 
-	PlatformWindow->PopContext();
+	WindowSystemWindow->PopContext();
 }
 
 std::string FEWindow::AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback)
@@ -162,7 +162,7 @@ void FEWindow::InvokeMonitorCallback(GLFWmonitor* Monitor, int Event)
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardMonitor(Monitor, Event);
+	WindowSystemWindow->ImGuiForwardMonitor(Monitor, Event);
 
 	for (int i = 0; i < UserOnMonitorCallbackFuncs.size(); i++)
 		UserOnMonitorCallbackFuncs[i].second(Monitor, Event);
@@ -182,7 +182,7 @@ void FEWindow::InvokeOnFocusCallback(int Focused)
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardFocus(Focused);
+	WindowSystemWindow->ImGuiForwardFocus(Focused);
 
 	for (int i = 0; i < UserOnFocusCallbackFuncs.size(); i++)
 		UserOnFocusCallbackFuncs[i].second(Focused);
@@ -243,7 +243,7 @@ void FEWindow::InvokeMouseEnterCallback(int Entered)
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardMouseEnter(Entered);
+	WindowSystemWindow->ImGuiForwardMouseEnter(Entered);
 
 	for (int i = 0; i < UserOnMouseEnterCallbackFuncs.size(); i++)
 		UserOnMouseEnterCallbackFuncs[i].second(Entered);
@@ -263,7 +263,7 @@ void FEWindow::InvokeMouseButtonCallback(const int Button, const int Action, con
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardMouseButton(Button, Action, Mods);
+	WindowSystemWindow->ImGuiForwardMouseButton(Button, Action, Mods);
 
 	for (int i = 0; i < UserOnMouseButtonCallbackFuncs.size(); i++)
 		UserOnMouseButtonCallbackFuncs[i].second(Button, Action, Mods);
@@ -283,7 +283,7 @@ void FEWindow::InvokeMouseMoveCallback(const double Xpos, const double Ypos)
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardMouseMove(Xpos, Ypos);
+	WindowSystemWindow->ImGuiForwardMouseMove(Xpos, Ypos);
 
 	for (int i = 0; i < UserOnMouseMoveCallbackFuncs.size(); i++)
 		UserOnMouseMoveCallbackFuncs[i].second(Xpos, Ypos);
@@ -303,7 +303,7 @@ void FEWindow::InvokeCharCallback(unsigned int Codepoint)
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardChar(Codepoint);
+	WindowSystemWindow->ImGuiForwardChar(Codepoint);
 
 	for (int i = 0; i < UserOnCharCallbackFuncs.size(); i++)
 		UserOnCharCallbackFuncs[i].second(Codepoint);
@@ -323,7 +323,7 @@ void FEWindow::InvokeKeyCallback(const int Key, const int Scancode, const int Ac
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardKey(Key, Scancode, Action, Mods);
+	WindowSystemWindow->ImGuiForwardKey(Key, Scancode, Action, Mods);
 
 	for (int i = 0; i < UserOnKeyCallbackFuncs.size(); i++)
 		UserOnKeyCallbackFuncs[i].second(Key, Scancode, Action, Mods);
@@ -361,7 +361,7 @@ void FEWindow::InvokeScrollCallback(const double Xoffset, const double Yoffset)
 {
 	EnsureCorrectContextBegin();
 
-	PlatformWindow->ImGuiForwardScroll(Xoffset, Yoffset);
+	WindowSystemWindow->ImGuiForwardScroll(Xoffset, Yoffset);
 
 	for (int i = 0; i < UserOnScrollCallbackFuncs.size(); i++)
 		UserOnScrollCallbackFuncs[i].second(Xoffset, Yoffset);
@@ -371,55 +371,55 @@ void FEWindow::InvokeScrollCallback(const double Xoffset, const double Yoffset)
 
 void FEWindow::GetPosition(int* Xpos, int* Ypos) const
 {
-	PlatformWindow->GetPosition(Xpos, Ypos);
+	WindowSystemWindow->GetPosition(Xpos, Ypos);
 }
 
 int FEWindow::GetXPosition() const
 {
 	int X, Y;
-	PlatformWindow->GetPosition(&X, &Y);
+	WindowSystemWindow->GetPosition(&X, &Y);
 	return X;
 }
 
 int FEWindow::GetYPosition() const
 {
 	int X, Y;
-	PlatformWindow->GetPosition(&X, &Y);
+	WindowSystemWindow->GetPosition(&X, &Y);
 	return Y;
 }
 
 void FEWindow::GetSize(int* Width, int* Height) const
 {
-	PlatformWindow->GetSize(Width, Height);
+	WindowSystemWindow->GetSize(Width, Height);
 }
 
 void FEWindow::SetSize(int NewWidth, int NewHeight)
 {
-	PlatformWindow->SetSize(NewWidth, NewHeight);
+	WindowSystemWindow->SetSize(NewWidth, NewHeight);
 }
 
 int FEWindow::GetWidth() const
 {
 	int Width, Height;
-	PlatformWindow->GetSize(&Width, &Height);
+	WindowSystemWindow->GetSize(&Width, &Height);
 	return Width;
 }
 
 int FEWindow::GetHeight() const
 {
 	int Width, Height;
-	PlatformWindow->GetSize(&Width, &Height);
+	WindowSystemWindow->GetSize(&Width, &Height);
 	return Height;
 }
 
 void FEWindow::Minimize() const
 {
-	PlatformWindow->Minimize();
+	WindowSystemWindow->Minimize();
 }
 
 void FEWindow::Restore() const
 {
-	PlatformWindow->Restore();
+	WindowSystemWindow->Restore();
 }
 
 std::string FEWindow::GetID() const

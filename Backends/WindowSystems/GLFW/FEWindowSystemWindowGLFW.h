@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../FEPlatformWindowInterface.h"
+#include "../FEWindowSystemWindowInterface.h"
 #include "../../FEGraphicsAPI.h"
 #ifdef _WIN32
 	// Include Windows.h before glfw3.h so APIENTRY is defined by the Windows SDK first.
@@ -12,14 +12,14 @@
 
 namespace FocalEngine
 {
-	class FEPlatformWindowGLFW : public FEPlatformWindowInterface
+	class FEWindowSystemWindowGLFW : public FEWindowSystemWindowInterface
 	{
-		friend class FEPlatformGLFW;
+		friend class FEWindowSystemGLFW;
 		GLFWwindow* GLFWWindow = nullptr;
 		GLFWwindow* SavedContext = nullptr;
 		GraphicsAPI API = GraphicsAPI::Unknown;
 	public:
-		~FEPlatformWindowGLFW() override;
+		~FEWindowSystemWindowGLFW() override;
 
 		void* GetNativeHandle() override;
 

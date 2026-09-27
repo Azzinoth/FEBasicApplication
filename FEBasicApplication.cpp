@@ -10,13 +10,13 @@ extern "C" __declspec(dllexport) void* GetBasicApplication()
 
 FEBasicApplication::FEBasicApplication()
 {
-	Platform = CreatePlatform();
-	if (!Platform->Initialize())
+	WindowSystem = CreateWindowSystem();
+	if (!WindowSystem->Initialize())
 		return;
 
 	Device = CreateDevice();
 
-	Platform->SetMonitorCallback([](void* NativeMonitor, int Event) {
+	WindowSystem->SetMonitorCallback([](void* NativeMonitor, int Event) {
 		FEBasicApplication::MonitorCallback(static_cast<GLFWmonitor*>(NativeMonitor), Event);
 	});
 
@@ -96,35 +96,35 @@ void FEBasicApplication::InitializeWindow(FEWindow* Window)
 
 FEWindow* FEBasicApplication::AddWindow(const int Width, const int Height, std::string WindowTitle)
 {
-	FEPlatformWindowInterface* NewPlatformWindow = Platform->OpenWindow(Width, Height, WindowTitle, Device->GetGraphicsAPI());
-	if (NewPlatformWindow == nullptr)
+	FEWindowSystemWindowInterface* NewWindowSystemWindow = WindowSystem->OpenWindow(Width, Height, WindowTitle, Device->GetGraphicsAPI());
+	if (NewWindowSystemWindow == nullptr)
 		return nullptr;
 
-	if (NewPlatformWindow->GetNativeHandle() == nullptr)
+	if (NewWindowSystemWindow->GetNativeHandle() == nullptr)
 	{
-		delete NewPlatformWindow;
+		delete NewWindowSystemWindow;
 		return nullptr;
 	}
 
 	if (!bDeviceInitialized)
 	{
-		if (!Device->Initialize(NewPlatformWindow))
+		if (!Device->Initialize(NewWindowSystemWindow))
 		{
-			delete NewPlatformWindow;
+			delete NewWindowSystemWindow;
 			return nullptr;
 		}
 		bDeviceInitialized = true;
 	}
 
-	FEDeviceSurfaceInterface* NewDeviceSurface = Device->CreateSurface(NewPlatformWindow);
+	FEDeviceSurfaceInterface* NewDeviceSurface = Device->CreateSurface(NewWindowSystemWindow);
 	if (NewDeviceSurface == nullptr)
 	{
-		delete NewPlatformWindow;
+		delete NewWindowSystemWindow;
 		return nullptr;
 	}
 
 	FEWindow* NewWindow = new FEWindow();
-	NewWindow->PlatformWindow = NewPlatformWindow;
+	NewWindow->WindowSystemWindow = NewWindowSystemWindow;
 	NewWindow->DeviceSurface = NewDeviceSurface;
 
 	Windows.push_back(NewWindow);
@@ -144,35 +144,35 @@ FEWindow* FEBasicApplication::AddFullScreenWindow(size_t MonitorIndex)
 
 FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
 {
-	FEPlatformWindowInterface* NewPlatformWindow = Platform->OpenFullscreenWindow(Monitor, Device->GetGraphicsAPI());
-	if (NewPlatformWindow == nullptr)
+	FEWindowSystemWindowInterface* NewWindowSystemWindow = WindowSystem->OpenFullscreenWindow(Monitor, Device->GetGraphicsAPI());
+	if (NewWindowSystemWindow == nullptr)
 		return nullptr;
 
-	if (NewPlatformWindow->GetNativeHandle() == nullptr)
+	if (NewWindowSystemWindow->GetNativeHandle() == nullptr)
 	{
-		delete NewPlatformWindow;
+		delete NewWindowSystemWindow;
 		return nullptr;
 	}
 
 	if (!bDeviceInitialized)
 	{
-		if (!Device->Initialize(NewPlatformWindow))
+		if (!Device->Initialize(NewWindowSystemWindow))
 		{
-			delete NewPlatformWindow;
+			delete NewWindowSystemWindow;
 			return nullptr;
 		}
 		bDeviceInitialized = true;
 	}
 
-	FEDeviceSurfaceInterface* NewDeviceSurface = Device->CreateSurface(NewPlatformWindow);
+	FEDeviceSurfaceInterface* NewDeviceSurface = Device->CreateSurface(NewWindowSystemWindow);
 	if (NewDeviceSurface == nullptr)
 	{
-		delete NewPlatformWindow;
+		delete NewWindowSystemWindow;
 		return nullptr;
 	}
 
 	FEWindow* NewWindow = new FEWindow();
-	NewWindow->PlatformWindow = NewPlatformWindow;
+	NewWindow->WindowSystemWindow = NewWindowSystemWindow;
 	NewWindow->DeviceSurface = NewDeviceSurface;
 
 	Windows.push_back(NewWindow);
@@ -242,7 +242,7 @@ void FEBasicApplication::BeginFrame()
 
 void FEBasicApplication::EndFrame() const
 {
-	Platform->PollEvents();
+	WindowSystem->PollEvents();
 
 	if (APPLICATION.bHasToTerminate)
 	{
@@ -272,8 +272,8 @@ void FEBasicApplication::RenderWindows()
 
 void FEBasicApplication::Run(std::function<void()> Tick)
 {
-	if (Platform != nullptr)
-		Platform->RunMainLoop(std::move(Tick));
+	if (WindowSystem != nullptr)
+		WindowSystem->RunMainLoop(std::move(Tick));
 }
 
 bool FEBasicApplication::IsNotTerminated() const
@@ -398,18 +398,18 @@ std::string FEBasicApplication::GetUniqueHexID()
 
 bool FEBasicApplication::SetClipboardText(const std::string Text)
 {
-	if (Platform == nullptr)
+	if (WindowSystem == nullptr)
 		return false;
 
-	return Platform->SetClipboardText(Text);
+	return WindowSystem->SetClipboardText(Text);
 }
 
 std::string FEBasicApplication::GetClipboardText()
 {
-	if (Platform == nullptr)
+	if (WindowSystem == nullptr)
 		return std::string();
 
-	return Platform->GetClipboardText();
+	return WindowSystem->GetClipboardText();
 }
 
 #ifdef _WIN32
@@ -495,11 +495,11 @@ void FEBasicApplication::OnTerminate()
 		Device = nullptr;
 	}
 
-	if (Platform != nullptr)
+	if (WindowSystem != nullptr)
 	{
-		Platform->Shutdown();
-		delete Platform;
-		Platform = nullptr;
+		WindowSystem->Shutdown();
+		delete WindowSystem;
+		WindowSystem = nullptr;
 	}
 
 	bIsReadyToTerminate = true;
@@ -643,15 +643,15 @@ bool FEBasicApplication::HaveAnyWindow() const
 
 std::vector<MonitorInfo> FEBasicApplication::GetMonitors()
 {
-	return Platform->GetMonitors();
+	return WindowSystem->GetMonitors();
 }
 
 MonitorInfo FEBasicApplication::GetMonitorContainingWindow(FEWindow* Window)
 {
-	if (Window == nullptr || Window->PlatformWindow == nullptr)
+	if (Window == nullptr || Window->WindowSystemWindow == nullptr)
 		return MonitorInfo();
 
-	return Platform->GetMonitorContainingWindow(Window->PlatformWindow);
+	return WindowSystem->GetMonitorContainingWindow(Window->WindowSystemWindow);
 }
 
 size_t FEBasicApplication::MonitorInfoToMonitorIndex(MonitorInfo* Monitor)

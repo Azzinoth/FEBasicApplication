@@ -1,4 +1,4 @@
-#include "FEPlatformGLFW.h"
+#include "FEWindowSystemGLFW.h"
 #include "../../../FEBasicApplication.h"
 #include <algorithm>
 
@@ -14,54 +14,54 @@ namespace FocalEngine
 			RegisteredMonitorCallback(static_cast<void*>(Monitor), Event);
 	}
 
-	FEPlatformInterface* CreatePlatform()
+	FEWindowSystemInterface* CreateWindowSystem()
 	{
-		return new FEPlatformGLFW();
+		return new FEWindowSystemGLFW();
 	}
 
-	FEPlatformGLFW::~FEPlatformGLFW() {}
+	FEWindowSystemGLFW::~FEWindowSystemGLFW() {}
 
-	bool FEPlatformGLFW::Initialize()
+	bool FEWindowSystemGLFW::Initialize()
 	{
 		glfwInit();
 		return true;
 	}
 
-	void FEPlatformGLFW::Shutdown()
+	void FEWindowSystemGLFW::Shutdown()
 	{
 		glfwTerminate();
 	}
 
-	void FEPlatformGLFW::PollEvents()
+	void FEWindowSystemGLFW::PollEvents()
 	{
 		glfwPollEvents();
 	}
 
-	void FEPlatformGLFW::RunMainLoop(std::function<void()> Tick)
+	void FEWindowSystemGLFW::RunMainLoop(std::function<void()> Tick)
 	{
 		while (APPLICATION.IsNotTerminated())
 			Tick();
 	}
 
-	double FEPlatformGLFW::GetTime()
+	double FEWindowSystemGLFW::GetTime()
 	{
 		return glfwGetTime();
 	}
 
-	FEPlatformWindowInterface* FEPlatformGLFW::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
+	FEWindowSystemWindowInterface* FEWindowSystemGLFW::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
 	{
 		if (API == GraphicsAPI::WebGPU)
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		FEPlatformWindowGLFW* PlatformWindow = new FEPlatformWindowGLFW();
-		PlatformWindow->GLFWWindow = glfwCreateWindow(Width, Height, Title.c_str(), nullptr, nullptr);
-		PlatformWindow->API = API;
+		FEWindowSystemWindowGLFW* WindowSystemWindow = new FEWindowSystemWindowGLFW();
+		WindowSystemWindow->GLFWWindow = glfwCreateWindow(Width, Height, Title.c_str(), nullptr, nullptr);
+		WindowSystemWindow->API = API;
 
 		glfwDefaultWindowHints();
-		return PlatformWindow;
+		return WindowSystemWindow;
 	}
 
-	FEPlatformWindowInterface* FEPlatformGLFW::OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API)
+	FEWindowSystemWindowInterface* FEWindowSystemGLFW::OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API)
 	{
 		if (Monitor == nullptr || Monitor->Monitor == nullptr || Monitor->VideoMode == nullptr)
 			return nullptr;
@@ -75,17 +75,17 @@ namespace FocalEngine
 		glfwWindowHint(GLFW_REFRESH_RATE,  Monitor->VideoMode->refreshRate);
 		glfwWindowHint(GLFW_DECORATED,     GLFW_FALSE);
 
-		FEPlatformWindowGLFW* PlatformWindow = new FEPlatformWindowGLFW();
-		PlatformWindow->GLFWWindow = glfwCreateWindow(
+		FEWindowSystemWindowGLFW* WindowSystemWindow = new FEWindowSystemWindowGLFW();
+		WindowSystemWindow->GLFWWindow = glfwCreateWindow(
 			Monitor->VideoMode->width,
 			Monitor->VideoMode->height,
 			"",
 			Monitor->Monitor,
 			nullptr);
-		PlatformWindow->API = API;
+		WindowSystemWindow->API = API;
 
 		glfwSetWindowMonitor(
-			PlatformWindow->GLFWWindow,
+			WindowSystemWindow->GLFWWindow,
 			Monitor->Monitor,
 			0, 0,
 			Monitor->VideoMode->width,
@@ -93,22 +93,22 @@ namespace FocalEngine
 			Monitor->VideoMode->refreshRate);
 
 		glfwDefaultWindowHints();
-		return PlatformWindow;
+		return WindowSystemWindow;
 	}
 
-	bool FEPlatformGLFW::SetClipboardText(std::string Text)
+	bool FEWindowSystemGLFW::SetClipboardText(std::string Text)
 	{
 		glfwSetClipboardString(nullptr, Text.c_str());
 		return true;
 	}
 
-	std::string FEPlatformGLFW::GetClipboardText()
+	std::string FEWindowSystemGLFW::GetClipboardText()
 	{
 		const char* Clipboard = glfwGetClipboardString(nullptr);
 		return Clipboard ? std::string(Clipboard) : std::string();
 	}
 
-	std::vector<MonitorInfo> FEPlatformGLFW::GetMonitors()
+	std::vector<MonitorInfo> FEWindowSystemGLFW::GetMonitors()
 	{
 		std::vector<MonitorInfo> Result;
 
@@ -135,7 +135,7 @@ namespace FocalEngine
 		return Result;
 	}
 
-	MonitorInfo FEPlatformGLFW::GetMonitorContainingWindow(FEPlatformWindowInterface* Window)
+	MonitorInfo FEWindowSystemGLFW::GetMonitorContainingWindow(FEWindowSystemWindowInterface* Window)
 	{
 		MonitorInfo BestMonitor;
 		if (Window == nullptr)
@@ -176,7 +176,7 @@ namespace FocalEngine
 		return BestMonitor;
 	}
 
-	void FEPlatformGLFW::SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback)
+	void FEWindowSystemGLFW::SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback)
 	{
 		RegisteredMonitorCallback = std::move(Callback);
 		glfwSetMonitorCallback(RegisteredMonitorCallback ? MonitorCallbackBridge : nullptr);

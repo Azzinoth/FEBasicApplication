@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../FEGraphicsAPI.h"
-#include "../Platforms/FEPlatformWindowInterface.h"
+#include "../WindowSystems/FEWindowSystemWindowInterface.h"
 #include "FEDeviceSurfaceInterface.h"
 
 namespace FocalEngine
@@ -13,10 +13,10 @@ namespace FocalEngine
 
 		virtual GraphicsAPI GetGraphicsAPI() const { return GraphicsAPI::Unknown; }
 
-		virtual bool Initialize(FEPlatformWindowInterface* PrimaryWindow) = 0;
+		virtual bool Initialize(FEWindowSystemWindowInterface* PrimaryWindow) = 0;
 		virtual void Shutdown() = 0;
 
-		virtual FEDeviceSurfaceInterface* CreateSurface(FEPlatformWindowInterface* Window) = 0;
+		virtual FEDeviceSurfaceInterface* CreateSurface(FEWindowSystemWindowInterface* Window) = 0;
 
 		virtual void* GetNativeDevice() = 0;
 	};

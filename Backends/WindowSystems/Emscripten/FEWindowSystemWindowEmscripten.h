@@ -1,20 +1,20 @@
 #pragma once
 
-#include "../FEPlatformWindowInterface.h"
+#include "../FEWindowSystemWindowInterface.h"
 #include "../../FEGraphicsAPI.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 namespace FocalEngine
 {
-	class FEPlatformWindowEmscripten : public FEPlatformWindowInterface
+	class FEWindowSystemWindowEmscripten : public FEWindowSystemWindowInterface
 	{
-		friend class FEPlatformEmscripten;
+		friend class FEWindowSystemEmscripten;
 		GLFWwindow* GLFWWindow = nullptr;
 		GLFWwindow* SavedContext = nullptr;
 		GraphicsAPI API = GraphicsAPI::Unknown;
 	public:
-		~FEPlatformWindowEmscripten() override;
+		~FEWindowSystemWindowEmscripten() override;
 
 		void* GetNativeHandle() override;
 

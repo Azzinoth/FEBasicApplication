@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../FEPlatformInterface.h"
-#include "FEPlatformWindowEmscripten.h"
+#include "../FEWindowSystemInterface.h"
+#include "FEWindowSystemWindowGLFW.h"
 
 namespace FocalEngine
 {
-	class FEPlatformEmscripten : public FEPlatformInterface
+	class FEWindowSystemGLFW : public FEWindowSystemInterface
 	{
 	public:
-		~FEPlatformEmscripten() override;
+		~FEWindowSystemGLFW() override;
 
 		bool Initialize() override;
 		void Shutdown() override;
@@ -17,11 +17,11 @@ namespace FocalEngine
 
 		double GetTime() override;
 
-		FEPlatformWindowInterface* OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API) override;
-		FEPlatformWindowInterface* OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API) override;
+		FEWindowSystemWindowInterface* OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API) override;
+		FEWindowSystemWindowInterface* OpenFullscreenWindow(MonitorInfo* Monitor, GraphicsAPI API) override;
 
 		std::vector<MonitorInfo> GetMonitors() override;
-		MonitorInfo GetMonitorContainingWindow(FEPlatformWindowInterface* Window) override;
+		MonitorInfo GetMonitorContainingWindow(FEWindowSystemWindowInterface* Window) override;
 
 		void SetMonitorCallback(std::function<void(void* NativeMonitor, int Event)> Callback) override;
 

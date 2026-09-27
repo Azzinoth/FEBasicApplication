@@ -3,7 +3,7 @@
 #include "FEVirtualUI.h"
 #include <map>
 #include <sstream>
-#include "Backends/Platforms/FEPlatformInterface.h"
+#include "Backends/WindowSystems/FEWindowSystemInterface.h"
 #include "Backends/GraphicsAPIs/FEDeviceInterface.h"
 
 #ifdef FE_GRAPHICS_API_OPENGL
@@ -30,7 +30,7 @@ namespace FocalEngine
 	{
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 
-		FEPlatformInterface* Platform = nullptr;
+		FEWindowSystemInterface* WindowSystem = nullptr;
 		FEDeviceInterface* Device = nullptr;
 
 		std::vector<FEWindow*> Windows;

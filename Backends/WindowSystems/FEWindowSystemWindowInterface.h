@@ -6,10 +6,10 @@ struct ImGuiContext;
 
 namespace FocalEngine
 {
-	class FEPlatformWindowInterface
+	class FEWindowSystemWindowInterface
 	{
 	public:
-		virtual ~FEPlatformWindowInterface() = default;
+		virtual ~FEWindowSystemWindowInterface() = default;
 
 		virtual void* GetNativeHandle() = 0;
 
@@ -33,7 +33,7 @@ namespace FocalEngine
 		virtual void PushContext() = 0;
 		virtual void PopContext() = 0;
 
-		// Forward GLFW-style events to the platform's ImGui backend.
+		// Forward GLFW-style events to the window system's ImGui backend.
 		// FE_FIX_ME: NativeMonitor is currently GLFWmonitor*, define an opaque monitor handle later.
 		virtual void ImGuiForwardMonitor(void* NativeMonitor, int Event) = 0;
 		virtual void ImGuiForwardFocus(int Focused) = 0;

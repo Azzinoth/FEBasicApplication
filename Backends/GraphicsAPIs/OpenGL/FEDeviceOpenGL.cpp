@@ -18,7 +18,7 @@ namespace FocalEngine
 
 	}
 
-	bool FEDeviceOpenGL::Initialize(FEPlatformWindowInterface* PrimaryWindow)
+	bool FEDeviceOpenGL::Initialize(FEWindowSystemWindowInterface* PrimaryWindow)
 	{
 		PrimaryWindow->MakeContextCurrent();
 		return glewInit() == GLEW_OK;
@@ -29,7 +29,7 @@ namespace FocalEngine
 
 	}
 
-	FEDeviceSurfaceInterface* FEDeviceOpenGL::CreateSurface(FEPlatformWindowInterface* Window)
+	FEDeviceSurfaceInterface* FEDeviceOpenGL::CreateSurface(FEWindowSystemWindowInterface* Window)
 	{
 		FEDeviceSurfaceOpenGL* NewSurface = new FEDeviceSurfaceOpenGL();
 		NewSurface->OwnerDevice = this;
