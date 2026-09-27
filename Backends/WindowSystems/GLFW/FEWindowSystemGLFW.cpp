@@ -1,5 +1,6 @@
 #include "FEWindowSystemGLFW.h"
 #include "../../../FEBasicApplication.h"
+#include "../../../FEPlatform.h"
 #include <algorithm>
 
 namespace FocalEngine
@@ -12,6 +13,23 @@ namespace FocalEngine
 	{
 		if (RegisteredMonitorCallback)
 			RegisteredMonitorCallback(static_cast<void*>(Monitor), Event);
+	}
+
+	static void SetGraphicsAPIWindowHints(GraphicsAPI API)
+	{
+		if (API == GraphicsAPI::WebGPU)
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+#if FE_PLATFORM(MACOS)
+		// MacOS offers OpenGL only up to 4.1.
+		if (API == GraphicsAPI::OpenGL)
+		{
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+			glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+		}
+#endif
 	}
 
 	FEWindowSystemInterface* CreateWindowSystem()
@@ -50,8 +68,7 @@ namespace FocalEngine
 
 	FEWindowSystemWindowInterface* FEWindowSystemGLFW::OpenWindow(int Width, int Height, std::string Title, GraphicsAPI API)
 	{
-		if (API == GraphicsAPI::WebGPU)
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		SetGraphicsAPIWindowHints(API);
 
 		FEWindowSystemWindowGLFW* WindowSystemWindow = new FEWindowSystemWindowGLFW();
 		WindowSystemWindow->GLFWWindow = glfwCreateWindow(Width, Height, Title.c_str(), nullptr, nullptr);
@@ -66,8 +83,7 @@ namespace FocalEngine
 		if (Monitor == nullptr || Monitor->Monitor == nullptr || Monitor->VideoMode == nullptr)
 			return nullptr;
 
-		if (API == GraphicsAPI::WebGPU)
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		SetGraphicsAPIWindowHints(API);
 
 		glfwWindowHint(GLFW_RED_BITS,      Monitor->VideoMode->redBits);
 		glfwWindowHint(GLFW_GREEN_BITS,    Monitor->VideoMode->greenBits);

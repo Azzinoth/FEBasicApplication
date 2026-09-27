@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FEVirtualUI.h"
+#include "FEPlatform.h"
 #include <map>
 #include <sstream>
 #include "Backends/WindowSystems/FEWindowSystemInterface.h"
@@ -37,7 +38,7 @@ namespace FocalEngine
 		std::vector<FEVirtualUI*> VirtualUIs;
 
 		FEConsoleWindow* ConsoleWindow = nullptr;
-#ifdef _WIN32
+#if FE_PLATFORM(WINDOWS)
 		static BOOL WINAPI ConsoleHandler(DWORD dwType);
 #endif
 

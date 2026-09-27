@@ -22,7 +22,7 @@ FEBasicApplication::FEBasicApplication()
 
 	IMGUI_CHECKVERSION();
 
-#ifdef _WIN32
+#if FE_PLATFORM(WINDOWS)
 	// Set the console control handler to intercept the close event
 	if (!SetConsoleCtrlHandler(APPLICATION.ConsoleHandler, TRUE))
 	{
@@ -412,7 +412,7 @@ std::string FEBasicApplication::GetClipboardText()
 	return WindowSystem->GetClipboardText();
 }
 
-#ifdef _WIN32
+#if FE_PLATFORM(WINDOWS)
 BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
 {
 	switch (dwType)
@@ -445,7 +445,7 @@ FEConsoleWindow* FEBasicApplication::CreateConsoleWindow(std::function<void(void
 	if (MainFunc == nullptr)
 		return nullptr;
 
-#ifdef _WIN32
+#if FE_PLATFORM(WINDOWS)
 	ConsoleWindow = new FEConsoleWindow(MainFunc, UserData);
 #endif
 	return ConsoleWindow;
@@ -462,7 +462,7 @@ void FEBasicApplication::OnTerminate()
 	for (auto& Func : UserOnTerminateCallbackFunc)
 		Func();
 
-#ifdef _WIN32
+#if FE_PLATFORM(WINDOWS)
 	// If the console is active, then terminate it
 	if (ConsoleWindow != nullptr)
 	{
@@ -622,7 +622,7 @@ void FEBasicApplication::TerminateWindow(FEWindow* WindowToTerminate)
 
 bool FEBasicApplication::HaveAnyVisibleWindow() const
 {
-#ifdef _WIN32
+#if FE_PLATFORM(WINDOWS)
 	if (Windows.empty() && (ConsoleWindow == nullptr || ConsoleWindow != nullptr && ConsoleWindow->IsHidden()))
 		return false;
 #else

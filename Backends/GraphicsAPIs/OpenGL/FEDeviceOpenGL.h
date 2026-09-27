@@ -1,10 +1,15 @@
 #pragma once
 
+#include "../../../FEPlatform.h"
 #include "../FEDeviceInterface.h"
 #include "GL/glew.h"
-#include "GL/wglew.h"
+#if FE_PLATFORM(WINDOWS)
+	#include "GL/wglew.h"
+#endif
 #include "imgui/imgui_impl_opengl3.h"
-#include <GL/GL.h>
+#if FE_PLATFORM(WINDOWS)
+	#include <GL/GL.h>
+#endif
 
 namespace FocalEngine
 {

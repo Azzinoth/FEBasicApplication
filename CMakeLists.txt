@@ -107,7 +107,8 @@ endif()
 # defined projects like INSTALL.vcproj and ZERO_CHECK.vcproj
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-if(NOT EMSCRIPTEN)
+# Networking uses Winsock (ws2tcpip.h), so for now only Windows builds it.
+if(WIN32)
 	file(GLOB BasicApplicationNetworkSubSystem_SRC
 		"SubSystems/Networking/FENetworkingBaseClasses.cpp"
 		"SubSystems/Networking/FENetworkingBaseClasses.h"
@@ -152,8 +153,8 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEPlatform.h"
 )
 
-# FEConsoleWindow is Win32-only (HWND, WORD, console color API). Web has no OS console.
-if(EMSCRIPTEN)
+# FEConsoleWindow is Win32-only (HWND, WORD, console color API), so only Windows builds it.
+if(NOT WIN32)
 	list(REMOVE_ITEM BasicApplicationSubSystem_SRC
 		"${CMAKE_CURRENT_SOURCE_DIR}/FEConsoleWindow.cpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/FEConsoleWindow.h"
@@ -179,8 +180,13 @@ list(APPEND ALL_SOURCE_FILES
 )
 
 if(NOT EMSCRIPTEN)
-	set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
-	set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget))
+	if(APPLE)
+		set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/macOS)
+		set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/macOS)
+	else()
+		set(GLEW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glew2/lib/$(PlatformTarget))
+		set(GLFW_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/GLFW/lib/$(PlatformTarget))
+	endif()
 
 	set(GLEW_LIB_DIR ${GLEW_LIB_DIR} PARENT_SCOPE)
 	set(GLFW_LIB_DIR ${GLFW_LIB_DIR} PARENT_SCOPE)
@@ -244,7 +250,9 @@ endif()
 
 # Window system dependency linking
 if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW")
-    if(BUILD_SHARED_LIBS)
+    if(APPLE)
+        set(GLFW_LIBRARY "${GLFW_LIB_DIR}/libglfw3.a")
+    elseif(BUILD_SHARED_LIBS)
         if(USE_STATIC_RUNTIME)
             set(GLFW_LIBRARY "glfw3_mt.lib")
         else()
@@ -262,6 +270,11 @@ if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW")
         PRIVATE
             ${GLFW_LIBRARY}
     )
+
+    if(APPLE)
+        # The static GLFW library needs these system frameworks.
+        target_link_libraries(FEBasicApplication PRIVATE "-framework Cocoa" "-framework IOKit" "-framework OpenGL")
+    endif()
 elseif(FE_WINDOW_SYSTEM_BACKEND STREQUAL "Emscripten")
     # PUBLIC so the parent executable also gets the flag at its link step.
     # GLFW headers are in Emscripten's default sysroot; -sUSE_GLFW=3 only affects linking.
@@ -273,11 +286,17 @@ endif()
 
 # Graphic API dependency linking
 if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
-    if(USE_STATIC_RUNTIME)
+    if(APPLE)
+        set(GLEW_LIBRARY "${GLEW_LIB_DIR}/libGLEW.a")
+        set(OPENGL_SYSTEM_LIBRARY "-framework OpenGL")
+        target_compile_definitions(FEBasicApplication PRIVATE GLEW_STATIC)
+    elseif(USE_STATIC_RUNTIME)
         set(GLEW_LIBRARY "glew32s.lib")
+        set(OPENGL_SYSTEM_LIBRARY opengl32.lib)
         target_compile_definitions(FEBasicApplication PRIVATE GLEW_STATIC)
     else()
         set(GLEW_LIBRARY "glew32.lib")
+        set(OPENGL_SYSTEM_LIBRARY opengl32.lib)
     endif()
 
     target_compile_definitions(FEBasicApplication PUBLIC FE_GRAPHICS_API_OPENGL)
@@ -285,7 +304,7 @@ if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL")
     target_link_libraries(FEBasicApplication
         PRIVATE
             ${GLEW_LIBRARY}
-            opengl32.lib
+            ${OPENGL_SYSTEM_LIBRARY}
     )
 elseif(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU")
     if(EMSCRIPTEN)
@@ -387,7 +406,7 @@ set(GLFW_LIBRARY ${GLFW_LIBRARY} PARENT_SCOPE)
 set(FE_WINDOW_SYSTEM_BACKEND ${FE_WINDOW_SYSTEM_BACKEND} PARENT_SCOPE)
 set(FE_GRAPHIC_API_BACKEND   ${FE_GRAPHIC_API_BACKEND}   PARENT_SCOPE)
 
-if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW" AND BUILD_SHARED_LIBS AND NOT USE_STATIC_RUNTIME)
+if(WIN32 AND FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW" AND BUILD_SHARED_LIBS AND NOT USE_STATIC_RUNTIME)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLFW_LIB_DIR}/glfw3.dll"
@@ -395,7 +414,7 @@ if(FE_WINDOW_SYSTEM_BACKEND STREQUAL "GLFW" AND BUILD_SHARED_LIBS AND NOT USE_ST
     )
 endif()
 
-if(FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL" AND NOT USE_STATIC_RUNTIME)
+if(WIN32 AND FE_GRAPHIC_API_BACKEND STREQUAL "OpenGL" AND NOT USE_STATIC_RUNTIME)
     add_custom_command(TARGET FEBasicApplication POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GLEW_LIB_DIR}/glew32.dll"
