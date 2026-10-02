@@ -9,9 +9,57 @@ extern "C" __declspec(dllexport) void* GetUniqueID()
 }
 #endif
 
-FEUniqueID::FEUniqueID()
+FEUniqueID::FEUniqueID() : Generator(RandomEngine)
 {
+	std::random_device RandomDevice;
+	std::array<unsigned int, std::mt19937::state_size> SeedData;
+	std::generate(SeedData.begin(), SeedData.end(), std::ref(RandomDevice));
+	std::seed_seq Sequence(SeedData.begin(), SeedData.end());
+	RandomEngine.seed(Sequence);
+}
 
+FEUUID FEUniqueID::GetUUID()
+{
+	std::lock_guard<std::mutex> Lock(IDGenerationMutex);
+	return Generator();
+}
+
+FEUUID FEUniqueID::GetNullUUID()
+{
+	return FEUUID();
+}
+
+bool FEUniqueID::IsNull(const FEUUID& ID)
+{
+	return ID.is_nil();
+}
+
+std::string FEUniqueID::ToString(const FEUUID& ID)
+{
+	return uuids::to_string(ID);
+}
+
+FEUUID FEUniqueID::FromString(const std::string& ID)
+{
+	auto Result = uuids::uuid::from_string(ID);
+	if (!Result.has_value())
+		return GetNullUUID();
+	
+	return Result.value();
+}
+
+bool FEUniqueID::IsValid(const std::string& ID)
+{
+	return uuids::uuid::is_valid_uuid(ID);
+}
+
+FEUUID FEUniqueID::FromLegacyHexID(const std::string& HexID)
+{
+	// Fixed namespace for converting old hex IDs, must never change.
+	static const FEUUID LegacyNamespace = uuids::uuid::from_string("040bcbf8-3a7c-4815-9da7-117bfb3f9bde").value();
+	// Local instance because uuid_name_generator keeps hashing state and is not thread-safe.
+	uuids::uuid_name_generator NameGenerator(LegacyNamespace);
+	return NameGenerator(HexID);
 }
 
 std::string FEUniqueID::GetUniqueID()
@@ -72,18 +120,4 @@ std::string FEUniqueID::GetUniqueHexID()
 	}
 
 	return FinalID;
-}
-
-std::string FEUniqueID::GetUniqueUUID()
-{
-	static std::mt19937 RandomEngine = []() {
-		std::random_device RandomDevice;
-		std::array<unsigned int, std::mt19937::state_size> SeedData;
-		std::generate(SeedData.begin(), SeedData.end(), std::ref(RandomDevice));
-		std::seed_seq Sequence(SeedData.begin(), SeedData.end());
-		return std::mt19937(Sequence);
-	}();
-	static uuids::uuid_random_generator Generator(RandomEngine);
-
-	return uuids::to_string(Generator());
 }

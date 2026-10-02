@@ -46,22 +46,34 @@
 
 namespace FocalEngine
 {
+	using FEUUID = uuids::uuid;
+
 	class FEBASICAPPLICATION_API FEUniqueID
 	{
 		SINGLETON_PRIVATE_PART(FEUniqueID)
+
+		std::mt19937 RandomEngine;
+		uuids::uuid_random_generator Generator;
 
 		std::mutex IDGenerationMutex;
 		std::string GetUniqueID();
 	public:
 		SINGLETON_PUBLIC_PART(FEUniqueID)
 
+		FEUUID GetUUID();
+		FEUUID GetNullUUID();
+		bool IsNull(const FEUUID& ID);
+
+		std::string ToString(const FEUUID& ID);
+		FEUUID FromString(const std::string& ID);
+		bool IsValid(const std::string& ID);
+
+		FEUUID FromLegacyHexID(const std::string& HexID);
+
 		// This function can produce ID's that are "unique" with very rare collisions.
 		// For most purposes it can be considered unique.
 		// ID is a 24 long string.
 		std::string GetUniqueHexID();
-
-		// Returns a random (version 4) UUID as a 36 character string.
-		std::string GetUniqueUUID();
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED
