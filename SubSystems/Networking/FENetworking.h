@@ -10,8 +10,8 @@ namespace FocalEngine
     public:
         SINGLETON_PUBLIC_PART(FENetworkingManager)
 
-        void CreateClient(std::function<void(FEClientSideNetworkConnection*)> ResultReadyCallback, std::string ServerIP, unsigned int ServerPort, std::function<void(std::string)> OnDataSentCallback, std::function<void(char*, size_t)> OnDataReceivedCallback);
-        void CreateServer(std::function<void(FEServerSideNetworkConnection*)> ResultReadyCallback, std::string IP, unsigned int Port, std::function<void(std::string, std::string)> OnDataSentCallback, std::function<void(std::string, char*, size_t)> OnDataReceivedCallback, std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback);
+        void CreateClient(std::function<void(FEClientSideNetworkConnection*)> ResultReadyCallback, std::string ServerIP, unsigned int ServerPort, std::function<void(FEUUID)> OnDataSentCallback, std::function<void(char*, size_t)> OnDataReceivedCallback);
+        void CreateServer(std::function<void(FEServerSideNetworkConnection*)> ResultReadyCallback, std::string IP, unsigned int Port, std::function<void(FEUUID, FEUUID)> OnDataSentCallback, std::function<void(FEUUID, char*, size_t)> OnDataReceivedCallback, std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback);
     private:
         SINGLETON_PRIVATE_PART(FENetworkingManager)
 
@@ -24,7 +24,7 @@ namespace FocalEngine
             unsigned int ServerPort = 0;
             
             FEClientSideNetworkConnection* Result = nullptr;
-            std::function<void(std::string)> OnDataSentCallback = nullptr;
+            std::function<void(FEUUID)> OnDataSentCallback = nullptr;
             std::function<void(char*, size_t)> OnDataReceivedCallback = nullptr;
 
             std::function<void(FEClientSideNetworkConnection*)> ResultReadyCallback = nullptr;
@@ -42,8 +42,8 @@ namespace FocalEngine
             unsigned int Port = 0;
 
             FEServerSideNetworkConnection* Result = nullptr;
-            std::function<void(std::string, std::string)> OnDataSentCallback = nullptr;
-            std::function<void(std::string, char*, size_t)> OnDataReceivedCallback = nullptr;
+            std::function<void(FEUUID, FEUUID)> OnDataSentCallback = nullptr;
+            std::function<void(FEUUID, char*, size_t)> OnDataReceivedCallback = nullptr;
             std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback = nullptr;
 
             std::function<void(FEServerSideNetworkConnection*)> ResultReadyCallback = nullptr;

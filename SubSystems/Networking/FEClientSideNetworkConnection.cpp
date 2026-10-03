@@ -7,7 +7,7 @@ FEClientSideNetworkConnection::~FEClientSideNetworkConnection()
     Clear();
 };
 
-bool FEClientSideNetworkConnection::TryToConnect(std::string ServerIP, unsigned int ServerPort, std::function<void(std::string)> OnDataSentCallback, std::function<void(char*, size_t)> OnDataReceivedCallback)
+bool FEClientSideNetworkConnection::TryToConnect(std::string ServerIP, unsigned int ServerPort, std::function<void(FEUUID)> OnDataSentCallback, std::function<void(char*, size_t)> OnDataReceivedCallback)
 {
     Socket = new SOCKET;
     *Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -109,7 +109,7 @@ void FEClientSideNetworkConnection::AfterSendOccurredFunction(void* OutputData)
     delete Info;
 }
 
-std::string FEClientSideNetworkConnection::Send(char* Data, size_t DataSize)
+FEUUID FEClientSideNetworkConnection::Send(char* Data, size_t DataSize)
 {
     FENetworkSendThreadJobInfo* SendJobInfo = new FENetworkSendThreadJobInfo;
     SendJobInfo->CurrentSocket = Socket;
@@ -117,7 +117,7 @@ std::string FEClientSideNetworkConnection::Send(char* Data, size_t DataSize)
     SendJobInfo->DataSize = DataSize;
     SendJobInfo->OnDataSentCallback = OnDataSentCallback;
     SendJobInfo->Caller = (void*)this;
-    SendJobInfo->MessageID = UNIQUE_ID.GetUniqueHexID();
+    SendJobInfo->MessageID = UNIQUE_ID.GetUUID();
 
     THREAD_POOL.Execute(SendDedicatedThreadID, FEClientSideNetworkConnection::SendFunction, (void*)SendJobInfo, (void*)SendJobInfo, FEClientSideNetworkConnection::AfterSendOccurredFunction);
     return SendJobInfo->MessageID;

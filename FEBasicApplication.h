@@ -87,13 +87,13 @@ namespace FocalEngine
 		FEWindow* AddFullScreenWindow(size_t MonitorIndex);
 		FEWindow* AddFullScreenWindow(MonitorInfo* Monitor);
 		FEWindow* GetWindow(GLFWwindow* GLFWwindow);
-		FEWindow* GetWindow(std::string WindowID);
+		FEWindow* GetWindow(FEUUID WindowID);
 		FEWindow* GetWindow(size_t WindowIndex);
 		FEWindow* GetWindow(int WindowIndex);
 
 		FEWindow* GetMainWindow();
 
-		void CloseWindow(std::string WindowID);
+		void CloseWindow(FEUUID WindowID);
 		void CloseWindow(FEWindow* WindowToClose);
 
 		bool HasConsoleWindow() const;

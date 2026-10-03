@@ -13,15 +13,15 @@ namespace FocalEngine
         std::string Port;
         SOCKET* Socket;
 
-        std::string SendDedicatedThreadID = "";
-        std::string ReceiveDedicatedThreadID = "";
+        FEUUID SendDedicatedThreadID;
+        FEUUID ReceiveDedicatedThreadID;
 
-        std::function<void(std::string)> OnDataSentCallback = nullptr;
+        std::function<void(FEUUID)> OnDataSentCallback = nullptr;
         std::function<void(char*, size_t)> OnDataReceivedCallback = nullptr;
         std::function<void(bool)> OnDisconnectCallback = nullptr;
 
         FEClientSideNetworkConnection();
-        bool TryToConnect(std::string ServerIP, unsigned int ServerPort, std::function<void(std::string)> OnDataSentCallback, std::function<void(char*, size_t)> OnDataReceivedCallback);
+        bool TryToConnect(std::string ServerIP, unsigned int ServerPort, std::function<void(FEUUID)> OnDataSentCallback, std::function<void(char*, size_t)> OnDataReceivedCallback);
 
         static void SendFunction(void* Input, void* Output);
         static void AfterSendOccurredFunction(void* OutputData);
@@ -34,7 +34,7 @@ namespace FocalEngine
     public:
 		~FEClientSideNetworkConnection();
 
-        std::string Send(char* Data, size_t DataSize);
+        FEUUID Send(char* Data, size_t DataSize);
 
         void Disconnect(FE_NETWORK_ERROR Error = FE_NETWORK_ERROR::FE_NONE);
         void SetOnDisconnectCallback(std::function<void(bool)> OnDisconnectCallback);

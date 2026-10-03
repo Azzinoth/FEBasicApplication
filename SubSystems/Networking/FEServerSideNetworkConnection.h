@@ -6,7 +6,7 @@ namespace FocalEngine
 {
     struct FENetworkNewClientInfo
     {
-        std::string ClientID = "";
+        FEUUID ClientID;
         std::string ClientIP = "";
         int ClientPort = -1;
     };
@@ -16,23 +16,23 @@ namespace FocalEngine
     {
         struct FENetworkReceiveFromClientThreadJobInfo : public FENetworkReceiveThreadJobInfo
         {
-            std::function<void(std::string, char*, size_t)> OnDataReceivedCallback = nullptr;
-            std::string ClientID = "";
+            std::function<void(FEUUID, char*, size_t)> OnDataReceivedCallback = nullptr;
+            FEUUID ClientID;
         };
 
         struct FENetworkSendToClientThreadJobInfo : public FENetworkSendThreadJobInfo
         {
-            std::function<void(std::string, std::string)> OnDataSentCallback = nullptr;
-            std::string ClientID = "";
+            std::function<void(FEUUID, FEUUID)> OnDataSentCallback = nullptr;
+            FEUUID ClientID;
         };
 
         struct FENetworkPerClientInfo
         {
-            std::string SendDedicatedThreadID = "";
-            std::string ReceiveDedicatedThreadID = "";
+            FEUUID SendDedicatedThreadID;
+            FEUUID ReceiveDedicatedThreadID;
 
             SOCKET* ClientSocket = nullptr;
-            std::string ClientID = "";
+            FEUUID ClientID;
             std::string ClientIP = "";
             int ClientPort = -1;
 
@@ -41,10 +41,10 @@ namespace FocalEngine
 
         struct FENetworkServerListeningThreadJobInfo
         {
-            std::string ListeningDedicatedThreadID = "";
+            FEUUID ListeningDedicatedThreadID;
             SOCKET* ListeningSocket = nullptr;
             SOCKET* NewClientSocket = nullptr;
-            std::string ClientID = "";
+            FEUUID ClientID;
             std::string ClientIP = "";
             int ClientPort = -1;
             FEServerSideNetworkConnection* Server = nullptr;
@@ -57,19 +57,19 @@ namespace FocalEngine
         std::string IP;
         std::string Port;
         SOCKET* ListeningSocket;
-        std::unordered_map<std::string, FENetworkPerClientInfo*> Clients;
+        std::unordered_map<FEUUID, FENetworkPerClientInfo*> Clients;
         void AddClient(FENetworkNewClientInfo* ClientInfo, SOCKET* ClientSocket);
-        void RemoveClient(std::string ClientID);
+        void RemoveClient(FEUUID ClientID);
 
-        std::string ListeningDedicatedThreadID = "";
+        FEUUID ListeningDedicatedThreadID;
 
-        std::function<void(std::string, std::string)> OnDataSentCallback = nullptr;
-        std::function<void(std::string, char*, size_t)> OnDataReceivedCallback = nullptr;
+        std::function<void(FEUUID, FEUUID)> OnDataSentCallback = nullptr;
+        std::function<void(FEUUID, char*, size_t)> OnDataReceivedCallback = nullptr;
         std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback = nullptr;
-        std::function<void(std::string, bool)> OnClientDisconnectCallback = nullptr;
+        std::function<void(FEUUID, bool)> OnClientDisconnectCallback = nullptr;
 
         FEServerSideNetworkConnection();
-        bool TryToBind(std::string IP, unsigned int Port, std::function<void(std::string, std::string)> OnDataSentCallback, std::function<void(std::string, char*, size_t)> OnDataReceivedCallback, std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback);
+        bool TryToBind(std::string IP, unsigned int Port, std::function<void(FEUUID, FEUUID)> OnDataSentCallback, std::function<void(FEUUID, char*, size_t)> OnDataReceivedCallback, std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback);
 
         static void ListeningFunction(void* Input, void* Output);
         static void AfterNewClientConnectedFunction(void* OutputData);
@@ -80,17 +80,17 @@ namespace FocalEngine
         static void ReceiveFromClientFunction(void* Input, void* Output);
         static void AfterReceivingDataFromClientFunction(void* OutputData);
 
-        void OnConnectionError(std::string ClientID, FE_NETWORK_ERROR Error);
+        void OnConnectionError(FEUUID ClientID, FE_NETWORK_ERROR Error);
     public:
 		~FEServerSideNetworkConnection();
 
-        void SetOnClientDisconnectCallback(std::function<void(std::string, bool)> OnClientDisconnectCallback);
-        FENetworkNewClientInfo GetClientInfo(std::string ClientID);
+        void SetOnClientDisconnectCallback(std::function<void(FEUUID, bool)> OnClientDisconnectCallback);
+        FENetworkNewClientInfo GetClientInfo(FEUUID ClientID);
 
-        std::string Send(std::string ClientID, char* Data, size_t DataSize);
-        std::vector<std::string> SendToAll(char* Data, size_t DataSize);
+        FEUUID Send(FEUUID ClientID, char* Data, size_t DataSize);
+        std::vector<FEUUID> SendToAll(char* Data, size_t DataSize);
 
-        void DisconnectClient(std::string ClientID);
+        void DisconnectClient(FEUUID ClientID);
         void DisconnectAll();
         void Shutdown();
     };

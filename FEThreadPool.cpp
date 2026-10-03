@@ -103,7 +103,7 @@ bool JobThread::AssignJob(const FEUnexecutedJob* NewJob)
 
 DedicatedJobThread::DedicatedJobThread()
 {
-	ThreadID = UNIQUE_ID.GetUniqueHexID();
+	ThreadID = UNIQUE_ID.GetUUID();
 	bShutdownRequested = false;
 }
 
@@ -117,7 +117,7 @@ DedicatedJobThread::~DedicatedJobThread()
 
 LightThread::LightThread()
 {
-	ThreadID = UNIQUE_ID.GetUniqueHexID();
+	ThreadID = UNIQUE_ID.GetUUID();
 }
 
 LightThread::~LightThread() {}
@@ -345,7 +345,7 @@ unsigned int FEThreadPool::GetThreadCount() const
 	return static_cast<int>(Threads.size());
 }
 
-std::string FEThreadPool::CreateDedicatedThread()
+FEUUID FEThreadPool::CreateDedicatedThread()
 {
 	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 
@@ -366,7 +366,7 @@ bool FEThreadPool::IsAnyDedicatedThreadHaveActiveJob() const
 	return false;
 }
 
-DedicatedJobThread* FEThreadPool::GetDedicatedThread(const std::string& ThreadID)
+DedicatedJobThread* FEThreadPool::GetDedicatedThread(const FEUUID& ThreadID)
 {
 	for (size_t i = 0; i < DedicatedThreads.size(); i++)
 	{
@@ -377,7 +377,7 @@ DedicatedJobThread* FEThreadPool::GetDedicatedThread(const std::string& ThreadID
 	return nullptr;
 }
 
-void FEThreadPool::Execute(const std::string& DedicatedThreadID, const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
+void FEThreadPool::Execute(const FEUUID& DedicatedThreadID, const FE_THREAD_JOB_FUNC Job, void* InputData, void* OutputData, const FE_THREAD_CALLBACK_FUNC CallBack)
 {
 	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 
@@ -423,7 +423,7 @@ void FEThreadPool::MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedT
 	DedicatedThreadsToShutdown.push_back(DedicatedThread);
 }
 
-bool FEThreadPool::ShutdownDedicatedThread(const std::string& DedicatedThreadID)
+bool FEThreadPool::ShutdownDedicatedThread(const FEUUID& DedicatedThreadID)
 {
 	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 
@@ -437,7 +437,7 @@ bool FEThreadPool::ShutdownDedicatedThread(const std::string& DedicatedThreadID)
 	return true;
 }
 
-bool FEThreadPool::ForceShutdownDedicatedThread(const std::string& DedicatedThreadID)
+bool FEThreadPool::ForceShutdownDedicatedThread(const FEUUID& DedicatedThreadID)
 {
 	std::lock_guard<std::recursive_mutex> Lock(MainMutex);
 
@@ -460,7 +460,7 @@ bool FEThreadPool::ForceShutdownDedicatedThread(const std::string& DedicatedThre
 	return true;
 }
 
-bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
+bool FEThreadPool::WaitForDedicatedThread(const FEUUID& DedicatedThreadID)
 {
 	while (true)
 	{
@@ -505,7 +505,7 @@ bool FEThreadPool::WaitForDedicatedThread(const std::string& DedicatedThreadID)
 	}
 }
 
-std::string FEThreadPool::CreateLightThread()
+FEUUID FEThreadPool::CreateLightThread()
 {
 	std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
 
@@ -514,7 +514,7 @@ std::string FEThreadPool::CreateLightThread()
 	return NewThread->ThreadID;
 }
 
-LightThread* FEThreadPool::GetLightThread(const std::string& ThreadID)
+LightThread* FEThreadPool::GetLightThread(const FEUUID& ThreadID)
 {
 	for (size_t i = 0; i < LightThreads.size(); i++)
 	{
@@ -525,7 +525,7 @@ LightThread* FEThreadPool::GetLightThread(const std::string& ThreadID)
 	return nullptr;
 }
 
-bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
+bool FEThreadPool::WaitForLightThread(const FEUUID& LightThreadID)
 {
 	std::thread ThreadToJoin;
 
@@ -547,7 +547,7 @@ bool FEThreadPool::WaitForLightThread(const std::string& LightThreadID)
 	return true;
 }
 
-bool FEThreadPool::RemoveLightThread(const std::string& LightThreadID)
+bool FEThreadPool::RemoveLightThread(const FEUUID& LightThreadID)
 {
 	std::thread ThreadToJoin;
 	bool bWasFound = false;

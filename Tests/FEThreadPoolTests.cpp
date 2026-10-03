@@ -359,8 +359,8 @@ TEST_F(FEThreadPoolTest, ExecuteFromAnotherThread_IsNotBlockedWhileCallbackRuns)
 // Submit several jobs to the same dedicated thread, wait for the queue to drain, then shut it down.
 TEST_F(FEThreadPoolTest, DedicatedThread_ExecuteAndWait_RunsAllJobs)
 {
-	const std::string ID = THREAD_POOL.CreateDedicatedThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
 	constexpr int JobCount = 25;
 	std::atomic<int> JobsRan{ 0 };
@@ -401,12 +401,12 @@ TEST_F(FEThreadPoolTest, DedicatedThread_ExecuteAndWait_RunsAllJobs)
 
 TEST_F(FEThreadPoolTest, DedicatedThread_InvalidID_DoesNothingGracefully)
 {
-	EXPECT_FALSE(THREAD_POOL.WaitForDedicatedThread("does-not-exist"));
-	EXPECT_FALSE(THREAD_POOL.ShutdownDedicatedThread("does-not-exist"));
+	EXPECT_FALSE(THREAD_POOL.WaitForDedicatedThread(UNIQUE_ID.GetUUID()));
+	EXPECT_FALSE(THREAD_POOL.ShutdownDedicatedThread(UNIQUE_ID.GetUUID()));
 
 	// Submitting to an unknown ID should not crash application.
 	bool bRan = false;
-	THREAD_POOL.Execute("does-not-exist", [&bRan](void*, void*) {
+	THREAD_POOL.Execute(UNIQUE_ID.GetUUID(), [&bRan](void*, void*) {
 		bRan = true;
 	});
 
@@ -451,8 +451,8 @@ TEST_F(FEThreadPoolTest, JobThatThrows_DoesNotTerminateProcess)
 
 TEST_F(FEThreadPoolTest, DedicatedThread_SubmitWhileOlderJobIsQueued_PreservesSubmissionOrder)
 {
-	const std::string ID = THREAD_POOL.CreateDedicatedThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 	std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Let the worker reach its idle state.
 
 	std::mutex OrderMutex;
@@ -492,8 +492,8 @@ TEST_F(FEThreadPoolTest, DedicatedThread_SubmitWhileOlderJobIsQueued_PreservesSu
 
 TEST_F(FEThreadPoolTest, LightThread_RunsAndJoins)
 {
-	const std::string ID = THREAD_POOL.CreateLightThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateLightThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
 	std::atomic<int> JobsRan{ 0 };
 	ASSERT_TRUE(THREAD_POOL.ExecuteLightThread(ID, [&JobsRan]() {
@@ -515,19 +515,19 @@ TEST_F(FEThreadPoolTest, LightThread_RunsAndJoins)
 
 TEST_F(FEThreadPoolTest, LightThread_InvalidID_ReturnsFalse)
 {
-	EXPECT_FALSE(THREAD_POOL.WaitForLightThread("does-not-exist"));
-	EXPECT_FALSE(THREAD_POOL.RemoveLightThread("does-not-exist"));
+	EXPECT_FALSE(THREAD_POOL.WaitForLightThread(UNIQUE_ID.GetUUID()));
+	EXPECT_FALSE(THREAD_POOL.RemoveLightThread(UNIQUE_ID.GetUUID()));
 
-	const std::string ID = THREAD_POOL.CreateLightThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateLightThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 	EXPECT_FALSE(THREAD_POOL.WaitForLightThread(ID));
 	EXPECT_TRUE(THREAD_POOL.RemoveLightThread(ID));
 }
 
 TEST_F(FEThreadPoolTest, ExecuteLightThread_SecondCallBeforeJoin_ReturnsFalse)
 {
-	const std::string ID = THREAD_POOL.CreateLightThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateLightThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
 	std::atomic<int> JobsRan{ 0 };
 	ASSERT_TRUE(THREAD_POOL.ExecuteLightThread(ID, [&JobsRan]() {
@@ -561,10 +561,10 @@ TEST_F(FEThreadPoolTest, ExecuteLightThread_SecondCallBeforeJoin_ReturnsFalse)
 
 TEST_F(FEThreadPoolTest, WaitForLightThread_LightThreadBodyUsesLightThreadAPI_DoesNotDeadlock)
 {
-	const std::string ID = THREAD_POOL.CreateLightThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateLightThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
-	std::string SpawnedID;
+	FEUUID SpawnedID;
 	ASSERT_TRUE(THREAD_POOL.ExecuteLightThread(ID, [&SpawnedID]() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(60));
 		SpawnedID = THREAD_POOL.CreateLightThread();
@@ -648,8 +648,8 @@ TEST_F(FEThreadPoolTest, NullJob_FiresCallbackExactlyOnce)
 // ShutdownDedicatedThread is a graceful shutdown: active jobs and any queued jobs must run to completion and fire their callbacks before the thread is destroyed.
 TEST_F(FEThreadPoolTest, ShutdownDedicatedThread_DrainsQueueAndFiresAllCallbacks)
 {
-	const std::string ID = THREAD_POOL.CreateDedicatedThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
 	std::atomic<int> CallbacksFired{ 0 };
 	auto Callback = [&CallbacksFired](void*) {
@@ -685,8 +685,8 @@ TEST_F(FEThreadPoolTest, ShutdownDedicatedThread_DrainsQueueAndFiresAllCallbacks
 
 TEST_F(FEThreadPoolTest, ForceShutdownDedicatedThread_DropsQueueAndReturnsImmediately)
 {
-	const std::string ID = THREAD_POOL.CreateDedicatedThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
 	std::atomic<int> CallbacksFired{ 0 };
 	std::atomic<int> JobsRan{ 0 };
@@ -741,8 +741,8 @@ TEST_F(FEThreadPoolTest, ForceShutdownThenWait_DoesNotFireSuppressedCallback)
 {
 	std::atomic<int> CallbacksFired{ 0 };
 
-	const std::string ID = THREAD_POOL.CreateDedicatedThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 	THREAD_POOL.Execute(ID, [](void*, void*) {
@@ -768,8 +768,8 @@ TEST_F(FEThreadPoolTest, ForceShutdownThenWait_DoesNotFireSuppressedCallback)
 
 TEST_F(FEThreadPoolTest, DedicatedThread_WaitWithConcurrentUpdatePump_ReturnsOnlyAfterCallbackRan)
 {
-	const std::string ID = THREAD_POOL.CreateDedicatedThread();
-	ASSERT_FALSE(ID.empty());
+	const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 
 	std::atomic<bool> bStopPumping{ false };
 	std::thread Pumper([&bStopPumping]() {
@@ -819,12 +819,12 @@ TEST_F(FEThreadPoolTest, ForceShutdownSignal_ReachesWorkerPromptly)
 	constexpr int ThreadCount = 64;
 	constexpr int ExitDeadlineMs = 500;
 
-	std::vector<std::string> IDs;
+	std::vector<FEUUID> IDs;
 	IDs.reserve(ThreadCount);
 	for (int i = 0; i < ThreadCount; i++)
 	{
-		const std::string ID = THREAD_POOL.CreateDedicatedThread();
-		ASSERT_FALSE(ID.empty());
+		const FEUUID ID = THREAD_POOL.CreateDedicatedThread();
+		ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
 		IDs.push_back(ID);
 	}
 
@@ -869,7 +869,7 @@ TEST_F(FEThreadPoolTest, SetConcurrentThreadCount_ClampsAtMaximum)
 TEST_F(FEThreadPoolTest, ExecuteLightThread_InvalidID_ReturnsFalse)
 {
 	bool bRan = false;
-	const bool bResult = THREAD_POOL.ExecuteLightThread("does-not-exist", [&bRan]() {
+	const bool bResult = THREAD_POOL.ExecuteLightThread(UNIQUE_ID.GetUUID(), [&bRan]() {
 		bRan = true;
 	});
 	EXPECT_FALSE(bResult);
@@ -881,7 +881,7 @@ TEST_F(FEThreadPoolTest, ConcurrentCreateDedicatedThread)
 {
 	constexpr int Submitters = 4;
 	constexpr int PerSubmitter = 25;
-	std::vector<std::vector<std::string>> IDs(Submitters);
+	std::vector<std::vector<FEUUID>> IDs(Submitters);
 
 	std::atomic<bool> bCanStart{ false };
 	std::vector<std::thread> Workers;
@@ -900,12 +900,12 @@ TEST_F(FEThreadPoolTest, ConcurrentCreateDedicatedThread)
 	for (auto& Worker : Workers)
 		Worker.join();
 
-	std::unordered_map<std::string, int> Counts;
+	std::unordered_map<FEUUID, int> Counts;
 	int Empty = 0;
 	for (const auto& CurrentIDList : IDs)
 	{
 		for (const auto& CurrentID : CurrentIDList)
-			CurrentID.empty() ? Empty++ : Counts[CurrentID]++;
+			UNIQUE_ID.IsNull(CurrentID) ? Empty++ : Counts[CurrentID]++;
 	}
 
 	EXPECT_EQ(Empty, 0);
@@ -926,8 +926,8 @@ TEST_F(FEThreadPoolTest, ConcurrentDedicatedAndLightThreadCreation_ProducesUniqu
 {
 	constexpr int ThreadsPerKind = 50;
 
-	std::vector<std::string> DedicatedIDs;
-	std::vector<std::string> LightIDs;
+	std::vector<FEUUID> DedicatedIDs;
+	std::vector<FEUUID> LightIDs;
 	DedicatedIDs.reserve(ThreadsPerKind);
 	LightIDs.reserve(ThreadsPerKind);
 
@@ -951,12 +951,12 @@ TEST_F(FEThreadPoolTest, ConcurrentDedicatedAndLightThreadCreation_ProducesUniqu
 	DedicatedCreator.join();
 	LightCreator.join();
 
-	std::unordered_map<std::string, int> Counts;
+	std::unordered_map<FEUUID, int> Counts;
 	int Empty = 0;
 	for (const auto& CurrentID : DedicatedIDs)
-		CurrentID.empty() ? Empty++ : Counts[CurrentID]++;
+		UNIQUE_ID.IsNull(CurrentID) ? Empty++ : Counts[CurrentID]++;
 	for (const auto& CurrentID : LightIDs)
-		CurrentID.empty() ? Empty++ : Counts[CurrentID]++;
+		UNIQUE_ID.IsNull(CurrentID) ? Empty++ : Counts[CurrentID]++;
 
 	EXPECT_EQ(Empty, 0);
 	EXPECT_EQ(static_cast<int>(Counts.size()), ThreadsPerKind * 2) << "Concurrent creation produced duplicate thread IDs";
@@ -1036,12 +1036,12 @@ TEST_F(FEThreadPoolTest, ConcurrentWaitAndRemoveLightThread)
 	constexpr int RemoverThreadCount = 4;
 	constexpr auto StressDuration = std::chrono::milliseconds(500);
 
-	std::vector<std::string> IDs;
+	std::vector<FEUUID> IDs;
 	IDs.reserve(InitialLightThreadCount);
 	for (int i = 0; i < InitialLightThreadCount; i++)
 	{
-		const std::string CurrentID = THREAD_POOL.CreateLightThread();
-		ASSERT_FALSE(CurrentID.empty());
+		const FEUUID CurrentID = THREAD_POOL.CreateLightThread();
+		ASSERT_FALSE(UNIQUE_ID.IsNull(CurrentID));
 		// Execute a quick task so the thread handle is joinable.
 		const bool bWasStarted = THREAD_POOL.ExecuteLightThread(CurrentID, []() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));

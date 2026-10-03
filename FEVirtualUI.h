@@ -9,7 +9,7 @@ namespace FocalEngine
 		friend class FEBasicApplication;
 		ImGuiContext* ImguiContext = nullptr;
 
-		std::string ID;
+		FEUUID ID;
 		std::string Name = "";
 
 		unsigned int Framebuffer = -1;
@@ -29,7 +29,7 @@ namespace FocalEngine
 		void TerminateImGui();
 		~FEVirtualUI();
 
-		std::string GetID() const;
+		FEUUID GetID() const;
 
 		// User Callbacks
 		std::vector<std::function<void(int, int)>> UserOnResizeCallbackFuncs;

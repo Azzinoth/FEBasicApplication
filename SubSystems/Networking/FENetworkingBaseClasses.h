@@ -48,16 +48,16 @@ namespace FocalEngine
         char* Data = nullptr;
         size_t DataSize = 0;
         SOCKET* CurrentSocket = nullptr;
-        std::function<void(std::string)> OnDataSentCallback = nullptr;
+        std::function<void(FEUUID)> OnDataSentCallback = nullptr;
 
         void* Caller = nullptr;
         FE_NETWORK_ERROR ErrorCode = FE_NONE;
-        std::string MessageID = "";
+        FEUUID MessageID;
     };
 
     struct FENetworkReceiveThreadJobInfo
     {
-        std::string ReceiveDedicatedThreadID = "";
+        FEUUID ReceiveDedicatedThreadID;
         NetworkMessage CurrentMessage;
         std::queue<NetworkMessage> Messages;
         SOCKET* CurrentSocket;

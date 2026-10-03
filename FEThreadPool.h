@@ -61,7 +61,7 @@ namespace FocalEngine
 	class DedicatedJobThread : public JobThread
 	{
 		friend FEThreadPool;
-		std::string ThreadID;
+		FEUUID ThreadID;
 		std::atomic<bool> bShutdownRequested;
 
 		std::vector<FEUnexecutedJob*> JobsList;
@@ -73,7 +73,7 @@ namespace FocalEngine
 	class LightThread
 	{
 		friend FEThreadPool;
-		std::string ThreadID;
+		FEUUID ThreadID;
 
 		std::thread ThreadHandler;
 	public:
@@ -94,17 +94,17 @@ namespace FocalEngine
 		unsigned int GetLogicalCoreCount() const;
 		unsigned int GetThreadCount() const;
 
-		std::string CreateDedicatedThread();
+		FEUUID CreateDedicatedThread();
 		bool IsAnyDedicatedThreadHaveActiveJob() const;
-		void Execute(const std::string& DedicatedThreadID, FE_THREAD_JOB_FUNC Job, void* InputData = nullptr, void* OutputData = nullptr, FE_THREAD_CALLBACK_FUNC CallBack = nullptr);
-		bool WaitForDedicatedThread(const std::string& DedicatedThreadID);
-		bool ShutdownDedicatedThread(const std::string& DedicatedThreadID);
-		bool ForceShutdownDedicatedThread(const std::string& DedicatedThreadID);
+		void Execute(const FEUUID& DedicatedThreadID, FE_THREAD_JOB_FUNC Job, void* InputData = nullptr, void* OutputData = nullptr, FE_THREAD_CALLBACK_FUNC CallBack = nullptr);
+		bool WaitForDedicatedThread(const FEUUID& DedicatedThreadID);
+		bool ShutdownDedicatedThread(const FEUUID& DedicatedThreadID);
+		bool ForceShutdownDedicatedThread(const FEUUID& DedicatedThreadID);
 
-		std::string CreateLightThread();
+		FEUUID CreateLightThread();
 
 		template <typename Callable, typename... Args>
-		bool ExecuteLightThread(const std::string& LightThreadID, Callable&& Func, Args&&... ArgsList)
+		bool ExecuteLightThread(const FEUUID& LightThreadID, Callable&& Func, Args&&... ArgsList)
 		{
 			std::lock_guard<std::recursive_mutex> Lock(LightThreadsMutex);
 
@@ -120,8 +120,8 @@ namespace FocalEngine
 			return true;
 		}
 
-		bool WaitForLightThread(const std::string& LightThreadID);
-		bool RemoveLightThread(const std::string& LightThreadID);
+		bool WaitForLightThread(const FEUUID& LightThreadID);
+		bool RemoveLightThread(const FEUUID& LightThreadID);
 	private:
 		SINGLETON_PRIVATE_PART(FEThreadPool)
 
@@ -134,7 +134,7 @@ namespace FocalEngine
 		std::vector<DedicatedJobThread*> DedicatedThreads;
 		std::vector<DedicatedJobThread*> DedicatedThreadsToShutdown;
 		void MarkDedicatedThreadForShutdown(DedicatedJobThread* DedicatedThread);
-		DedicatedJobThread* GetDedicatedThread(const std::string& ThreadID);
+		DedicatedJobThread* GetDedicatedThread(const FEUUID& ThreadID);
 
 		struct FECollectedCallBack
 		{
@@ -149,7 +149,7 @@ namespace FocalEngine
 		void InvokeCollectedCallBack(const FECollectedCallBack& CollectedCallBack);
 
 		std::vector<LightThread*> LightThreads;
-		LightThread* GetLightThread(const std::string& ThreadID);
+		LightThread* GetLightThread(const FEUUID& ThreadID);
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED

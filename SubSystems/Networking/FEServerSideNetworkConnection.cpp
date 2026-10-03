@@ -7,7 +7,7 @@ FEServerSideNetworkConnection::~FEServerSideNetworkConnection()
     Shutdown();
 };
 
-bool FEServerSideNetworkConnection::TryToBind(std::string IP, unsigned int Port, std::function<void(std::string, std::string)> OnDataSentCallback, std::function<void(std::string, char*, size_t)> OnDataReceivedCallback, std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback)
+bool FEServerSideNetworkConnection::TryToBind(std::string IP, unsigned int Port, std::function<void(FEUUID, FEUUID)> OnDataSentCallback, std::function<void(FEUUID, char*, size_t)> OnDataReceivedCallback, std::function<void(FENetworkNewClientInfo*)> OnNewClientConnectionCallback)
 {
     if (OnDataSentCallback == nullptr ||
         OnDataReceivedCallback == nullptr ||
@@ -76,7 +76,7 @@ void FEServerSideNetworkConnection::ListeningFunction(void* Input, void* Output)
         return;
 	}
 
-    Info->ClientID = UNIQUE_ID.GetUniqueHexID();
+    Info->ClientID = UNIQUE_ID.GetUUID();
     char IPString[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(ClientAddress.sin_addr), IPString, INET_ADDRSTRLEN);
     Info->ClientIP = IPString;
@@ -129,7 +129,7 @@ void FEServerSideNetworkConnection::AfterNewClientConnectedFunction(void* Output
 	}
 
     Info->NewClientSocket = nullptr;
-    Info->ClientID = "";
+    Info->ClientID = UNIQUE_ID.GetNullUUID();
     Info->ClientIP = "";
     Info->ClientPort = 0;
         
@@ -199,15 +199,15 @@ void FEServerSideNetworkConnection::AfterSendToClientOccurredFunction(void* Outp
     delete Info;
 }
 
-std::string FEServerSideNetworkConnection::Send(std::string ClientID, char* Data, size_t DataSize)
+FEUUID FEServerSideNetworkConnection::Send(FEUUID ClientID, char* Data, size_t DataSize)
 {
     if (Data == nullptr || DataSize == 0)
-        return "";
+        return UNIQUE_ID.GetNullUUID();
 
     if (Clients.find(ClientID) == Clients.end())
     {
         LOG.Add("Trying to send data to unknown client.", "FE_NETWORKING");
-        return "";
+        return UNIQUE_ID.GetNullUUID();
     }
 
     FENetworkSendToClientThreadJobInfo* SendJobInfo = new FENetworkSendToClientThreadJobInfo;
@@ -217,15 +217,15 @@ std::string FEServerSideNetworkConnection::Send(std::string ClientID, char* Data
     SendJobInfo->OnDataSentCallback = OnDataSentCallback;
     SendJobInfo->ClientID = ClientID;
     SendJobInfo->Caller = (void*)this;
-    SendJobInfo->MessageID = UNIQUE_ID.GetUniqueHexID();
+    SendJobInfo->MessageID = UNIQUE_ID.GetUUID();
 
     THREAD_POOL.Execute(Clients[ClientID]->SendDedicatedThreadID, FEServerSideNetworkConnection::SendToClientFunction, (void*)SendJobInfo, (void*)SendJobInfo, FEServerSideNetworkConnection::AfterSendToClientOccurredFunction);
     return SendJobInfo->MessageID;
 }
 
-std::vector<std::string> FEServerSideNetworkConnection::SendToAll(char* Data, size_t DataSize)
+std::vector<FEUUID> FEServerSideNetworkConnection::SendToAll(char* Data, size_t DataSize)
 {
-    std::vector<std::string> MessageIDs;
+    std::vector<FEUUID> MessageIDs;
     if (Data == nullptr || DataSize == 0)
         return MessageIDs;
 
@@ -242,7 +242,7 @@ std::vector<std::string> FEServerSideNetworkConnection::SendToAll(char* Data, si
         SendJobInfo->OnDataSentCallback = OnDataSentCallback;
         SendJobInfo->ClientID = Iterator->first;
         SendJobInfo->Caller = (void*)this;
-        SendJobInfo->MessageID = UNIQUE_ID.GetUniqueHexID();
+        SendJobInfo->MessageID = UNIQUE_ID.GetUUID();
 
         THREAD_POOL.Execute(Clients[Iterator->first]->SendDedicatedThreadID, FEServerSideNetworkConnection::SendToClientFunction, (void*)SendJobInfo, (void*)SendJobInfo, FEServerSideNetworkConnection::AfterSendToClientOccurredFunction);
         Iterator++;
@@ -303,11 +303,11 @@ void FEServerSideNetworkConnection::AfterReceivingDataFromClientFunction(void* O
         Info->Messages.pop();
     }
 
-    std::string ThreadID = reinterpret_cast<FEServerSideNetworkConnection*>(Info->Caller)->Clients[Info->ClientID]->ReceiveDedicatedThreadID;
+    FEUUID ThreadID = reinterpret_cast<FEServerSideNetworkConnection*>(Info->Caller)->Clients[Info->ClientID]->ReceiveDedicatedThreadID;
     THREAD_POOL.Execute(ThreadID, FEServerSideNetworkConnection::ReceiveFromClientFunction, OutputData, OutputData, FEServerSideNetworkConnection::AfterReceivingDataFromClientFunction);
 }
 
-void FEServerSideNetworkConnection::OnConnectionError(std::string ClientID, FE_NETWORK_ERROR Error)
+void FEServerSideNetworkConnection::OnConnectionError(FEUUID ClientID, FE_NETWORK_ERROR Error)
 {
     if (!Clients[ClientID]->bIsConnectionTerminating)
     {
@@ -322,7 +322,7 @@ void FEServerSideNetworkConnection::OnConnectionError(std::string ClientID, FE_N
     }
 }
 
-void FEServerSideNetworkConnection::RemoveClient(std::string ClientID)
+void FEServerSideNetworkConnection::RemoveClient(FEUUID ClientID)
 {
     THREAD_POOL.ShutdownDedicatedThread(Clients[ClientID]->ReceiveDedicatedThreadID);
     THREAD_POOL.ShutdownDedicatedThread(Clients[ClientID]->SendDedicatedThreadID);
@@ -334,12 +334,12 @@ void FEServerSideNetworkConnection::RemoveClient(std::string ClientID)
     delete TempPointer;
 }
 
-void FEServerSideNetworkConnection::SetOnClientDisconnectCallback(std::function<void(std::string, bool)> OnClientDisconnectCallback)
+void FEServerSideNetworkConnection::SetOnClientDisconnectCallback(std::function<void(FEUUID, bool)> OnClientDisconnectCallback)
 {
     this->OnClientDisconnectCallback = OnClientDisconnectCallback;
 }
 
-FENetworkNewClientInfo FEServerSideNetworkConnection::GetClientInfo(std::string ClientID)
+FENetworkNewClientInfo FEServerSideNetworkConnection::GetClientInfo(FEUUID ClientID)
 {
     FENetworkNewClientInfo Result;
     if (Clients.find(ClientID) == Clients.end())
@@ -352,7 +352,7 @@ FENetworkNewClientInfo FEServerSideNetworkConnection::GetClientInfo(std::string 
     return Result;
 }
 
-void FEServerSideNetworkConnection::DisconnectClient(std::string ClientID)
+void FEServerSideNetworkConnection::DisconnectClient(FEUUID ClientID)
 {
     if (Clients.find(ClientID) == Clients.end())
         return;

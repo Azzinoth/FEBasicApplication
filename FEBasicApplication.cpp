@@ -181,7 +181,7 @@ FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
 	return NewWindow;
 }
 
-FEWindow* FEBasicApplication::GetWindow(std::string WindowID)
+FEWindow* FEBasicApplication::GetWindow(FEUUID WindowID)
 {
 	for (size_t i = 0; i < Windows.size(); i++)
 	{
@@ -529,7 +529,7 @@ void FEBasicApplication::CancelClose()
 	bShouldClose = false;
 }
 
-void FEBasicApplication::CloseWindow(std::string WindowID)
+void FEBasicApplication::CloseWindow(FEUUID WindowID)
 {
 	for (size_t i = 0; i < Windows.size(); i++)
 	{

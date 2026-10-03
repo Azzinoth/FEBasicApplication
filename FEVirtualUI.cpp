@@ -13,7 +13,7 @@ FEVirtualUI::FEVirtualUI(int Width, int Height, std::string Name)
     this->Height = Height;
     this->Name = Name;
 
-	this->ID = UNIQUE_ID.GetUniqueHexID();
+	this->ID = UNIQUE_ID.GetUUID();
 }
 
 void FEVirtualUI::Initialize(GLuint FrameBuffer, int Width, int Height)
@@ -468,7 +468,7 @@ int FEVirtualUI::GetHeight() const
 	return Height;
 }
 
-std::string FEVirtualUI::GetID() const
+FEUUID FEVirtualUI::GetID() const
 {
 	return ID;
 }
