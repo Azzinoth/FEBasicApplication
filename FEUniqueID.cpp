@@ -62,6 +62,17 @@ FEUUID FEUniqueID::FromLegacyHexID(const std::string& HexID)
 	return NameGenerator(HexID);
 }
 
+FEUUID FEUniqueID::FromStringOrLegacyHexID(const std::string& ID)
+{
+	if (ID.empty())
+		return GetNullUUID();
+
+	if (IsValid(ID))
+		return FromString(ID);
+
+	return FromLegacyHexID(ID);
+}
+
 std::string FEUniqueID::GetUniqueID()
 {
 	static std::random_device RandomDevice;

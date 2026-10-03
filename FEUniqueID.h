@@ -69,6 +69,8 @@ namespace FocalEngine
 		bool IsValid(const std::string& ID);
 
 		FEUUID FromLegacyHexID(const std::string& HexID);
+		// Accepts UUID strings and legacy hex IDs, empty string results in null UUID.
+		FEUUID FromStringOrLegacyHexID(const std::string& ID);
 
 		// This function can produce ID's that are "unique" with very rare collisions.
 		// For most purposes it can be considered unique.
