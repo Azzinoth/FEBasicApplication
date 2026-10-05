@@ -401,12 +401,12 @@ TEST_F(FEThreadPoolTest, DedicatedThread_ExecuteAndWait_RunsAllJobs)
 
 TEST_F(FEThreadPoolTest, DedicatedThread_InvalidID_DoesNothingGracefully)
 {
-	EXPECT_FALSE(THREAD_POOL.WaitForDedicatedThread(UNIQUE_ID.GetUUID()));
-	EXPECT_FALSE(THREAD_POOL.ShutdownDedicatedThread(UNIQUE_ID.GetUUID()));
+	EXPECT_FALSE(THREAD_POOL.WaitForDedicatedThread(UNIQUE_ID.GenerateID()));
+	EXPECT_FALSE(THREAD_POOL.ShutdownDedicatedThread(UNIQUE_ID.GenerateID()));
 
 	// Submitting to an unknown ID should not crash application.
 	bool bRan = false;
-	THREAD_POOL.Execute(UNIQUE_ID.GetUUID(), [&bRan](void*, void*) {
+	THREAD_POOL.Execute(UNIQUE_ID.GenerateID(), [&bRan](void*, void*) {
 		bRan = true;
 	});
 
@@ -515,8 +515,8 @@ TEST_F(FEThreadPoolTest, LightThread_RunsAndJoins)
 
 TEST_F(FEThreadPoolTest, LightThread_InvalidID_ReturnsFalse)
 {
-	EXPECT_FALSE(THREAD_POOL.WaitForLightThread(UNIQUE_ID.GetUUID()));
-	EXPECT_FALSE(THREAD_POOL.RemoveLightThread(UNIQUE_ID.GetUUID()));
+	EXPECT_FALSE(THREAD_POOL.WaitForLightThread(UNIQUE_ID.GenerateID()));
+	EXPECT_FALSE(THREAD_POOL.RemoveLightThread(UNIQUE_ID.GenerateID()));
 
 	const FEUUID ID = THREAD_POOL.CreateLightThread();
 	ASSERT_FALSE(UNIQUE_ID.IsNull(ID));
@@ -869,7 +869,7 @@ TEST_F(FEThreadPoolTest, SetConcurrentThreadCount_ClampsAtMaximum)
 TEST_F(FEThreadPoolTest, ExecuteLightThread_InvalidID_ReturnsFalse)
 {
 	bool bRan = false;
-	const bool bResult = THREAD_POOL.ExecuteLightThread(UNIQUE_ID.GetUUID(), [&bRan]() {
+	const bool bResult = THREAD_POOL.ExecuteLightThread(UNIQUE_ID.GenerateID(), [&bRan]() {
 		bRan = true;
 	});
 	EXPECT_FALSE(bResult);

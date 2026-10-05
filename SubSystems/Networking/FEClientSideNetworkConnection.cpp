@@ -117,7 +117,7 @@ FEUUID FEClientSideNetworkConnection::Send(char* Data, size_t DataSize)
     SendJobInfo->DataSize = DataSize;
     SendJobInfo->OnDataSentCallback = OnDataSentCallback;
     SendJobInfo->Caller = (void*)this;
-    SendJobInfo->MessageID = UNIQUE_ID.GetUUID();
+    SendJobInfo->MessageID = UNIQUE_ID.GenerateID();
 
     THREAD_POOL.Execute(SendDedicatedThreadID, FEClientSideNetworkConnection::SendFunction, (void*)SendJobInfo, (void*)SendJobInfo, FEClientSideNetworkConnection::AfterSendOccurredFunction);
     return SendJobInfo->MessageID;

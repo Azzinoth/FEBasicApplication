@@ -391,11 +391,6 @@ void FEBasicApplication::ScrollCallback(GLFWwindow* Window, const double Xoffset
 	}
 }
 
-std::string FEBasicApplication::GetUniqueHexID()
-{
-	return UNIQUE_ID.GetUniqueHexID();
-}
-
 bool FEBasicApplication::SetClipboardText(const std::string Text)
 {
 	if (WindowSystem == nullptr)

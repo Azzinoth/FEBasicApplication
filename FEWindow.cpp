@@ -4,7 +4,7 @@ using namespace FocalEngine;
 
 FEWindow::FEWindow()
 {
-	ID = UNIQUE_ID.GetUUID();
+	ID = UNIQUE_ID.GenerateID();
 }
 
 void FEWindow::InitializeImGui()
@@ -157,7 +157,7 @@ void FEWindow::EnsureCorrectContextEnd()
 
 FEUUID FEWindow::AddOnMonitorCallback(std::function<void(GLFWmonitor*, int)> UserOnMonitorCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnMonitorCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnMonitorCallback);
 	UserOnMonitorCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -197,7 +197,7 @@ void FEWindow::InvokeOnFocusCallback(int Focused)
 
 FEUUID FEWindow::AddOnFocusCallback(std::function<void(int)> UserOnFocusCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnFocusCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnFocusCallback);
 	UserOnFocusCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -211,7 +211,7 @@ void FEWindow::InvokeTerminateCallback()
 
 FEUUID FEWindow::AddOnResizeCallback(std::function<void(int, int)> UserOnResizeCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnResizeCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnResizeCallback);
 	UserOnResizeCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -238,7 +238,7 @@ void FEWindow::InvokeResizeCallback(int Width, int Height)
 
 FEUUID FEWindow::AddOnMouseEnterCallback(std::function<void(int)> UserOnMouseEnterCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnMouseEnterCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnMouseEnterCallback);
 	UserOnMouseEnterCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -258,7 +258,7 @@ void FEWindow::InvokeMouseEnterCallback(int Entered)
 
 FEUUID FEWindow::AddOnMouseButtonCallback(std::function<void(int, int, int)> UserOnMouseButtonCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnMouseButtonCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnMouseButtonCallback);
 	UserOnMouseButtonCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -278,7 +278,7 @@ void FEWindow::InvokeMouseButtonCallback(const int Button, const int Action, con
 
 FEUUID FEWindow::AddOnMouseMoveCallback(std::function<void(double, double)> UserOnMouseMoveCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnMouseMoveCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnMouseMoveCallback);
 	UserOnMouseMoveCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -298,7 +298,7 @@ void FEWindow::InvokeMouseMoveCallback(const double Xpos, const double Ypos)
 
 FEUUID FEWindow::AddOnCharCallback(std::function<void(unsigned int)> UserOnCharCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnCharCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnCharCallback);
 	UserOnCharCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -318,7 +318,7 @@ void FEWindow::InvokeCharCallback(unsigned int Codepoint)
 
 FEUUID FEWindow::AddOnKeyCallback(std::function<void(int, int, int, int)> UserOnKeyCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnKeyCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnKeyCallback);
 	UserOnKeyCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -338,7 +338,7 @@ void FEWindow::InvokeKeyCallback(const int Key, const int Scancode, const int Ac
 
 FEUUID FEWindow::AddOnDropCallback(std::function<void(int, const char**)> UserOnDropCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnDropCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnDropCallback);
 	UserOnDropCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -356,7 +356,7 @@ void FEWindow::InvokeDropCallback(const int Count, const char** Paths)
 
 FEUUID FEWindow::AddOnScrollCallback(std::function<void(double, double)> UserOnScrollCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnScrollCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnScrollCallback);
 	UserOnScrollCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -434,7 +434,7 @@ FEUUID FEWindow::GetID() const
 
 FEUUID FEWindow::AddOnTerminateCallback(std::function<void()> UserOnTerminateCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnTerminateCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnTerminateCallback);
 	UserOnTerminateCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;
@@ -442,7 +442,7 @@ FEUUID FEWindow::AddOnTerminateCallback(std::function<void()> UserOnTerminateCal
 
 FEUUID FEWindow::AddOnCloseCallback(std::function<void()> UserOnCloseCallback)
 {
-	std::pair NewCallback = std::make_pair(UNIQUE_ID.GetUUID(), UserOnCloseCallback);
+	std::pair NewCallback = std::make_pair(UNIQUE_ID.GenerateID(), UserOnCloseCallback);
 	UserOnCloseCallbackFuncs.push_back(NewCallback);
 
 	return NewCallback.first;

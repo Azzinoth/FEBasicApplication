@@ -103,7 +103,7 @@ bool JobThread::AssignJob(const FEUnexecutedJob* NewJob)
 
 DedicatedJobThread::DedicatedJobThread()
 {
-	ThreadID = UNIQUE_ID.GetUUID();
+	ThreadID = UNIQUE_ID.GenerateID();
 	bShutdownRequested = false;
 }
 
@@ -117,7 +117,7 @@ DedicatedJobThread::~DedicatedJobThread()
 
 LightThread::LightThread()
 {
-	ThreadID = UNIQUE_ID.GetUUID();
+	ThreadID = UNIQUE_ID.GenerateID();
 }
 
 LightThread::~LightThread() {}

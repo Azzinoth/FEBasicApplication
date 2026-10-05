@@ -76,7 +76,7 @@ void FEServerSideNetworkConnection::ListeningFunction(void* Input, void* Output)
         return;
 	}
 
-    Info->ClientID = UNIQUE_ID.GetUUID();
+    Info->ClientID = UNIQUE_ID.GenerateID();
     char IPString[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(ClientAddress.sin_addr), IPString, INET_ADDRSTRLEN);
     Info->ClientIP = IPString;
@@ -129,7 +129,7 @@ void FEServerSideNetworkConnection::AfterNewClientConnectedFunction(void* Output
 	}
 
     Info->NewClientSocket = nullptr;
-    Info->ClientID = UNIQUE_ID.GetNullUUID();
+    Info->ClientID = FEUUID();
     Info->ClientIP = "";
     Info->ClientPort = 0;
         
@@ -202,12 +202,12 @@ void FEServerSideNetworkConnection::AfterSendToClientOccurredFunction(void* Outp
 FEUUID FEServerSideNetworkConnection::Send(FEUUID ClientID, char* Data, size_t DataSize)
 {
     if (Data == nullptr || DataSize == 0)
-        return UNIQUE_ID.GetNullUUID();
+        return FEUUID();
 
     if (Clients.find(ClientID) == Clients.end())
     {
         LOG.Add("Trying to send data to unknown client.", "FE_NETWORKING");
-        return UNIQUE_ID.GetNullUUID();
+        return FEUUID();
     }
 
     FENetworkSendToClientThreadJobInfo* SendJobInfo = new FENetworkSendToClientThreadJobInfo;
@@ -217,7 +217,7 @@ FEUUID FEServerSideNetworkConnection::Send(FEUUID ClientID, char* Data, size_t D
     SendJobInfo->OnDataSentCallback = OnDataSentCallback;
     SendJobInfo->ClientID = ClientID;
     SendJobInfo->Caller = (void*)this;
-    SendJobInfo->MessageID = UNIQUE_ID.GetUUID();
+    SendJobInfo->MessageID = UNIQUE_ID.GenerateID();
 
     THREAD_POOL.Execute(Clients[ClientID]->SendDedicatedThreadID, FEServerSideNetworkConnection::SendToClientFunction, (void*)SendJobInfo, (void*)SendJobInfo, FEServerSideNetworkConnection::AfterSendToClientOccurredFunction);
     return SendJobInfo->MessageID;
@@ -242,7 +242,7 @@ std::vector<FEUUID> FEServerSideNetworkConnection::SendToAll(char* Data, size_t 
         SendJobInfo->OnDataSentCallback = OnDataSentCallback;
         SendJobInfo->ClientID = Iterator->first;
         SendJobInfo->Caller = (void*)this;
-        SendJobInfo->MessageID = UNIQUE_ID.GetUUID();
+        SendJobInfo->MessageID = UNIQUE_ID.GenerateID();
 
         THREAD_POOL.Execute(Clients[Iterator->first]->SendDedicatedThreadID, FEServerSideNetworkConnection::SendToClientFunction, (void*)SendJobInfo, (void*)SendJobInfo, FEServerSideNetworkConnection::AfterSendToClientOccurredFunction);
         Iterator++;

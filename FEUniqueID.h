@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <chrono>
 #include <mutex>
-#include <time.h>
 #include <random>
 #include "FEBasicApplicationAPI.h"
 
@@ -56,26 +55,15 @@ namespace FocalEngine
 		uuids::uuid_random_generator Generator;
 
 		std::mutex IDGenerationMutex;
-		std::string GetUniqueID();
 	public:
 		SINGLETON_PUBLIC_PART(FEUniqueID)
 
-		FEUUID GetUUID();
-		FEUUID GetNullUUID();
+		FEUUID GenerateID();
+		FEUUID ConvertLegacyHexID(const std::string& HexID);
 		bool IsNull(const FEUUID& ID);
 
 		std::string ToString(const FEUUID& ID);
 		FEUUID FromString(const std::string& ID);
-		bool IsValid(const std::string& ID);
-
-		FEUUID FromLegacyHexID(const std::string& HexID);
-		// Accepts UUID strings and legacy hex IDs, empty string results in null UUID.
-		FEUUID FromStringOrLegacyHexID(const std::string& ID);
-
-		// This function can produce ID's that are "unique" with very rare collisions.
-		// For most purposes it can be considered unique.
-		// ID is a 24 long string.
-		std::string GetUniqueHexID();
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED
