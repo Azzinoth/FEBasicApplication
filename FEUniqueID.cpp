@@ -50,3 +50,15 @@ FEUUID FEUniqueID::FromString(const std::string& ID)
 
 	return Result.value();
 }
+
+FEUUID FEUniqueID::FromStringLegacyCompatible(const std::string& ID)
+{
+	if (ID.empty())
+		return FEUUID();
+
+	auto Result = uuids::uuid::from_string(ID);
+	if (Result.has_value())
+		return Result.value();
+
+	return ConvertLegacyHexID(ID);
+}

@@ -64,6 +64,7 @@ namespace FocalEngine
 
 		std::string ToString(const FEUUID& ID);
 		FEUUID FromString(const std::string& ID);
+		FEUUID FromStringLegacyCompatible(const std::string& ID);
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED
