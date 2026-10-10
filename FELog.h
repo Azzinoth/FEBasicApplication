@@ -35,7 +35,7 @@ namespace FocalEngine
 
 namespace std
 {
-	template <> struct std::hash<FocalEngine::LogItem>
+	template <> struct hash<FocalEngine::LogItem>
 	{
 		size_t operator()(const FocalEngine::LogItem& Object) const
 		{

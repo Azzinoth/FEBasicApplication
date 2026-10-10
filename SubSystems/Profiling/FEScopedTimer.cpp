@@ -3,7 +3,7 @@ using namespace FocalEngine;
 
 FEScopedTimer::FEScopedTimer(const std::string& EventName, bool bIsSection)
 {
-	StartTime = std::chrono::steady_clock::now();
+	StartTime = std::chrono::high_resolution_clock::now();
     this->EventName = EventName;
 	bIsForSection = bIsSection;
 	if (bIsForSection)
@@ -24,7 +24,7 @@ void FEScopedTimer::Stop()
 
 	bIsStopped = true;
 
-	FE_CHRONO_TIME_POINT EndTime = std::chrono::steady_clock::now();
+	FE_CHRONO_TIME_POINT EndTime = std::chrono::high_resolution_clock::now();
 
 	const auto Start = std::chrono::time_point_cast<std::chrono::nanoseconds>(StartTime).time_since_epoch();
 	const auto End = std::chrono::time_point_cast<std::chrono::nanoseconds>(EndTime).time_since_epoch();

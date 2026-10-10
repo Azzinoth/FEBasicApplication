@@ -8,7 +8,6 @@ namespace FocalEngine
     class FEBASICAPPLICATION_API FEProfilingManager
     {
         friend class FEScopedTimer;
-        friend class FEProfilingManager;
         SINGLETON_PRIVATE_PART(FEProfilingManager)
 
         std::unordered_map<std::thread::id, FEProfilingRegistry> ThreadData;
