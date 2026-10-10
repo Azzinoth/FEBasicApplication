@@ -258,6 +258,16 @@ void FEBasicApplication::EndFrame() const
 			return;
 		}
 	}
+
+	for (size_t i = 0; i < Windows.size(); i++)
+	{
+		if (Windows[i]->bCloseRequested)
+		{
+			Windows[i]->bCloseRequested = false;
+			APPLICATION.CloseWindow(i);
+			return;
+		}
+	}
 }
 
 void FEBasicApplication::RenderWindows()
@@ -304,7 +314,8 @@ void FEBasicApplication::WindowCloseCallback(GLFWwindow* Window)
 	{
 		if (APPLICATION.Windows[i]->GetGlfwWindow() == Window)
 		{
-			APPLICATION.CloseWindow(i);
+			// GLFW does not allow destroying a window or terminating from its callbacks, so the window is closed in EndFrame.
+			APPLICATION.Windows[i]->bCloseRequested = true;
 			return;
 		}
 	}

@@ -36,6 +36,7 @@ namespace FocalEngine
 
 		bool bShouldClose = false;
 		bool bShouldTerminate = false;
+		bool bCloseRequested = false;
 		bool bOverrideImGuiTextureFiltering = true;
 
 		bool bDefaultDockspaceEnabled = false;
