@@ -31,6 +31,7 @@ namespace FocalEngine
 	{
 		ImGui::SetCurrentContext(Context);
 		ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
+		ImGui_ImplGlfw_InstallEmscriptenCallbacks(GLFWWindow, "#canvas");
 	}
 
 	void FEWindowSystemWindowEmscripten::ImGuiPlatformShutdown()
