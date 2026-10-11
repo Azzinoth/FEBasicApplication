@@ -19,6 +19,84 @@ EM_JS(int, FEBrowserIsPointerTouch, (), {
 	return Module.FEBrowserPointerIsTouch ? 1 : 0;
 });
 
+// Emscripten's GLFW only follows one finger, so a two-finger pinch is collected here and turned into mouse wheel steps in ImGuiPlatformNewFrame.
+EM_JS(void, FEBrowserInstallPinchListener, (), {
+	if (Module.FEBrowserPinch)
+		return;
+
+	const Pinch = Module.FEBrowserPinch = { Active: false, Started: false, Distance: 0, Scale: 0, X: 0, Y: 0 };
+	const OnTouch = (Event) => {
+		const Canvas = Module.canvas;
+		if (Event.target !== Canvas)
+			return;
+
+		if (Event.touches.length >= 2)
+		{
+			const A = Event.touches[0];
+			const B = Event.touches[1];
+			const Distance = Math.hypot(A.clientX - B.clientX, A.clientY - B.clientY);
+			if (!Pinch.Active)
+			{
+				Pinch.Active = true;
+				Pinch.Started = true;
+				Pinch.Scale = 0;
+			}
+			else if (Pinch.Distance > 0 && Distance > 0)
+			{
+				Pinch.Scale += Math.log(Distance / Pinch.Distance);
+			}
+
+			const Rect = Canvas.getBoundingClientRect();
+			Pinch.Distance = Distance;
+			Pinch.X = ((A.clientX + B.clientX) / 2 - Rect.left) * Canvas.width / Rect.width;
+			Pinch.Y = ((A.clientY + B.clientY) / 2 - Rect.top) * Canvas.height / Rect.height;
+		}
+		else if (Event.touches.length === 0)
+		{
+			Pinch.Active = false;
+		}
+
+		// GLFW does not see new fingers or finger movement until all fingers are lifted, so a pinch does not also drag.
+		if (Pinch.Active && (Event.type === "touchstart" || Event.type === "touchmove"))
+		{
+			Event.preventDefault();
+			Event.stopPropagation();
+		}
+	};
+
+	for (const Type of ["touchstart", "touchmove", "touchend", "touchcancel"])
+		window.addEventListener(Type, OnTouch, { capture: true, passive: false });
+});
+
+EM_JS(int, FEBrowserTakePinchStart, (), {
+	const Pinch = Module.FEBrowserPinch;
+	if (!Pinch || !Pinch.Started)
+		return 0;
+
+	Pinch.Started = false;
+	return 1;
+});
+
+// One wheel step for each 15% change of the distance between the fingers, at most one step per frame.
+EM_JS(int, FEBrowserTakePinchWheelStep, (), {
+	const Pinch = Module.FEBrowserPinch;
+	const StepSize = Math.log(1.15);
+	if (!Pinch || Math.abs(Pinch.Scale) < StepSize)
+		return 0;
+
+	const Step = Math.sign(Pinch.Scale);
+	Pinch.Scale -= Step * StepSize;
+	return Step;
+});
+
+EM_JS(double, FEBrowserGetPinchX, (), {
+	return Module.FEBrowserPinch.X;
+});
+
+EM_JS(double, FEBrowserGetPinchY, (), {
+	return Module.FEBrowserPinch.Y;
+});
+
 namespace FocalEngine
 {
 	static void ForwardMouseSource()
@@ -55,6 +133,7 @@ namespace FocalEngine
 		ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
 		ImGui_ImplGlfw_InstallEmscriptenCallbacks(GLFWWindow, "#canvas");
 		FEBrowserInstallPointerTypeListener();
+		FEBrowserInstallPinchListener();
 
 		// Emscripten's GLFW does not implement cursor shapes, and its glfwSetInputMode calls document.exitPointerLock, which iPhone Safari does not have.
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
@@ -73,6 +152,18 @@ namespace FocalEngine
 	void FEWindowSystemWindowEmscripten::ImGuiPlatformNewFrame()
 	{
 		ImGui_ImplGlfw_NewFrame();
+
+		// The first finger already pressed the left button, a pinch releases it so it does not drag.
+		ImGuiIO& IO = ImGui::GetIO();
+		if (FEBrowserTakePinchStart())
+			IO.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+
+		const int PinchWheelStep = FEBrowserTakePinchWheelStep();
+		if (PinchWheelStep != 0)
+		{
+			IO.AddMousePosEvent(static_cast<float>(FEBrowserGetPinchX()), static_cast<float>(FEBrowserGetPinchY()));
+			IO.AddMouseWheelEvent(0.0f, static_cast<float>(PinchWheelStep));
+		}
 	}
 
 	void FEWindowSystemWindowEmscripten::SetTitle(const std::string& Title)
