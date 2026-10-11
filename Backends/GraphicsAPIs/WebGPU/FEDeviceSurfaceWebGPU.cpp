@@ -9,7 +9,7 @@ namespace FocalEngine
 	{
 		ImGui_ImplWGPU_InitInfo InitInfo{};
 		InitInfo.Device = OwnerDevice->GetWGPUDevice().Get();
-		InitInfo.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
+		InitInfo.RenderTargetFormat = static_cast<WGPUTextureFormat>(SurfaceFormat);
 		InitInfo.DepthStencilFormat = WGPUTextureFormat_Undefined;
 		InitInfo.NumFramesInFlight = 3;
 		ImGui_ImplWGPU_Init(&InitInfo);
@@ -20,12 +20,9 @@ namespace FocalEngine
 		if (Width == 0 || Height == 0 || OwnerDevice == nullptr)
 			return;
 
-		wgpu::SurfaceCapabilities Capabilities;
-		Surface.GetCapabilities(OwnerDevice->GetWGPUAdapter(), &Capabilities);
-
 		wgpu::SurfaceConfiguration SurfaceConfig{};
 		SurfaceConfig.device = OwnerDevice->GetWGPUDevice();
-		SurfaceConfig.format = Capabilities.formats[0];
+		SurfaceConfig.format = SurfaceFormat;
 		SurfaceConfig.width = static_cast<uint32_t>(Width);
 		SurfaceConfig.height = static_cast<uint32_t>(Height);
 		SurfaceConfig.presentMode = wgpu::PresentMode::Fifo;

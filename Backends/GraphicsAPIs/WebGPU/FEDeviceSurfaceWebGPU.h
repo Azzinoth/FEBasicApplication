@@ -14,6 +14,7 @@ namespace FocalEngine
 		FEDeviceWebGPU* OwnerDevice = nullptr;
 
 		wgpu::Surface           Surface;
+		wgpu::TextureFormat     SurfaceFormat = wgpu::TextureFormat::Undefined;
 		wgpu::SurfaceTexture    CurrentTexture;
 		wgpu::TextureView       CurrentView;
 		wgpu::CommandEncoder    CurrentEncoder;

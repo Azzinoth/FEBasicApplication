@@ -131,9 +131,11 @@ namespace FocalEngine
 		int Height = 0;
 		Window->GetSize(&Width, &Height);
 
+		NewSurface->SurfaceFormat = Capabilities.formats[0];
+
 		wgpu::SurfaceConfiguration SurfaceConfig{};
 		SurfaceConfig.device = Device;
-		SurfaceConfig.format = Capabilities.formats[0];
+		SurfaceConfig.format = NewSurface->SurfaceFormat;
 		SurfaceConfig.width = static_cast<uint32_t>(Width);
 		SurfaceConfig.height = static_cast<uint32_t>(Height);
 		SurfaceConfig.presentMode = wgpu::PresentMode::Fifo;
