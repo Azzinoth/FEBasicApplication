@@ -1,9 +1,59 @@
 #include "FEWindowSystemEmscripten.h"
 #include <algorithm>
+#include <cstdlib>
 #include <emscripten.h>
+
+EM_JS_DEPS(FEBrowserClipboard, "$UTF8ToString,$stringToNewUTF8");
+
+// Reading the browser clipboard is only possible synchronously inside a paste event, so its text is kept until GetBrowserClipboardText takes it.
+EM_JS(void, FEBrowserClipboardInstallPasteListener, (), {
+	if (Module.FEBrowserClipboardPasteListenerInstalled)
+		return;
+
+	Module.FEBrowserClipboardPasteListenerInstalled = true;
+	document.addEventListener("paste", (Event) => {
+		if (Event.clipboardData)
+			Module.FEBrowserClipboardPastedText = Event.clipboardData.getData("text/plain");
+	});
+});
+
+EM_JS(void, FEBrowserClipboardWrite, (const char* Text), {
+	Module.FEBrowserClipboardPastedText = undefined;
+	if (navigator.clipboard && navigator.clipboard.writeText)
+		navigator.clipboard.writeText(UTF8ToString(Text)).catch(() => {});
+});
+
+EM_JS(char*, FEBrowserClipboardTakePastedText, (), {
+	if (Module.FEBrowserClipboardPastedText === undefined)
+		return 0;
+
+	const Text = Module.FEBrowserClipboardPastedText;
+	Module.FEBrowserClipboardPastedText = undefined;
+	return stringToNewUTF8(Text);
+});
 
 namespace FocalEngine
 {
+	static std::string BrowserClipboardText;
+
+	void SetBrowserClipboardText(const char* Text)
+	{
+		BrowserClipboardText = Text != nullptr ? Text : "";
+		FEBrowserClipboardWrite(BrowserClipboardText.c_str());
+	}
+
+	const char* GetBrowserClipboardText()
+	{
+		char* PastedText = FEBrowserClipboardTakePastedText();
+		if (PastedText != nullptr)
+		{
+			BrowserClipboardText = PastedText;
+			free(PastedText);
+		}
+
+		return BrowserClipboardText.c_str();
+	}
+
 	static std::function<void(void* NativeMonitor, int Event)> RegisteredMonitorCallback;
 	static void MonitorCallbackBridge(GLFWmonitor* Monitor, int Event)
 	{
@@ -20,6 +70,7 @@ namespace FocalEngine
 
 	bool FEWindowSystemEmscripten::Initialize()
 	{
+		FEBrowserClipboardInstallPasteListener();
 		return glfwInit() == GLFW_TRUE;
 	}
 
@@ -100,14 +151,13 @@ namespace FocalEngine
 
 	bool FEWindowSystemEmscripten::SetClipboardText(std::string Text)
 	{
-		glfwSetClipboardString(nullptr, Text.c_str());
+		SetBrowserClipboardText(Text.c_str());
 		return true;
 	}
 
 	std::string FEWindowSystemEmscripten::GetClipboardText()
 	{
-		const char* Clipboard = glfwGetClipboardString(nullptr);
-		return Clipboard ? std::string(Clipboard) : std::string();
+		return GetBrowserClipboardText();
 	}
 
 	std::vector<MonitorInfo> FEWindowSystemEmscripten::GetMonitors()

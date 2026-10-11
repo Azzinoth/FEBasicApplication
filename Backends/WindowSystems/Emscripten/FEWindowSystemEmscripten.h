@@ -5,6 +5,10 @@
 
 namespace FocalEngine
 {
+	// Emscripten's built-in GLFW has no clipboard, so these use the browser clipboard instead.
+	void SetBrowserClipboardText(const char* Text);
+	const char* GetBrowserClipboardText();
+
 	class FEWindowSystemEmscripten : public FEWindowSystemInterface
 	{
 	public:

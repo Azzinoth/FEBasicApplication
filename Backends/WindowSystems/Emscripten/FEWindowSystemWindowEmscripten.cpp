@@ -1,4 +1,5 @@
 #include "FEWindowSystemWindowEmscripten.h"
+#include "FEWindowSystemEmscripten.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 
@@ -32,6 +33,11 @@ namespace FocalEngine
 		ImGui::SetCurrentContext(Context);
 		ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
 		ImGui_ImplGlfw_InstallEmscriptenCallbacks(GLFWWindow, "#canvas");
+
+		// The ImGui GLFW backend uses glfwSetClipboardString/glfwGetClipboardString, which do nothing in Emscripten's built-in GLFW.
+		ImGuiPlatformIO& PlatformIO = ImGui::GetPlatformIO();
+		PlatformIO.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* Text) { SetBrowserClipboardText(Text); };
+		PlatformIO.Platform_GetClipboardTextFn = [](ImGuiContext*) { return GetBrowserClipboardText(); };
 	}
 
 	void FEWindowSystemWindowEmscripten::ImGuiPlatformShutdown()
