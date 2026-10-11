@@ -2,9 +2,30 @@
 #include "FEWindowSystemEmscripten.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
+#include <emscripten.h>
+
+// Emscripten's GLFW reports touches as mouse input, so the browser's pointer type is used to tell ImGui which one it is.
+EM_JS(void, FEBrowserInstallPointerTypeListener, (), {
+	if (Module.FEBrowserPointerTypeListenerInstalled)
+		return;
+
+	Module.FEBrowserPointerTypeListenerInstalled = true;
+	const Update = (Event) => { Module.FEBrowserPointerIsTouch = Event.pointerType === "touch"; };
+	document.addEventListener("pointerdown", Update, true);
+	document.addEventListener("pointermove", Update, true);
+});
+
+EM_JS(int, FEBrowserIsPointerTouch, (), {
+	return Module.FEBrowserPointerIsTouch ? 1 : 0;
+});
 
 namespace FocalEngine
 {
+	static void ForwardMouseSource()
+	{
+		ImGui::GetIO().AddMouseSourceEvent(FEBrowserIsPointerTouch() ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
+	}
+
 	FEWindowSystemWindowEmscripten::~FEWindowSystemWindowEmscripten()
 	{
 		if (GLFWWindow != nullptr)
@@ -33,6 +54,7 @@ namespace FocalEngine
 		ImGui::SetCurrentContext(Context);
 		ImGui_ImplGlfw_InitForOther(GLFWWindow, false);
 		ImGui_ImplGlfw_InstallEmscriptenCallbacks(GLFWWindow, "#canvas");
+		FEBrowserInstallPointerTypeListener();
 
 		// The ImGui GLFW backend uses glfwSetClipboardString/glfwGetClipboardString, which do nothing in Emscripten's built-in GLFW.
 		ImGuiPlatformIO& PlatformIO = ImGui::GetPlatformIO();
@@ -121,11 +143,20 @@ namespace FocalEngine
 
 	void FEWindowSystemWindowEmscripten::ImGuiForwardMouseButton(int Button, int Action, int Mods)
 	{
+		ForwardMouseSource();
+
+		// Emscripten's GLFW reports a touch press without a cursor move, so ImGui would see it at the previous touch position.
+		double Xpos = 0.0;
+		double Ypos = 0.0;
+		glfwGetCursorPos(GLFWWindow, &Xpos, &Ypos);
+		ImGui_ImplGlfw_CursorPosCallback(GLFWWindow, Xpos, Ypos);
+
 		ImGui_ImplGlfw_MouseButtonCallback(GLFWWindow, Button, Action, Mods);
 	}
 
 	void FEWindowSystemWindowEmscripten::ImGuiForwardMouseMove(double Xpos, double Ypos)
 	{
+		ForwardMouseSource();
 		ImGui_ImplGlfw_CursorPosCallback(GLFWWindow, Xpos, Ypos);
 	}
 
