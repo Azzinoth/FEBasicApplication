@@ -56,6 +56,9 @@ namespace FocalEngine
 		ImGui_ImplGlfw_InstallEmscriptenCallbacks(GLFWWindow, "#canvas");
 		FEBrowserInstallPointerTypeListener();
 
+		// Emscripten's GLFW does not implement cursor shapes, and its glfwSetInputMode calls document.exitPointerLock, which iPhone Safari does not have.
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
 		// The ImGui GLFW backend uses glfwSetClipboardString/glfwGetClipboardString, which do nothing in Emscripten's built-in GLFW.
 		ImGuiPlatformIO& PlatformIO = ImGui::GetPlatformIO();
 		PlatformIO.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* Text) { SetBrowserClipboardText(Text); };
