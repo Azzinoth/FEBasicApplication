@@ -151,6 +151,8 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEUniqueID.h"
 	"FEOS.cpp"
 	"FEOS.h"
+	"FEFileSystem.cpp"
+	"FEFileSystem.h"
 	"FEBasicApplicationAPI.h"
 	"FEPlatform.h"
 )

@@ -2,6 +2,7 @@
 
 #include "FEVirtualUI.h"
 #include "FEPlatform.h"
+#include "FEFileSystem.h"
 #include <map>
 #include <sstream>
 #include "Backends/WindowSystems/FEWindowSystemInterface.h"
