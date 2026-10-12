@@ -381,7 +381,7 @@ std::string FEFileSystem::PWSTRtoString(const PWSTR WString)
 	return Result;
 }
 
-void FEFileSystem::ShowFileOpenDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, const int FilterCount)
+void FEFileSystem::ShowFileOpenDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, const int FilterCount, const std::string& InitialDirectory)
 {
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	if (SUCCEEDED(hr))
@@ -393,6 +393,24 @@ void FEFileSystem::ShowFileOpenDialog(std::string& Path, const COMDLG_FILTERSPEC
 		if (SUCCEEDED(hr))
 		{
 			hr = PFileOpen->SetFileTypes(FilterCount, Filter);
+
+			if (!InitialDirectory.empty() && DoesDirectoryExist(InitialDirectory))
+			{
+				const int WideLength = MultiByteToWideChar(CP_UTF8, 0, InitialDirectory.c_str(), -1, nullptr, 0);
+				if (WideLength > 0)
+				{
+					std::wstring WideDirectory(WideLength - 1, L'\0');
+					MultiByteToWideChar(CP_UTF8, 0, InitialDirectory.c_str(), -1, WideDirectory.data(), WideLength);
+
+					IShellItem* Folder = nullptr;
+					if (SUCCEEDED(SHCreateItemFromParsingName(WideDirectory.c_str(), nullptr, IID_PPV_ARGS(&Folder))))
+					{
+						PFileOpen->SetFolder(Folder);
+						Folder->Release();
+					}
+				}
+			}
+
 			// Show the Open dialog box.
 			hr = PFileOpen->Show(nullptr);
 

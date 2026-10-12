@@ -58,7 +58,7 @@ namespace FocalEngine
 		bool PerformTextReplacements(const std::string& FilePath, const std::vector<TextReplacementRule>& Rules);
 
 #if FE_PLATFORM(WINDOWS)
-		void ShowFileOpenDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, int FilterCount = 1);
+		void ShowFileOpenDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, int FilterCount = 1, const std::string& InitialDirectory = "");
 		void ShowFolderOpenDialog(std::string& Path);
 
 		void ShowFileSaveDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, int FilterCount = 1, int* ChosenFilterIndex = nullptr);
