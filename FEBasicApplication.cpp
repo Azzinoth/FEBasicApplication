@@ -231,6 +231,7 @@ void FEBasicApplication::BeginFrame()
 		return;
 
 	THREAD_POOL.Update();
+	FILE_SYSTEM.Update();
 
 	for (size_t i = 0; i < VirtualUIs.size(); i++)
 	{

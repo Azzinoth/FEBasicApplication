@@ -4,13 +4,9 @@
 #include "FEPlatform.h"
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <string>
 #include <vector>
-
-#if FE_PLATFORM(WINDOWS)
-	#include <windows.h>
-	#include <shobjidl.h> // OpenDialog
-#endif
 
 namespace FocalEngine
 {
@@ -27,7 +23,7 @@ namespace FocalEngine
 		size_t GetFileSize(const std::string& Path);
 		// Returns last write time in nanoseconds since epoch.
 		uint64_t GetFileLastWriteTime(const std::string& Path);
-		bool WaitForFileAccess(const std::string& FilePath, int TimeoutInMS = 1000);
+		bool WaitForFileAccess(const std::string& FilePath, int TimeoutInMilliseconds = 1000);
 
 		std::string GetFileExtension(const std::string& Path);
 		std::string GetDirectoryPath(const std::string& FullPath);
@@ -57,20 +53,32 @@ namespace FocalEngine
 
 		bool PerformTextReplacements(const std::string& FilePath, const std::vector<TextReplacementRule>& Rules);
 
-#if FE_PLATFORM(WINDOWS)
-		void ShowFileOpenDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, int FilterCount = 1, const std::string& InitialDirectory = "");
-		void ShowFolderOpenDialog(std::string& Path);
+		// For example { "Images", { "png", "jpg" } }.
+		struct FileDialogFilter
+		{
+			std::string Description;
+			std::vector<std::string> Extensions;
+		};
 
-		void ShowFileSaveDialog(std::string& Path, const COMDLG_FILTERSPEC* Filter, int FilterCount = 1, int* ChosenFilterIndex = nullptr);
+		void OpenFileDialog(const std::vector<FileDialogFilter>& Filters, std::function<void(const std::string& FilePath)> OnClose, const std::string& InitialDirectory = "");
+		void SaveFileDialog(const std::string& SuggestedFileName, const std::vector<FileDialogFilter>& Filters, std::function<bool(const std::string& FilePath, int ChosenFilterIndex)> WriteFile);
+
+		// Only available on Windows, elsewhere OnClose is called with an empty path.
+		void OpenFolderDialog(std::function<void(const std::string& FolderPath)> OnClose);
+		bool IsFolderDialogSupported() const;
+
+		void Update();
+
+#if FE_PLATFORM(WINDOWS)
 		std::string GetExecutablePath();
 #endif
 		std::string GetCurrentWorkingPath();
 		std::string ReadFEString(std::fstream& File);
 	private:
 		SINGLETON_PRIVATE_PART(FEFileSystem)
-#if FE_PLATFORM(WINDOWS)
-		std::string PWSTRtoString(PWSTR WString);
-#endif
+
+		int OpenFileDialogRequestID = 0;
+		std::function<void(const std::string& FilePath)> PendingOpenFileDialogCallback;
 	};
 
 #ifdef FEBASICAPPLICATION_SHARED
