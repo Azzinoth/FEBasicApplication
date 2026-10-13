@@ -35,3 +35,26 @@ OS FocalEngine::GetOS()
 	#error "GetOS: Unhandled platform."
 #endif
 }
+
+std::string FocalEngine::OSToString(const OS Value)
+{
+	switch (Value)
+	{
+		case OS::Windows: return "Windows";
+		case OS::MacOS:   return "MacOS";
+		case OS::Linux:   return "Linux";
+		case OS::Android: return "Android";
+		case OS::iOS:     return "iOS";
+		default:          return "Unknown";
+	}
+}
+
+OS FocalEngine::OSFromString(const std::string& Name)
+{
+	if (Name == "Windows") return OS::Windows;
+	if (Name == "MacOS")   return OS::MacOS;
+	if (Name == "Linux")   return OS::Linux;
+	if (Name == "Android") return OS::Android;
+	if (Name == "iOS")     return OS::iOS;
+	return OS::Unknown;
+}

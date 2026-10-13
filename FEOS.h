@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FEBasicApplicationAPI.h"
+#include <string>
 
 namespace FocalEngine
 {
@@ -15,4 +16,6 @@ namespace FocalEngine
 	};
 
 	FEBASICAPPLICATION_API OS GetOS();
+	FEBASICAPPLICATION_API std::string OSToString(OS Value);
+	FEBASICAPPLICATION_API OS OSFromString(const std::string& Name);
 }
