@@ -27,7 +27,7 @@ void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 {
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
 	{
-		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::add function", "IncorrectCallArguments", FE_LOG_WARNING);
+		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELog::Add function", "IncorrectCallArguments", FE_LOG_WARNING);
 		return;
 	}
 
@@ -112,7 +112,7 @@ std::string FELog::SeverityLevelToString(const LOG_SEVERITY Severity)
 	std::string Result;
 	if (Severity < 0 || Severity >= SeverityLevelsCount)
 	{
-		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELOG::SeverityLevelToString function", "IncorrectCallArguments", FE_LOG_WARNING);
+		Add("Incorrect severity argument" + std::to_string(Severity) + " in FELog::SeverityLevelToString function", "IncorrectCallArguments", FE_LOG_WARNING);
 		return Result;
 	}
 

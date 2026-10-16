@@ -794,14 +794,14 @@ bool FEFileSystem::PerformTextReplacements(const std::string& FilePath, const st
 {
 	if (FilePath.empty())
 	{
-		LOG.Add("FEFileSystem::ReplaceInFile: File path is empty", "FE_FILE_SYSTEM", FE_LOG_WARNING);
+		LOG.Add("FEFileSystem::PerformTextReplacements: File path is empty", "FE_FILE_SYSTEM", FE_LOG_WARNING);
 		return false;
 	}
 
 	std::fstream File(FilePath, std::ios::in);
 	if (!File.is_open())
 	{
-		LOG.Add("FEFileSystem::ReplaceInFile: Error opening file " + FilePath, "FE_FILE_SYSTEM", FE_LOG_ERROR);
+		LOG.Add("FEFileSystem::PerformTextReplacements: Error opening file " + FilePath, "FE_FILE_SYSTEM", FE_LOG_ERROR);
 		return false;
 	}
 
@@ -829,7 +829,7 @@ bool FEFileSystem::PerformTextReplacements(const std::string& FilePath, const st
 	File.open(FilePath, std::ios::out | std::ios::trunc);
 	if (!File.is_open())
 	{
-		LOG.Add("FEFileSystem::ReplaceInFile: Error opening file " + FilePath, "FE_FILE_SYSTEM", FE_LOG_ERROR);
+		LOG.Add("FEFileSystem::PerformTextReplacements: Error opening file " + FilePath, "FE_FILE_SYSTEM", FE_LOG_ERROR);
 		return false;
 	}
 
