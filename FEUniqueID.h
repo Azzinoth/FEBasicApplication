@@ -33,15 +33,15 @@
 
 
 #define FE_MAP_TO_STR_VECTOR(map)          \
-	std::vector<std::string> result;       \
-	auto iterator = map.begin();           \
-	while (iterator != map.end())          \
+	std::vector<std::string> Result;       \
+	auto Iterator = map.begin();           \
+	while (Iterator != map.end())          \
 	{                                      \
-		result.push_back(iterator->first); \
-		iterator++;                        \
+		Result.push_back(Iterator->first); \
+		Iterator++;                        \
 	}                                      \
 										   \
-	return result;
+	return Result;
 
 namespace FocalEngine
 {

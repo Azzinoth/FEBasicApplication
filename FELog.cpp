@@ -31,42 +31,42 @@ void FELog::Add(const std::string Text, const std::string Topic, const LOG_SEVER
 		return;
 	}
 
-	LogItem TempItem;
-	TempItem.Text = Text;
-	TempItem.Severity = Severity;
-	TempItem.Count = 0;
-	TempItem.Topic = Topic;
-	TempItem.TimeStamp = TIME.GetTimeStamp(FE_TIME_RESOLUTION_NANOSECONDS);
-	TempItem.ThreadID = std::hash<std::thread::id>{}(std::this_thread::get_id());
+	LogItem TemporaryItem;
+	TemporaryItem.Text = Text;
+	TemporaryItem.Severity = Severity;
+	TemporaryItem.Count = 0;
+	TemporaryItem.Topic = Topic;
+	TemporaryItem.TimeStamp = TIME.GetTimeStamp(FE_TIME_RESOLUTION_NANOSECONDS);
+	TemporaryItem.ThreadID = std::hash<std::thread::id>{}(std::this_thread::get_id());
 
 	if (bShouldAppendMsgWithTimeStamp)
 	{
-		TempItem.Text += "\n";
-		TempItem.Text += "Time stamp: " + TIME.NanosecondTimeStampToDate(TempItem.TimeStamp);
+		TemporaryItem.Text += "\n";
+		TemporaryItem.Text += "Time stamp: " + TIME.NanosecondTimeStampToDate(TemporaryItem.TimeStamp);
 	}
 
 	if (bShouldAppendMsgWithThreadID)
 	{
-		TempItem.Text += "\n";
-		TempItem.Text += "ThreadID: " + std::to_string(TempItem.ThreadID);
+		TemporaryItem.Text += "\n";
+		TemporaryItem.Text += "ThreadID: " + std::to_string(TemporaryItem.ThreadID);
 	}
 
 	if (bShouldAppendMsgWithTimeStamp || bShouldAppendMsgWithThreadID)
 	{
-		TempItem.Text += "\n";
-		TempItem.Text += "================================================================";
+		TemporaryItem.Text += "\n";
+		TemporaryItem.Text += "================================================================";
 	}
 
 	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
 		
-	const auto CurrentLogItem = Topics[Topic].find(TempItem);
+	const auto CurrentLogItem = Topics[Topic].find(TemporaryItem);
 	if (CurrentLogItem == Topics[Topic].end())
-		Topics[Topic][TempItem] = TempItem;
+		Topics[Topic][TemporaryItem] = TemporaryItem;
 
-	if (Topics[Topic][TempItem].Count < 1000)
-		Topics[Topic][TempItem].Count++;
+	if (Topics[Topic][TemporaryItem].Count < 1000)
+		Topics[Topic][TemporaryItem].Count++;
 
-	OutputToFile(&Topics[Topic][TempItem]);
+	OutputToFile(&Topics[Topic][TemporaryItem]);
 }
 
 void FELog::OutputToFile(const LogItem* Item)

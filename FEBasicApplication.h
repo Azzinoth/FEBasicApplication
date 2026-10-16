@@ -41,7 +41,7 @@ namespace FocalEngine
 
 		FEConsoleWindow* ConsoleWindow = nullptr;
 #if FE_PLATFORM(WINDOWS)
-		static BOOL WINAPI ConsoleHandler(DWORD dwType);
+		static BOOL WINAPI ConsoleHandler(DWORD ControlEventType);
 #endif
 
 		void SetWindowCallbacks(FEWindow* Window);

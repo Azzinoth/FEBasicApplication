@@ -182,7 +182,7 @@ void FEProfilingManager::SaveTimelineToJSON(const std::string& Filename)
 				const std::string& SectionName = SectionEntry.first;
 				const auto& SectionTimestamps = SectionEntry.second;
 
-				for (const auto& ts : SectionTimestamps) {
+				for (const auto& SectionTimestamp : SectionTimestamps) {
 					if (!bFirstEvent) {
 						File << ",\n";
 					}
@@ -192,8 +192,8 @@ void FEProfilingManager::SaveTimelineToJSON(const std::string& Filename)
 					File << "      \"name\": \"" << SectionName << "\",\n";
 					File << "      \"cat\": \"section\",\n";
 					File << "      \"ph\": \"X\",\n";
-					File << "      \"ts\": " << std::chrono::duration_cast<std::chrono::microseconds>(ts.first.time_since_epoch()).count() << ",\n";
-					File << "      \"dur\": " << std::chrono::duration_cast<std::chrono::microseconds>(ts.second - ts.first).count() << ",\n";
+					File << "      \"ts\": " << std::chrono::duration_cast<std::chrono::microseconds>(SectionTimestamp.first.time_since_epoch()).count() << ",\n";
+					File << "      \"dur\": " << std::chrono::duration_cast<std::chrono::microseconds>(SectionTimestamp.second - SectionTimestamp.first).count() << ",\n";
 					File << "      \"pid\": 0,\n";
 					File << "      \"tid\": " << ThreadID << ",\n";
 					File << "      \"args\": {\n";

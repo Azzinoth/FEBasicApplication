@@ -420,9 +420,9 @@ std::string FEBasicApplication::GetClipboardText()
 }
 
 #if FE_PLATFORM(WINDOWS)
-BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD dwType)
+BOOL WINAPI FEBasicApplication::ConsoleHandler(DWORD ControlEventType)
 {
-	switch (dwType)
+	switch (ControlEventType)
 	{
 	case CTRL_CLOSE_EVENT:
 		// This will be a call from different thread, so I can't call the OnTerminate() directly.
@@ -728,9 +728,9 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 		}
 		else if (CurrentAction && Token.find(SettingEqualizer) != std::string::npos)
 		{
-			auto DelimPos = Token.find(SettingEqualizer);
-			std::string Key = Token.substr(0, DelimPos);
-			std::string Value = Token.substr(DelimPos + ActionPrefix.length());
+			auto DelimiterPosition = Token.find(SettingEqualizer);
+			std::string Key = Token.substr(0, DelimiterPosition);
+			std::string Value = Token.substr(DelimiterPosition + ActionPrefix.length());
 			CurrentAction->Settings[Key] = Value;
 		}
 	}

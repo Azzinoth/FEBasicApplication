@@ -130,11 +130,11 @@ void FEClientSideNetworkConnection::ReceiveFunction(void* Input, void* Output)
 
     FENetworkReceiveThreadJobInfo* Info = (FENetworkReceiveThreadJobInfo*)Input;
 
-    int SizeOfTempBuffer = 100000;
-    char* Buffer = new char[SizeOfTempBuffer];
+    int SizeOfTemporaryBuffer = 100000;
+    char* Buffer = new char[SizeOfTemporaryBuffer];
     int BytesReceived;
 
-    while ((BytesReceived = recv(*Info->CurrentSocket, Buffer, SizeOfTempBuffer, 0)) > 0)
+    while ((BytesReceived = recv(*Info->CurrentSocket, Buffer, SizeOfTemporaryBuffer, 0)) > 0)
     {
         NetworkMessage::WorkOnMessage(Buffer, BytesReceived, &Info->CurrentMessage, &Info->Messages);
 
