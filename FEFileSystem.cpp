@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <sstream>
 #include <thread>
 
 #if FE_PLATFORM(WINDOWS)
@@ -805,12 +806,19 @@ bool FEFileSystem::PerformTextReplacements(const std::string& FilePath, const st
 		return false;
 	}
 
-	std::vector<std::string> FileContent;
-	std::string Line;
-	while (std::getline(File, Line))
-		FileContent.push_back(Line);
-
+	std::stringstream Buffer;
+	Buffer << File.rdbuf();
 	File.close();
+
+	// Text mode turns CRLF into '\n', so this check works for both line endings.
+	const std::string OriginalContent = Buffer.str();
+	const bool bEndsWithNewLine = !OriginalContent.empty() && OriginalContent.back() == '\n';
+
+	std::vector<std::string> FileContent;
+	std::istringstream ContentStream(OriginalContent);
+	std::string Line;
+	while (std::getline(ContentStream, Line))
+		FileContent.push_back(Line);
 
 	// Apply replacements
 	for (size_t i = 0; i < FileContent.size(); i++)
@@ -833,9 +841,13 @@ bool FEFileSystem::PerformTextReplacements(const std::string& FilePath, const st
 		return false;
 	}
 
-	// Write the modified content back to the file
+	// Write the modified content back to the file, new line after the last line is written only if original file had it.
 	for (size_t i = 0; i < FileContent.size(); i++)
-		File << FileContent[i] + "\n";
+	{
+		File << FileContent[i];
+		if (i + 1 < FileContent.size() || bEndsWithNewLine)
+			File << "\n";
+	}
 
 	File.close();
 	return true;
