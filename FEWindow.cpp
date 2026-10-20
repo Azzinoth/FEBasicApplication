@@ -60,6 +60,14 @@ GLFWwindow* FEWindow::GetGlfwWindow() const
 	return static_cast<GLFWwindow*>(WindowSystemWindow->GetNativeHandle());
 }
 
+void* FEWindow::GetPlatformWindowHandle() const
+{
+	if (WindowSystemWindow == nullptr)
+		return nullptr;
+
+	return WindowSystemWindow->GetPlatformWindowHandle();
+}
+
 std::function<void()> FEWindow::GetRenderFunction()
 {
 	return UserRenderFunctionImpl;

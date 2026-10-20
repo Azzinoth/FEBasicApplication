@@ -17,6 +17,7 @@ namespace FocalEngine
 		~FEWindowSystemWindowEmscripten() override;
 
 		void* GetNativeHandle() override;
+		void* GetPlatformWindowHandle() override;
 
 		void MakeContextCurrent() override;
 		void SwapBuffers() override;

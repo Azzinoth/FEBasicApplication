@@ -115,6 +115,12 @@ namespace FocalEngine
 		return GLFWWindow;
 	}
 
+	void* FEWindowSystemWindowEmscripten::GetPlatformWindowHandle()
+	{
+		// Browser canvas has no operating system window.
+		return nullptr;
+	}
+
 	void FEWindowSystemWindowEmscripten::MakeContextCurrent()
 	{
 		if (API == GraphicsAPI::OpenGL)

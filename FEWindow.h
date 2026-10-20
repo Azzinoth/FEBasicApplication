@@ -143,6 +143,7 @@ namespace FocalEngine
 		void RemoveCallback(FEUUID CallbackID);
 
 		GLFWwindow* GetGlfwWindow() const;
+		void* GetPlatformWindowHandle() const;
 		ImGuiContext* GetImGuiContext() const;
 
 		MonitorInfo DetermineCurrentMonitor();

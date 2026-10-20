@@ -12,6 +12,7 @@ namespace FocalEngine
 		virtual ~FEWindowSystemWindowInterface() = default;
 
 		virtual void* GetNativeHandle() = 0;
+		virtual void* GetPlatformWindowHandle() = 0;
 
 		virtual void MakeContextCurrent() = 0;
 		virtual void SwapBuffers() = 0;

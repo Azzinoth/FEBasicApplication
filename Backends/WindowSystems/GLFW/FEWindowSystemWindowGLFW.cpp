@@ -1,6 +1,11 @@
 #include "FEWindowSystemWindowGLFW.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
+#include "../../../FEPlatform.h"
+#if FE_PLATFORM(WINDOWS)
+	#define GLFW_EXPOSE_NATIVE_WIN32
+	#include <GLFW/glfw3native.h>
+#endif
 
 namespace FocalEngine
 {
@@ -13,6 +18,19 @@ namespace FocalEngine
 	void* FEWindowSystemWindowGLFW::GetNativeHandle()
 	{
 		return GLFWWindow;
+	}
+
+	void* FEWindowSystemWindowGLFW::GetPlatformWindowHandle()
+	{
+		if (GLFWWindow == nullptr)
+			return nullptr;
+
+#if FE_PLATFORM(WINDOWS)
+		return glfwGetWin32Window(GLFWWindow);
+#else
+		// FE_FIX_ME: Other platforms are not supported yet.
+		return nullptr;
+#endif
 	}
 
 	void FEWindowSystemWindowGLFW::MakeContextCurrent()
