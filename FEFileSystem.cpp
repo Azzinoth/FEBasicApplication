@@ -560,7 +560,27 @@ bool FEFileSystem::DeleteDirectory(const std::string& Path)
 {
 	try
 	{
-		return std::filesystem::remove_all(Path) > 0;
+		std::filesystem::path DirectoryPath(Path);
+		if (!std::filesystem::exists(DirectoryPath))
+			return false;
+
+#if FE_PLATFORM(WINDOWS)
+		// Paths inside directory could be longer than MAX_PATH, they could be deleted only through "\\?\" path.
+		// Such path is not processed by Windows, so it should be absolute, normalized and use only backslashes.
+		const std::wstring AbsolutePath = std::filesystem::absolute(DirectoryPath).lexically_normal().make_preferred().wstring();
+		if (AbsolutePath.size() > 2 && AbsolutePath[1] == L':')
+			DirectoryPath = L"\\\\?\\" + AbsolutePath;
+#endif
+
+		std::error_code ErrorCode;
+		std::filesystem::remove_all(DirectoryPath, ErrorCode);
+		if (ErrorCode)
+		{
+			LOG.Add("Error in FEFileSystem::DeleteDirectory: " + ErrorCode.message() + ", path: " + Path, "FE_FILE_SYSTEM", FE_LOG_ERROR);
+			return false;
+		}
+
+		return true;
 	}
 	catch (const std::exception& Exception)
 	{
