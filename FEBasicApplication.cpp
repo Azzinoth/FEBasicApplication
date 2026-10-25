@@ -94,8 +94,60 @@ void FEBasicApplication::InitializeWindow(FEWindow* Window)
 	SetWindowCallbacks(Window);
 }
 
+std::string FocalEngine::GraphicsModeToString(const FEGraphicsMode Value)
+{
+	switch (Value)
+	{
+		case FEGraphicsMode::OnScreen:  return "OnScreen";
+		case FEGraphicsMode::Offscreen: return "Offscreen";
+		default:                        return "None";
+	}
+}
+
+bool FocalEngine::GraphicsModeFromString(const std::string& Name, FEGraphicsMode& OutValue)
+{
+	if (Name == "OnScreen")  { OutValue = FEGraphicsMode::OnScreen;  return true; }
+	if (Name == "Offscreen") { OutValue = FEGraphicsMode::Offscreen; return true; }
+	if (Name == "None")      { OutValue = FEGraphicsMode::None;      return true; }
+	return false;
+}
+
+bool FEBasicApplication::SetGraphicsMode(FEGraphicsMode NewValue)
+{
+	// FE_FIX_ME: Offscreen is not implemented yet, temporarily it works as None.
+	if (NewValue == FEGraphicsMode::Offscreen)
+	{
+		LOG.Add("FEBasicApplication::SetGraphicsMode: Offscreen graphics mode is not implemented yet, None is used instead", "FE_BASIC_APPLICATION", FE_LOG_WARNING);
+		NewValue = FEGraphicsMode::None;
+	}
+
+	if (bGraphicsModeSet)
+	{
+		if (NewValue == GraphicsMode)
+			return true;
+
+		LOG.Add("FEBasicApplication::SetGraphicsMode: Graphics mode is already " + GraphicsModeToString(GraphicsMode) + ", it can be set only once, before any window is added", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
+		return false;
+	}
+
+	GraphicsMode = NewValue;
+	bGraphicsModeSet = true;
+	return true;
+}
+
+FEGraphicsMode FEBasicApplication::GetGraphicsMode() const
+{
+	return GraphicsMode;
+}
+
 FEWindow* FEBasicApplication::AddWindow(const int Width, const int Height, std::string WindowTitle)
 {
+	if (bGraphicsModeSet && GraphicsMode == FEGraphicsMode::None)
+	{
+		LOG.Add("FEBasicApplication::AddWindow: Window can not be added, graphics mode is None", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
+		return nullptr;
+	}
+
 	FEWindowSystemWindowInterface* NewWindowSystemWindow = WindowSystem->OpenWindow(Width, Height, WindowTitle, Device->GetGraphicsAPI());
 	if (NewWindowSystemWindow == nullptr)
 		return nullptr;
@@ -130,6 +182,12 @@ FEWindow* FEBasicApplication::AddWindow(const int Width, const int Height, std::
 	Windows.push_back(NewWindow);
 	InitializeWindow(NewWindow);
 
+	if (!bGraphicsModeSet)
+	{
+		GraphicsMode = FEGraphicsMode::OnScreen;
+		bGraphicsModeSet = true;
+	}
+
 	return NewWindow;
 }
 
@@ -144,6 +202,12 @@ FEWindow* FEBasicApplication::AddFullScreenWindow(size_t MonitorIndex)
 
 FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
 {
+	if (bGraphicsModeSet && GraphicsMode == FEGraphicsMode::None)
+	{
+		LOG.Add("FEBasicApplication::AddFullScreenWindow: Window can not be added, graphics mode is None", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
+		return nullptr;
+	}
+
 	FEWindowSystemWindowInterface* NewWindowSystemWindow = WindowSystem->OpenFullscreenWindow(Monitor, Device->GetGraphicsAPI());
 	if (NewWindowSystemWindow == nullptr)
 		return nullptr;
@@ -177,6 +241,12 @@ FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
 
 	Windows.push_back(NewWindow);
 	InitializeWindow(NewWindow);
+
+	if (!bGraphicsModeSet)
+	{
+		GraphicsMode = FEGraphicsMode::OnScreen;
+		bGraphicsModeSet = true;
+	}
 
 	return NewWindow;
 }
@@ -292,7 +362,8 @@ bool FEBasicApplication::IsNotTerminated() const
 	if (bShouldClose)
 		return false;
 
-	if ((Windows.empty() && (ConsoleWindow == nullptr)) || bIsReadyToTerminate)
+	const bool bWithoutGraphics = bGraphicsModeSet && GraphicsMode == FEGraphicsMode::None;
+	if ((Windows.empty() && (ConsoleWindow == nullptr) && !bWithoutGraphics) || bIsReadyToTerminate)
 		return false;
 
 	if (Windows.size() == 1 && (ConsoleWindow == nullptr) && APPLICATION.Windows[0]->bShouldClose)

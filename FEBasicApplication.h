@@ -29,12 +29,27 @@ namespace FocalEngine
 		Start
 	};
 
+	enum class FEGraphicsMode
+	{
+		OnScreen,
+		// FE_FIX_ME: Offscreen is not implemented yet, temporarily it works as None.
+		Offscreen,
+		None
+	};
+
+	FEBASICAPPLICATION_API std::string GraphicsModeToString(FEGraphicsMode Value);
+	// Returns false if Name is not a name of graphics mode.
+	FEBASICAPPLICATION_API bool GraphicsModeFromString(const std::string& Name, FEGraphicsMode& OutValue);
+
 	class FEBASICAPPLICATION_API FEBasicApplication
 	{
 		SINGLETON_PRIVATE_PART(FEBasicApplication)
 
 		FEWindowSystemInterface* WindowSystem = nullptr;
 		FEDeviceInterface* Device = nullptr;
+
+		FEGraphicsMode GraphicsMode = FEGraphicsMode::None;
+		bool bGraphicsModeSet = false;
 
 		std::vector<FEWindow*> Windows;
 		std::vector<FEVirtualUI*> VirtualUIs;
@@ -84,6 +99,10 @@ namespace FocalEngine
 		std::string GetFullVersion();    // "FEBasicApplication 1.0.0 build 231+52 (dev, ed4c7ce-dirty)"
 		std::string GetBuildTimestamp(); // "20260207232613"
 		int GetBuildNumber();            // 231
+
+		// Graphics mode is fixed when application starts, without this call the first window sets OnScreen.
+		bool SetGraphicsMode(FEGraphicsMode NewValue);
+		FEGraphicsMode GetGraphicsMode() const;
 
 		FEWindow* AddWindow(int Width = 1920, int Height = 1080, std::string WindowTitle = "FEBasicApplication");
 		FEWindow* AddFullScreenWindow(size_t MonitorIndex);
