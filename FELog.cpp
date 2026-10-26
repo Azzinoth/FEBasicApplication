@@ -97,11 +97,17 @@ void FELog::OutputToFile(const LogItem* Item)
 std::vector<LogItem> FELog::GetLogItems(const std::string Topic)
 {
 	std::vector<LogItem> Result;
-	auto TopicIterator = Topics[Topic].begin();
-	while (TopicIterator != Topics[Topic].end())
+
+	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
+	const auto TopicIterator = Topics.find(Topic);
+	if (TopicIterator == Topics.end())
+		return Result;
+
+	auto ItemIterator = TopicIterator->second.begin();
+	while (ItemIterator != TopicIterator->second.end())
 	{
-		Result.push_back(TopicIterator->second);
-		TopicIterator++;
+		Result.push_back(ItemIterator->second);
+		ItemIterator++;
 	}
 
 	return Result;
@@ -150,6 +156,7 @@ std::string FELog::SeverityLevelToString(const LOG_SEVERITY Severity)
 
 bool FELog::IsTopicFileOutputActive(const std::string Topic)
 {
+	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
 	if (DisabledTopics.find(Topic) == DisabledTopics.end())
 		return true;
 
@@ -158,11 +165,13 @@ bool FELog::IsTopicFileOutputActive(const std::string Topic)
 
 void FELog::DisableTopicFileOutput(const std::string TopicToDisable)
 {
+	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
 	DisabledTopics[TopicToDisable] = true;
 }
 
 void FELog::EnableTopicFileOutput(const std::string TopicToEnable)
 {
+	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
 	DisabledTopics.erase(TopicToEnable);
 }
 
@@ -178,6 +187,7 @@ void FELog::SetFileOutput(const bool NewValue)
 
 std::vector<std::string> FELog::GetTopicList()
 {
+	std::lock_guard<std::mutex> Lock(GlobalLogMutex);
 	FE_MAP_TO_STR_VECTOR(Topics)
 }
 
