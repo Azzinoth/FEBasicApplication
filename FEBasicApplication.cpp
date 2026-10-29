@@ -148,6 +148,9 @@ FEWindow* FEBasicApplication::AddWindow(const int Width, const int Height, std::
 		return nullptr;
 	}
 
+	if (WindowSystem == nullptr || Device == nullptr)
+		return nullptr;
+
 	FEWindowSystemWindowInterface* NewWindowSystemWindow = WindowSystem->OpenWindow(Width, Height, WindowTitle, Device->GetGraphicsAPI());
 	if (NewWindowSystemWindow == nullptr)
 		return nullptr;
@@ -207,6 +210,9 @@ FEWindow* FEBasicApplication::AddFullScreenWindow(MonitorInfo* Monitor)
 		LOG.Add("FEBasicApplication::AddFullScreenWindow: Window can not be added, graphics mode is None", "FE_BASIC_APPLICATION", FE_LOG_ERROR);
 		return nullptr;
 	}
+
+	if (WindowSystem == nullptr || Device == nullptr)
+		return nullptr;
 
 	FEWindowSystemWindowInterface* NewWindowSystemWindow = WindowSystem->OpenFullscreenWindow(Monitor, Device->GetGraphicsAPI());
 	if (NewWindowSystemWindow == nullptr)
@@ -313,7 +319,8 @@ void FEBasicApplication::BeginFrame()
 
 void FEBasicApplication::EndFrame() const
 {
-	WindowSystem->PollEvents();
+	if (WindowSystem != nullptr)
+		WindowSystem->PollEvents();
 
 	if (APPLICATION.bHasToTerminate)
 	{
@@ -721,12 +728,15 @@ bool FEBasicApplication::HaveAnyWindow() const
 
 std::vector<MonitorInfo> FEBasicApplication::GetMonitors()
 {
+	if (WindowSystem == nullptr)
+		return std::vector<MonitorInfo>();
+
 	return WindowSystem->GetMonitors();
 }
 
 MonitorInfo FEBasicApplication::GetMonitorContainingWindow(FEWindow* Window)
 {
-	if (Window == nullptr || Window->WindowSystemWindow == nullptr)
+	if (WindowSystem == nullptr || Window == nullptr || Window->WindowSystemWindow == nullptr)
 		return MonitorInfo();
 
 	return WindowSystem->GetMonitorContainingWindow(Window->WindowSystemWindow);
