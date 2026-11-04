@@ -132,6 +132,11 @@ file(GLOB BasicApplicationProfilingSubSystem_SRC
 	"SubSystems/Profiling/FEProfilingManager.h"
 )
 
+file(GLOB BasicApplicationSystemInfoSubSystem_SRC
+	"SubSystems/FESystemInfo.cpp"
+	"SubSystems/FESystemInfo.h"
+)
+
 file(GLOB BasicApplicationSubSystem_SRC
 	"FEBasicApplication.cpp"
 	"FEBasicApplication.h"
@@ -178,6 +183,7 @@ list(APPEND ALL_SOURCE_FILES
             ${BasicApplicationSubSystem_SRC}
             ${BasicApplicationNetworkSubSystem_SRC}
             ${BasicApplicationProfilingSubSystem_SRC}
+            ${BasicApplicationSystemInfoSubSystem_SRC}
             ${Backends_SRC}
             # *************** THIRD_PARTY ***************
             ${imgui_SRC}
@@ -250,6 +256,11 @@ else()
 endif()
 
 target_include_directories(FEBasicApplication PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/stduuid)
+
+# FESystemInfo reads GPU information through IOKit.
+if(APPLE)
+    target_link_libraries(FEBasicApplication PRIVATE "-framework IOKit" "-framework CoreFoundation")
+endif()
 
 if(FE_GRAPHIC_API_BACKEND STREQUAL "WebGPU" AND NOT EMSCRIPTEN)
     target_compile_definitions(FEBasicApplication PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
@@ -383,6 +394,7 @@ endif()
 source_group("Source Files" FILES ${BasicApplicationSubSystem_SRC})
 source_group("Source Files/SubSystems/Networking" FILES ${BasicApplicationNetworkSubSystem_SRC})
 source_group("Source Files/SubSystems/Profiling" FILES ${BasicApplicationProfilingSubSystem_SRC})
+source_group("Source Files/SubSystems" FILES ${BasicApplicationSystemInfoSubSystem_SRC})
 source_group("Source Files/Backends" FILES ${Backends_SRC})
 source_group("Source Files/Backends/WindowSystems/${FE_WINDOW_SYSTEM_BACKEND}" FILES ${FE_WINDOW_SYSTEM_SRC})
 source_group("Source Files/Backends/GraphicsAPIs/${FE_GRAPHIC_API_BACKEND}" FILES ${FE_GRAPHIC_API_SRC})
