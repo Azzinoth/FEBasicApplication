@@ -122,6 +122,23 @@ namespace
 		Version.Major = static_cast<int>(Info.dwMajorVersion);
 		Version.Minor = static_cast<int>(Info.dwMinorVersion);
 		Version.Build = std::to_string(Info.dwBuildNumber);
+
+		const char* CurrentVersionKey = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
+		DWORD UpdateRevision = 0;
+		DWORD UpdateRevisionSize = sizeof(UpdateRevision);
+		if (RegGetValueA(HKEY_LOCAL_MACHINE, CurrentVersionKey, "UBR", RRF_RT_REG_DWORD, nullptr, &UpdateRevision, &UpdateRevisionSize) == ERROR_SUCCESS)
+			Version.Build += "." + std::to_string(UpdateRevision);
+
+		char ProductName[256] = {};
+		DWORD ProductNameSize = sizeof(ProductName);
+		if (RegGetValueA(HKEY_LOCAL_MACHINE, CurrentVersionKey, "ProductName", RRF_RT_REG_SZ, nullptr, ProductName, &ProductNameSize) != ERROR_SUCCESS)
+			return;
+
+		Version.Name = ProductName;
+		// ProductName still says Windows 10 on Windows 11, whose first build is 22000.
+		const std::string OldName = "Windows 10";
+		if (Info.dwBuildNumber >= 22000 && Version.Name.compare(0, OldName.size(), OldName) == 0)
+			Version.Name.replace(0, OldName.size(), "Windows 11");
 	}
 
 	void QueryWindowsCPU(FECPUInfo& CPU)
@@ -437,7 +454,7 @@ namespace
 			std::sscanf(Info.release, "%d.%d.%d", &Version.Major, &Version.Minor, &Version.Patch);
 		}
 
-		Version.Distribution = ReadLinuxDistributionName();
+		Version.Name = ReadLinuxDistributionName();
 	}
 
 	// Physical cores are the unique "physical id" and "core id" pairs.
@@ -626,8 +643,16 @@ std::string FESystemInfo::GetOSVersionString() const
 	// Kernel release already starts with the version numbers.
 	if (!OSVersion.Build.empty())
 		Result += " " + OSVersion.Build;
+
+	if (!OSVersion.Name.empty())
+		Result += " (" + OSVersion.Name + ")";
 #else
-	if (OSVersion.Major != 0 || OSVersion.Minor != 0)
+	// Version numbers are left out when there is a name, Windows 11 would show as 10.0.
+	if (!OSVersion.Name.empty())
+	{
+		Result = OSVersion.Name;
+	}
+	else if (OSVersion.Major != 0 || OSVersion.Minor != 0)
 	{
 		Result += " " + std::to_string(OSVersion.Major) + "." + std::to_string(OSVersion.Minor);
 		if (OSVersion.Patch != 0)
@@ -637,9 +662,6 @@ std::string FESystemInfo::GetOSVersionString() const
 	if (!OSVersion.Build.empty())
 		Result += " build " + OSVersion.Build;
 #endif
-
-	if (!OSVersion.Distribution.empty())
-		Result += " (" + OSVersion.Distribution + ")";
 
 	return Result;
 }

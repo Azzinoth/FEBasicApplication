@@ -3,6 +3,7 @@
 #include "FEVirtualUI.h"
 #include "FEPlatform.h"
 #include "FEOS.h"
+#include "SubSystems/FESystemInfo.h"
 #include "FEFileSystem.h"
 #include <map>
 #include <sstream>

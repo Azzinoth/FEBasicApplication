@@ -10,13 +10,14 @@ namespace FocalEngine
 	struct FEOSVersion
 	{
 		OS OperatingSystem = OS::Unknown;
+		// Windows 11 reports 10.0.
 		int Major = 0;
 		int Minor = 0;
 		int Patch = 0;
-		// Windows build number, macOS build ID or Linux kernel release.
+		// Windows build with update revision (for example 26200.9711), macOS build ID or Linux kernel release.
 		std::string Build;
-		// Linux distribution name from os-release.
-		std::string Distribution;
+		// For example "Windows 11 Home" or Linux distribution "Ubuntu 24.04.1 LTS". Empty on macOS and web.
+		std::string Name;
 	};
 
 	struct FECPUInfo
@@ -58,7 +59,7 @@ namespace FocalEngine
 		SINGLETON_PUBLIC_PART(FESystemInfo)
 
 		FEOSVersion GetOSVersion() const;
-		// For example "Windows 10.0 build 26200".
+		// For example "Windows 11 Home build 26200.9711".
 		std::string GetOSVersionString() const;
 
 		FECPUInfo GetCPUInfo() const;
