@@ -1,6 +1,10 @@
 # FEBasicApplication
 
 ![build](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/Build.yml/badge.svg?branch=master)
+![Continuous Integration Windows](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/ContinuousIntegration_Windows.yml/badge.svg?branch=master)
+![Continuous Integration Linux](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/ContinuousIntegration_Linux.yml/badge.svg?branch=master)
+![Continuous Integration MacOS](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/ContinuousIntegration_MacOS.yml/badge.svg?branch=master)
+![Build Web](https://github.com/Azzinoth/FEBasicApplication/actions/workflows/Build_Web.yml/badge.svg?branch=master)
 
 This repository serves as a base layer for applications that utilize OpenGL and ImGui. "FE" in the name stands for "Focal Engine". Originally, it was part of the [Focal Engine project](https://github.com/Azzinoth/FocalEngine/), but it has since been moved here and transformed into a standalone module. This makes it easier to incorporate its functionality into other projects.
 

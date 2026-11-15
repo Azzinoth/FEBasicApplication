@@ -1,0 +1,33 @@
+name: Build_Web
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  Build_Web:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: 6.0.12
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+    # Tests are not built for web, THREAD_POOL has no worker threads there.
+    - name: Configure CMake
+      run: emcmake cmake -S ${{github.workspace}} -B ${{github.workspace}}/build-web -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build-web

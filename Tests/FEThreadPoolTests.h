@@ -1,10 +1,13 @@
 #pragma once
 
 #include "../FEThreadPool.h"
+#include "../FEPlatform.h"
 #include "gtest/gtest.h"
 
+#if FE_PLATFORM(WINDOWS)
 #include <windows.h>
 #include <crtdbg.h>
+#endif
 
 class FEThreadPoolTest : public ::testing::Test
 {
@@ -20,6 +23,7 @@ protected:
 // Death-test children must never show interactive dialogs, otherwise the suite hangs.
 inline void SuppressCrashDialogs()
 {
+#if FE_PLATFORM(WINDOWS)
 	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 	_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
@@ -28,4 +32,5 @@ inline void SuppressCrashDialogs()
 	_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
 	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+#endif
 }

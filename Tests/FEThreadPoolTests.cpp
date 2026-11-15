@@ -1093,17 +1093,21 @@ TEST_F(FEThreadPoolTest, DeletedJobThread_DetachedWorkerDoesNotTouchFreedMemory)
 {
 	SuppressCrashDialogs(); // Route any CRT heap report to stderr instead of a dialog.
 
+#if FE_PLATFORM(WINDOWS)
 	const int OldDebugFlags = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 	_CrtSetDbgFlag(OldDebugFlags | _CRTDBG_ALLOC_MEM_DF | _CRTDBG_DELAY_FREE_MEM_DF);
+#endif
 
 	JobThread* Thread = new JobThread();
 	std::this_thread::sleep_for(std::chrono::milliseconds(100)); // The worker is parked in its 5 ms polling loop.
 	delete Thread;
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
+#if FE_PLATFORM(WINDOWS)
 	EXPECT_TRUE(_CrtCheckMemory()) << "The worker wrote into the freed JobThread block";
 
 	_CrtSetDbgFlag(OldDebugFlags);
+#endif
 }
 
 namespace

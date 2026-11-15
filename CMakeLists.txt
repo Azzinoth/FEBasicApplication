@@ -355,7 +355,15 @@ endif()
 # This intentionally does NOT include gtest_main, consumers keep their own entry point (WinMain/main).
 if(NOT TARGET FocalEngine_GTest)
 	add_library(FocalEngine_GTest INTERFACE)
-	if(USE_STATIC_RUNTIME)
+	if(APPLE)
+		target_link_libraries(FocalEngine_GTest INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/macOS/libgtest.a)
+	elseif(UNIX AND NOT EMSCRIPTEN)
+		find_package(Threads REQUIRED)
+		target_link_libraries(FocalEngine_GTest INTERFACE
+			${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Linux/libgtest.a
+			Threads::Threads
+		)
+	elseif(USE_STATIC_RUNTIME)
 		target_link_libraries(FocalEngine_GTest INTERFACE
 			debug     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Debug/gtest.lib
 			optimized ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/lib/Release/gtest.lib
@@ -387,6 +395,9 @@ if(FE_BASIC_APPLICATION_ENABLE_TESTS)
 			FEBasicApplication
 			FocalEngine::GTest
 	)
+
+	enable_testing()
+	add_test(NAME FEBasicApplicationTests COMMAND FEBasicApplicationTests)
 
 	source_group("Source Files" FILES ${BasicApplicationTests_SRC})
 endif()

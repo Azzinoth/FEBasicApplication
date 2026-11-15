@@ -1,0 +1,35 @@
+name: ContinuousIntegration_Linux
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  ContinuousIntegration_Linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # GLFW and GLEW headers need the OpenGL, GLU, Xlib and Xrandr headers.
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y ninja-build libgl-dev libglu1-mesa-dev libx11-dev libxrandr-dev
+
+    - name: Configure CMake
+      run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DFE_BASIC_APPLICATION_ENABLE_TESTS=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build
+
+    - name: Run tests
+      working-directory: ${{github.workspace}}/build
+      run: ctest --output-on-failure --no-tests=error --timeout 600

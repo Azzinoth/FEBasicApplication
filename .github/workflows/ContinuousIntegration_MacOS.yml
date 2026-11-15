@@ -1,0 +1,32 @@
+name: ContinuousIntegration_MacOS
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  ContinuousIntegration_MacOS:
+    # Apple Silicon runner, GoogleTest library for MacOS is arm64 only.
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configure CMake
+      run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DFE_BASIC_APPLICATION_ENABLE_TESTS=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build -j "$(sysctl -n hw.ncpu)"
+
+    - name: Run tests
+      working-directory: ${{github.workspace}}/build
+      run: ctest --output-on-failure --no-tests=error --timeout 600
