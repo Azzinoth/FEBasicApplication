@@ -37,6 +37,15 @@ namespace FocalEngine
 		uint64_t AvailableBytes = 0;
 	};
 
+	// Each OS counts memory of a process in its own way, values of different platforms should not be compared.
+	struct FEProcessMemoryUsage
+	{
+		// Private bytes on Windows, resident memory on macOS and Linux, size of WebAssembly heap on web.
+		uint64_t UsedBytes = 0;
+		// The largest value since the process started. Equal to UsedBytes on web, its heap never shrinks.
+		uint64_t PeakUsedBytes = 0;
+	};
+
 	struct FEGPUInfo
 	{
 		std::string Name;
@@ -70,6 +79,11 @@ namespace FocalEngine
 		FERAMInfo GetRAMInfo() const;
 		// For example "63.2 GB (41.7 GB available)".
 		std::string GetRAMInfoString() const;
+
+		// Memory used by this process. Queried on every call.
+		FEProcessMemoryUsage GetProcessMemoryUsage() const;
+		// For example "512.3 MB (peak 1024.7 MB)".
+		std::string GetProcessMemoryUsageString() const;
 
 		// All GPUs in the system, web gives only the one the browser uses. Queried on every call.
 		std::vector<FEGPUInfo> GetGPUInfo() const;

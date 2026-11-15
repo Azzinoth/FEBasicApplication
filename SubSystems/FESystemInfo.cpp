@@ -9,8 +9,10 @@
 #include <winternl.h>
 #include <d3dkmthk.h>
 #include <dxgi.h>
+#include <psapi.h>
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "psapi.lib")
 #elif FE_PLATFORM(MACOS)
 #include <sys/sysctl.h>
 #include <mach/mach.h>
@@ -29,6 +31,7 @@
 #include <set>
 #elif FE_PLATFORM(EMSCRIPTEN)
 #include <emscripten.h>
+#include <emscripten/heap.h>
 
 // Browsers can lower this value for privacy.
 EM_JS(int, FEQueryBrowserLogicalCoreCount, (), {
@@ -76,6 +79,13 @@ namespace
 	{
 		std::ostringstream Stream;
 		Stream << std::fixed << std::setprecision(1) << static_cast<double>(Bytes) / (1024.0 * 1024.0 * 1024.0) << " GB";
+		return Stream.str();
+	}
+
+	std::string BytesToMegabytesString(const uint64_t Bytes)
+	{
+		std::ostringstream Stream;
+		Stream << std::fixed << std::setprecision(1) << static_cast<double>(Bytes) / (1024.0 * 1024.0) << " MB";
 		return Stream.str();
 	}
 
@@ -177,6 +187,17 @@ namespace
 
 		RAM.TotalBytes = Status.ullTotalPhys;
 		RAM.AvailableBytes = Status.ullAvailPhys;
+	}
+
+	void QueryWindowsProcessMemory(FEProcessMemoryUsage& Memory)
+	{
+		PROCESS_MEMORY_COUNTERS_EX Counters = {};
+		Counters.cb = sizeof(Counters);
+		if (!GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&Counters), sizeof(Counters)))
+			return;
+
+		Memory.UsedBytes = Counters.PrivateUsage;
+		Memory.PeakUsedBytes = Counters.PeakPagefileUsage;
 	}
 
 	std::string WideToUTF8(const wchar_t* Text)
@@ -348,6 +369,17 @@ namespace
 		mach_port_deallocate(mach_task_self(), Host);
 	}
 
+	void QueryMacOSProcessMemory(FEProcessMemoryUsage& Memory)
+	{
+		mach_task_basic_info_data_t Info = {};
+		mach_msg_type_number_t Count = MACH_TASK_BASIC_INFO_COUNT;
+		if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&Info), &Count) != KERN_SUCCESS)
+			return;
+
+		Memory.UsedBytes = Info.resident_size;
+		Memory.PeakUsedBytes = Info.resident_size_max;
+	}
+
 	// Searches the entry and then its parents, on Intel Macs most GPU properties are on the parent PCI device.
 	CFTypeRef CopyGPUProperty(const io_registry_entry_t Entry, const CFStringRef Key)
 	{
@@ -501,6 +533,25 @@ namespace
 				RAM.TotalBytes = Kilobytes * 1024;
 			else if (Key == "MemAvailable:")
 				RAM.AvailableBytes = Kilobytes * 1024;
+		}
+	}
+
+	void QueryLinuxProcessMemory(FEProcessMemoryUsage& Memory)
+	{
+		std::ifstream File("/proc/self/status");
+		std::string Line;
+		while (std::getline(File, Line))
+		{
+			std::istringstream Stream(Line);
+			std::string Key;
+			uint64_t Kilobytes = 0;
+			if (!(Stream >> Key >> Kilobytes))
+				continue;
+
+			if (Key == "VmRSS:")
+				Memory.UsedBytes = Kilobytes * 1024;
+			else if (Key == "VmHWM:")
+				Memory.PeakUsedBytes = Kilobytes * 1024;
 		}
 	}
 
@@ -706,6 +757,31 @@ std::string FESystemInfo::GetRAMInfoString() const
 		Result += " (" + BytesToGigabytesString(RAM.AvailableBytes) + " available)";
 
 	return Result;
+}
+
+FEProcessMemoryUsage FESystemInfo::GetProcessMemoryUsage() const
+{
+	FEProcessMemoryUsage Memory;
+#if FE_PLATFORM(WINDOWS)
+	QueryWindowsProcessMemory(Memory);
+#elif FE_PLATFORM(MACOS)
+	QueryMacOSProcessMemory(Memory);
+#elif FE_PLATFORM(LINUX)
+	QueryLinuxProcessMemory(Memory);
+#elif FE_PLATFORM(EMSCRIPTEN)
+	Memory.UsedBytes = emscripten_get_heap_size();
+	Memory.PeakUsedBytes = Memory.UsedBytes;
+#endif
+	return Memory;
+}
+
+std::string FESystemInfo::GetProcessMemoryUsageString() const
+{
+	const FEProcessMemoryUsage Memory = GetProcessMemoryUsage();
+	if (Memory.UsedBytes == 0)
+		return "Unknown process memory usage";
+
+	return BytesToMegabytesString(Memory.UsedBytes) + " (peak " + BytesToMegabytesString(Memory.PeakUsedBytes) + ")";
 }
 
 std::vector<FEGPUInfo> FESystemInfo::GetGPUInfo() const

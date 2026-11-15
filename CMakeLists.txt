@@ -386,6 +386,7 @@ if(FE_BASIC_APPLICATION_ENABLE_TESTS)
 		"Tests/RunAllTests.cpp"
 		"Tests/FEThreadPoolTests.h"
 		"Tests/FEThreadPoolTests.cpp"
+		"Tests/FESystemInfoTests.cpp"
 	)
 
 	add_executable(FEBasicApplicationTests ${BasicApplicationTests_SRC})
