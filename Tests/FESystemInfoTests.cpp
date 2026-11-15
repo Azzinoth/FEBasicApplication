@@ -22,13 +22,10 @@ TEST(FESystemInfoTest, ProcessMemoryUsage_LargeAllocation_UsedGrowsAndPeakIsKept
 
 	std::unique_ptr<unsigned char[]> Block(new unsigned char[BlockSize]);
 	// Memory is counted as resident only after it is written to.
-	uint64_t Checksum = 0;
+	// Volatile, otherwise optimizer removes the writes together with the allocation.
+	volatile unsigned char* BlockData = Block.get();
 	for (uint64_t i = 0; i < BlockSize; i += 1024)
-	{
-		Block[i] = static_cast<unsigned char>(i >> 10);
-		Checksum += Block[i];
-	}
-	EXPECT_GT(Checksum, 0u);
+		BlockData[i] = static_cast<unsigned char>(i >> 10);
 
 	const FEProcessMemoryUsage During = SYSTEM_INFORMATION.GetProcessMemoryUsage();
 	EXPECT_GE(During.UsedBytes, Before.UsedBytes + ExpectedGrowth);
