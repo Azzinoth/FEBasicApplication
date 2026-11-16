@@ -1,5 +1,7 @@
 #include "FESystemInfo.h"
 #include "../FEPlatform.h"
+#include <algorithm>
+#include <chrono>
 #include <iomanip>
 #include <sstream>
 #include <thread>
@@ -9,9 +11,13 @@
 #include <winternl.h>
 #include <d3dkmthk.h>
 #include <dxgi.h>
+#include <pdh.h>
+#include <pdhmsg.h>
 #include <psapi.h>
+#include <map>
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "pdh.lib")
 #pragma comment(lib, "psapi.lib")
 #elif FE_PLATFORM(MACOS)
 #include <sys/sysctl.h>
@@ -24,7 +30,6 @@
 #include "../FEFileSystem.h"
 #include <sys/utsname.h>
 #include <unistd.h>
-#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -88,6 +93,24 @@ namespace
 		Stream << std::fixed << std::setprecision(1) << static_cast<double>(Bytes) / (1024.0 * 1024.0) << " MB";
 		return Stream.str();
 	}
+
+	std::string PercentageToString(const double Percentage)
+	{
+		std::ostringstream Stream;
+		Stream << std::fixed << std::setprecision(1) << Percentage << "%";
+		return Stream.str();
+	}
+
+#if !FE_PLATFORM(EMSCRIPTEN)
+	// Time of all logical cores since the system started, in units of the OS. Load is the change of Busy divided by the change of Total.
+	struct FECPUTimes
+	{
+		uint64_t Busy = 0;
+		uint64_t Total = 0;
+	};
+
+	const double MinLoadMeasureSeconds = 0.1;
+#endif
 
 	std::string GPUInfoToString(const FEGPUInfo& GPU)
 	{
@@ -309,6 +332,138 @@ namespace
 
 		Factory->Release();
 	}
+
+	void QueryWindowsCPUTimes(FECPUTimes& Times)
+	{
+		FILETIME Idle = {};
+		FILETIME Kernel = {};
+		FILETIME User = {};
+		if (!GetSystemTimes(&Idle, &Kernel, &User))
+			return;
+
+		const auto ToUInt64 = [](const FILETIME& Time) {
+			return (static_cast<uint64_t>(Time.dwHighDateTime) << 32) | Time.dwLowDateTime;
+		};
+
+		// Kernel time includes idle time.
+		Times.Total = ToUInt64(Kernel) + ToUInt64(User);
+		Times.Busy = Times.Total - ToUInt64(Idle);
+	}
+
+	std::string GetWindowsProcessName(const DWORD ProcessID)
+	{
+		const HANDLE Process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, ProcessID);
+		if (Process == nullptr)
+			return "";
+
+		std::string Result;
+		wchar_t Path[1024] = {};
+		DWORD PathLength = static_cast<DWORD>(std::size(Path));
+		if (QueryFullProcessImageNameW(Process, 0, Path, &PathLength))
+		{
+			const std::wstring FullPath(Path, PathLength);
+			Result = WideToUTF8(FullPath.substr(FullPath.find_last_of(L'\\') + 1).c_str());
+		}
+
+		CloseHandle(Process);
+		return Result;
+	}
+
+	// GPU load is the change of these counters between two collections of the query.
+	// The counter is added by its English name, so it is found on any language of Windows.
+	struct FEWindowsGPULoadQuery
+	{
+		PDH_HQUERY Query = nullptr;
+		PDH_HCOUNTER Counter = nullptr;
+	};
+
+	bool BeginWindowsGPULoadQuery(FEWindowsGPULoadQuery& LoadQuery)
+	{
+		if (PdhOpenQueryW(nullptr, 0, &LoadQuery.Query) != ERROR_SUCCESS)
+			return false;
+
+		// A system without a GPU driver has no such counter, or has no engines in it.
+		if (PdhAddEnglishCounterW(LoadQuery.Query, L"\\GPU Engine(*)\\Utilization Percentage", 0, &LoadQuery.Counter) != ERROR_SUCCESS ||
+			PdhCollectQueryData(LoadQuery.Query) != ERROR_SUCCESS)
+		{
+			PdhCloseQuery(LoadQuery.Query);
+			LoadQuery.Query = nullptr;
+			return false;
+		}
+
+		return true;
+	}
+
+	void EndWindowsGPULoadQuery(FEWindowsGPULoadQuery& LoadQuery, FESystemLoad& Load)
+	{
+		std::vector<BYTE> Buffer;
+		DWORD BufferSize = 0;
+		DWORD ItemCount = 0;
+		bool bRead = PdhCollectQueryData(LoadQuery.Query) == ERROR_SUCCESS;
+		if (bRead && PdhGetFormattedCounterArrayW(LoadQuery.Counter, PDH_FMT_DOUBLE, &BufferSize, &ItemCount, nullptr) == static_cast<PDH_STATUS>(PDH_MORE_DATA))
+		{
+			Buffer.resize(BufferSize);
+			bRead = PdhGetFormattedCounterArrayW(LoadQuery.Counter, PDH_FMT_DOUBLE, &BufferSize, &ItemCount, reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_W*>(Buffer.data())) == ERROR_SUCCESS;
+		}
+		else
+		{
+			bRead = false;
+		}
+
+		PdhCloseQuery(LoadQuery.Query);
+		LoadQuery.Query = nullptr;
+		if (!bRead)
+			return;
+
+		// One item is one engine of one GPU used by one process, its name is like "pid_1234_luid_0x00000000_0x0000C3A1_phys_0_eng_0_engtype_3D".
+		const std::wstring EngineType = L"engtype_3D";
+		std::map<std::wstring, double> LoadByGPU;
+		std::map<DWORD, double> LoadByProcess;
+		const PDH_FMT_COUNTERVALUE_ITEM_W* Items = reinterpret_cast<const PDH_FMT_COUNTERVALUE_ITEM_W*>(Buffer.data());
+		for (DWORD i = 0; i < ItemCount; i++)
+		{
+			// An engine that appeared after the first collection has no value yet.
+			if (Items[i].FmtValue.CStatus != PDH_CSTATUS_VALID_DATA && Items[i].FmtValue.CStatus != PDH_CSTATUS_NEW_DATA)
+				continue;
+
+			const std::wstring Name = Items[i].szName;
+			const size_t ProcessStart = Name.find(L"pid_");
+			const size_t GPUStart = Name.find(L"_luid_");
+			const size_t EngineStart = Name.find(L"_eng_");
+			if (ProcessStart == std::wstring::npos || GPUStart == std::wstring::npos || EngineStart == std::wstring::npos || EngineStart < GPUStart)
+				continue;
+
+			if (Name.size() < EngineType.size() || Name.compare(Name.size() - EngineType.size(), EngineType.size(), EngineType) != 0)
+				continue;
+
+			const DWORD ProcessID = wcstoul(Name.c_str() + ProcessStart + 4, nullptr, 10);
+			LoadByGPU[Name.substr(GPUStart, EngineStart - GPUStart)] += Items[i].FmtValue.doubleValue;
+			LoadByProcess[ProcessID] += Items[i].FmtValue.doubleValue;
+		}
+
+		Load.bGPULoadAvailable = true;
+		for (const auto& [GPU, Percentage] : LoadByGPU)
+			Load.GPULoadPercentage = std::max(Load.GPULoadPercentage, std::min(Percentage, 100.0));
+
+		// Most processes with a GPU context did no work during the measurement, they are left out.
+		const double MinProcessPercentage = 0.05;
+		for (const auto& [ProcessID, Percentage] : LoadByProcess)
+		{
+			if (Percentage < MinProcessPercentage)
+				continue;
+
+			FEGPUProcessLoad ProcessLoad;
+			ProcessLoad.ProcessID = ProcessID;
+			ProcessLoad.ProcessName = GetWindowsProcessName(ProcessID);
+			ProcessLoad.Percentage = std::min(Percentage, 100.0);
+			ProcessLoad.bCurrentProcess = ProcessID == GetCurrentProcessId();
+			Load.GPULoadByProcess.push_back(ProcessLoad);
+		}
+
+		std::sort(Load.GPULoadByProcess.begin(), Load.GPULoadByProcess.end(), [](const FEGPUProcessLoad& First, const FEGPUProcessLoad& Second) {
+			return First.Percentage > Second.Percentage;
+		});
+	}
 #elif FE_PLATFORM(MACOS)
 	std::string ReadSysctlString(const char* Name)
 	{
@@ -378,6 +533,22 @@ namespace
 
 		Memory.UsedBytes = Info.resident_size;
 		Memory.PeakUsedBytes = Info.resident_size_max;
+	}
+
+	void QueryMacOSCPUTimes(FECPUTimes& Times)
+	{
+		const mach_port_t Host = mach_host_self();
+		host_cpu_load_info_data_t Info = {};
+		mach_msg_type_number_t Count = HOST_CPU_LOAD_INFO_COUNT;
+		if (host_statistics(Host, HOST_CPU_LOAD_INFO, reinterpret_cast<host_info_t>(&Info), &Count) == KERN_SUCCESS)
+		{
+			for (int State = 0; State < CPU_STATE_MAX; State++)
+				Times.Total += Info.cpu_ticks[State];
+
+			Times.Busy = Times.Total - Info.cpu_ticks[CPU_STATE_IDLE];
+		}
+
+		mach_port_deallocate(mach_task_self(), Host);
 	}
 
 	// Searches the entry and then its parents, on Intel Macs most GPU properties are on the parent PCI device.
@@ -555,6 +726,34 @@ namespace
 		}
 	}
 
+	// The first line of /proc/stat is "cpu" with times of all cores: user, nice, system, idle, iowait, irq, softirq, steal.
+	// Guest times after them are already counted in user and nice.
+	void QueryLinuxCPUTimes(FECPUTimes& Times)
+	{
+		std::ifstream File("/proc/stat");
+		std::string Label;
+		if (!(File >> Label) || Label != "cpu")
+			return;
+
+		const int IdleIndex = 3;
+		const int IOWaitIndex = 4;
+		const int TimeCount = 8;
+		uint64_t Idle = 0;
+		for (int i = 0; i < TimeCount; i++)
+		{
+			uint64_t Time = 0;
+			// Old kernels have fewer values.
+			if (!(File >> Time))
+				break;
+
+			Times.Total += Time;
+			if (i == IdleIndex || i == IOWaitIndex)
+				Idle += Time;
+		}
+
+		Times.Busy = Times.Total - Idle;
+	}
+
 	std::string ReadFirstLine(const std::string& Path)
 	{
 		std::ifstream File(Path);
@@ -648,6 +847,21 @@ namespace
 
 			GPUs.push_back(GPU);
 		}
+	}
+#endif
+
+#if !FE_PLATFORM(EMSCRIPTEN)
+	FECPUTimes QueryCPUTimes()
+	{
+		FECPUTimes Times;
+#if FE_PLATFORM(WINDOWS)
+		QueryWindowsCPUTimes(Times);
+#elif FE_PLATFORM(MACOS)
+		QueryMacOSCPUTimes(Times);
+#elif FE_PLATFORM(LINUX)
+		QueryLinuxCPUTimes(Times);
+#endif
+		return Times;
 	}
 #endif
 }
@@ -819,6 +1033,55 @@ std::string FESystemInfo::GetGPUInfoString() const
 			Result += "\n";
 
 		Result += GPUInfoToString(GPUs[i]);
+	}
+
+	return Result;
+}
+
+FESystemLoad FESystemInfo::GetSystemLoad(const double MeasureSeconds) const
+{
+	FESystemLoad Load;
+#if FE_PLATFORM(EMSCRIPTEN)
+	// Browsers do not report load of the system, and waiting here would freeze the page.
+	(void)MeasureSeconds;
+#else
+#if FE_PLATFORM(WINDOWS)
+	FEWindowsGPULoadQuery GPULoadQuery;
+	const bool bGPULoadQueryStarted = BeginWindowsGPULoadQuery(GPULoadQuery);
+#endif
+	const FECPUTimes Before = QueryCPUTimes();
+
+	std::this_thread::sleep_for(std::chrono::duration<double>(std::max(MeasureSeconds, MinLoadMeasureSeconds)));
+
+	const FECPUTimes After = QueryCPUTimes();
+	if (After.Total > Before.Total && After.Busy >= Before.Busy)
+	{
+		Load.bCPULoadAvailable = true;
+		Load.CPULoadPercentage = std::min(100.0 * static_cast<double>(After.Busy - Before.Busy) / static_cast<double>(After.Total - Before.Total), 100.0);
+	}
+
+#if FE_PLATFORM(WINDOWS)
+	if (bGPULoadQueryStarted)
+		EndWindowsGPULoadQuery(GPULoadQuery, Load);
+#endif
+#endif
+	return Load;
+}
+
+std::string FESystemInfo::GetSystemLoadString(const double MeasureSeconds) const
+{
+	const FESystemLoad Load = GetSystemLoad(MeasureSeconds);
+
+	std::string Result = Load.bCPULoadAvailable ? "CPU " + PercentageToString(Load.CPULoadPercentage) : "CPU load is not available";
+	if (!Load.bGPULoadAvailable)
+		return Result + ", GPU load is not available";
+
+	Result += ", GPU " + PercentageToString(Load.GPULoadPercentage);
+	if (!Load.GPULoadByProcess.empty())
+	{
+		const FEGPUProcessLoad& Busiest = Load.GPULoadByProcess[0];
+		const std::string Name = Busiest.ProcessName.empty() ? "process " + std::to_string(Busiest.ProcessID) : Busiest.ProcessName;
+		Result += " (" + Name + " " + PercentageToString(Busiest.Percentage) + ")";
 	}
 
 	return Result;

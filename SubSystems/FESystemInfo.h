@@ -46,6 +46,31 @@ namespace FocalEngine
 		uint64_t PeakUsedBytes = 0;
 	};
 
+	struct FEGPUProcessLoad
+	{
+		uint32_t ProcessID = 0;
+		// File name of its executable, empty when the process can not be opened.
+		std::string ProcessName;
+		// From 0 to 100.
+		double Percentage = 0.0;
+		bool bCurrentProcess = false;
+	};
+
+	// How busy the system was during a measurement.
+	struct FESystemLoad
+	{
+		// False on web.
+		bool bCPULoadAvailable = false;
+		// Share of time that all logical cores were busy, from 0 to 100.
+		double CPULoadPercentage = 0.0;
+		// True only on Windows, other platforms have no common way to ask for it.
+		bool bGPULoadAvailable = false;
+		// 3D work of the busiest GPU, from 0 to 100.
+		double GPULoadPercentage = 0.0;
+		// Processes that did 3D work on any GPU, the busiest first.
+		std::vector<FEGPUProcessLoad> GPULoadByProcess;
+	};
+
 	struct FEGPUInfo
 	{
 		std::string Name;
@@ -89,6 +114,12 @@ namespace FocalEngine
 		std::vector<FEGPUInfo> GetGPUInfo() const;
 		// One line per GPU, for example "NVIDIA GeForce RTX 4090 (23.6 GB, driver 610.88)".
 		std::string GetGPUInfoString() const;
+
+		// Load of the whole system, not only of this process. The call blocks for MeasureSeconds, on web it returns right away.
+		// Windows updates its GPU counters about once a second, a shorter measurement can miss GPU work.
+		FESystemLoad GetSystemLoad(double MeasureSeconds = 1.0) const;
+		// For example "CPU 6.1%, GPU 48.3% (FocalEngineEditor.exe 47.9%)".
+		std::string GetSystemLoadString(double MeasureSeconds = 1.0) const;
 	private:
 		SINGLETON_PRIVATE_PART(FESystemInfo)
 
