@@ -269,10 +269,10 @@ void FEThreadPool::Update()
 		for (size_t i = 0; i < Threads.size(); i++)
 		{
 			if (Threads[i]->IsJobFinished() && !Threads[i]->IsJobCollected())
-			{
 				CallBacksToInvoke.push_back(CollectJob(Threads[i]));
-			}
-			else if (!JobsList.empty() && Threads[i]->IsJobFinished() && Threads[i]->IsJobCollected())
+
+			// A thread whose result was just collected is free, it gets its next job in the same pass.
+			if (!JobsList.empty() && Threads[i]->IsJobFinished() && Threads[i]->IsJobCollected())
 			{
 				if (Threads[i]->AssignJob(JobsList[0]))
 					JobsList.erase(JobsList.begin());

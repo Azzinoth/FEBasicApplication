@@ -172,6 +172,38 @@ TEST_F(FEThreadPoolTest, ManyMoreJobsThanThreads_JobsListDrainsCompletely)
 	EXPECT_EQ(CallbacksFired.load(), JobCount);
 }
 
+TEST_F(FEThreadPoolTest, Update_QueuedJobs_ThreadGetsNextJobInPassThatCollectedItsResult)
+{
+	constexpr int JobsPerThread = 6;
+	const int JobCount = static_cast<int>(THREAD_POOL.GetThreadCount()) * JobsPerThread;
+	std::atomic<int> CallbacksFired{ 0 };
+
+	auto Job = [](void*, void*) {
+		// Do nothing.
+	};
+
+	auto Callback = [&CallbacksFired](void*) {
+		CallbacksFired.fetch_add(1, std::memory_order_acq_rel);
+	};
+
+	for (int i = 0; i < JobCount; i++)
+		THREAD_POOL.Execute(Job, nullptr, nullptr, Callback);
+
+	int UpdateCount = 0;
+	const int MaxUpdateCount = JobsPerThread * 4;
+	while (CallbacksFired.load(std::memory_order_acquire) < JobCount && UpdateCount < MaxUpdateCount)
+	{
+		// Long enough for every worker to notice its job and finish it.
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		THREAD_POOL.Update();
+		UpdateCount++;
+	}
+
+	ASSERT_EQ(CallbacksFired.load(), JobCount);
+	// One pass per job of a thread, with room for a worker that was late. If a thread had to wait for the pass after its result was collected, it would take almost twice as many.
+	EXPECT_LE(UpdateCount, JobsPerThread + 2);
+}
+
 // Sanity check that the void* pointers reach the job and the callback unchanged.
 TEST_F(FEThreadPoolTest, InputAndOutputPointers_RoundtripCorrectly)
 {
