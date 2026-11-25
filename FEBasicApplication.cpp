@@ -811,7 +811,7 @@ std::vector<CommandLineAction> FEBasicApplication::ParseCommandLine(std::string 
 		{
 			auto DelimiterPosition = Token.find(SettingEqualizer);
 			std::string Key = Token.substr(0, DelimiterPosition);
-			std::string Value = Token.substr(DelimiterPosition + ActionPrefix.length());
+			std::string Value = Token.substr(DelimiterPosition + SettingEqualizer.length());
 			CurrentAction->Settings[Key] = Value;
 		}
 	}
