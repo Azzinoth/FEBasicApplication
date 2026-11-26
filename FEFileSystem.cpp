@@ -8,6 +8,7 @@
 #if FE_PLATFORM(WINDOWS)
 #include <windows.h>
 #include <shobjidl.h>
+#include <shellapi.h>
 #endif
 
 #if FE_PLATFORM(EMSCRIPTEN)
@@ -685,6 +686,61 @@ std::vector<std::string> FEFileSystem::GetFolderChain(const std::string& Path)
 	return Result;
 }
 
+bool FEFileSystem::MoveToRecycleBin(const std::string& Path)
+{
+#if FE_PLATFORM(WINDOWS)
+	const std::wstring WidePath = std::filesystem::path(GetNormalizedPath(Path)).wstring();
+	if (WidePath.empty())
+		return false;
+
+	HRESULT Result = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (FAILED(Result))
+		return false;
+
+	bool bMoved = false;
+	IFileOperation* FileOperation = nullptr;
+	Result = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&FileOperation));
+	if (SUCCEEDED(Result))
+	{
+		// User is asked only if item can not be recycled and would be deleted permanently.
+		Result = FileOperation->SetOperationFlags(FOF_ALLOWUNDO | FOFX_RECYCLEONDELETE | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT | FOF_WANTNUKEWARNING);
+
+		IShellItem* Item = nullptr;
+		if (SUCCEEDED(Result))
+			Result = SHCreateItemFromParsingName(WidePath.c_str(), nullptr, IID_PPV_ARGS(&Item));
+
+		if (SUCCEEDED(Result))
+		{
+			Result = FileOperation->DeleteItem(Item, nullptr);
+			if (SUCCEEDED(Result))
+				Result = FileOperation->PerformOperations();
+
+			BOOL bAborted = FALSE;
+			FileOperation->GetAnyOperationsAborted(&bAborted);
+			bMoved = SUCCEEDED(Result) && !bAborted;
+			Item->Release();
+		}
+
+		FileOperation->Release();
+	}
+
+	CoUninitialize();
+	return bMoved;
+#else
+	LOG.Add("FEFileSystem::MoveToRecycleBin: Recycle bin is not supported on this platform", "FE_FILE_SYSTEM", FE_LOG_ERROR);
+	return false;
+#endif
+}
+
+bool FEFileSystem::IsRecycleBinSupported() const
+{
+#if FE_PLATFORM(WINDOWS)
+	return true;
+#else
+	return false;
+#endif
+}
+
 std::vector<std::string> FEFileSystem::GetDirectoryList(const std::string& Path)
 {
 	std::vector<std::string> Result;
@@ -792,6 +848,55 @@ std::string FEFileSystem::GetAbsolutePath(const std::string& Path)
 		LOG.Add("Error in FEFileSystem::GetAbsolutePath: failed to get absolute path " + std::string(Exception.what()), "FE_FILE_SYSTEM", FE_LOG_ERROR);
 		return Path;
 	}
+}
+
+std::string FEFileSystem::GetNormalizedPath(const std::string& Path)
+{
+	if (Path.empty())
+		return "";
+
+	try
+	{
+		std::filesystem::path NormalizedPath = std::filesystem::absolute(Path).lexically_normal().make_preferred();
+		// Path that ends with separator has no file name, root directory keeps its separator.
+		if (!NormalizedPath.has_filename() && NormalizedPath.has_relative_path())
+			NormalizedPath = NormalizedPath.parent_path();
+
+		return NormalizedPath.string();
+	}
+	catch (const std::exception& Exception)
+	{
+		LOG.Add("Error in FEFileSystem::GetNormalizedPath: " + std::string(Exception.what()), "FE_FILE_SYSTEM", FE_LOG_ERROR);
+		return Path;
+	}
+}
+
+static std::string GetPathForComparison(std::string NormalizedPath)
+{
+#if FE_PLATFORM(WINDOWS)
+	std::transform(NormalizedPath.begin(), NormalizedPath.end(), NormalizedPath.begin(), [](const unsigned char Character) { return static_cast<char>(std::tolower(Character)); });
+#endif
+	return NormalizedPath;
+}
+
+bool FEFileSystem::IsSamePath(const std::string& FirstPath, const std::string& SecondPath)
+{
+	return GetPathForComparison(GetNormalizedPath(FirstPath)) == GetPathForComparison(GetNormalizedPath(SecondPath));
+}
+
+bool FEFileSystem::IsPathInsideDirectory(const std::string& Path, const std::string& DirectoryPath)
+{
+	const std::string ComparablePath = GetPathForComparison(GetNormalizedPath(Path));
+	std::string ComparableDirectory = GetPathForComparison(GetNormalizedPath(DirectoryPath));
+	if (ComparablePath.empty() || ComparableDirectory.empty())
+		return false;
+
+	// Root directory already ends with separator.
+	const char Separator = static_cast<char>(std::filesystem::path::preferred_separator);
+	if (ComparableDirectory.back() != Separator)
+		ComparableDirectory += Separator;
+
+	return ComparablePath.size() > ComparableDirectory.size() && ComparablePath.compare(0, ComparableDirectory.size(), ComparableDirectory) == 0;
 }
 
 std::string FEFileSystem::ReadFEString(std::fstream& File)

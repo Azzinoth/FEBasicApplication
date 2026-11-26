@@ -29,12 +29,21 @@ namespace FocalEngine
 		std::string GetDirectoryPath(const std::string& FullPath);
 		std::string GetFileName(const std::string& FullPath, bool bWithExtension = true);
 		std::string GetAbsolutePath(const std::string& Path);
+		// Absolute path with separators of the platform, without "." and ".." parts and without separator at the end.
+		std::string GetNormalizedPath(const std::string& Path);
+		// Paths are normalized before comparison, on Windows case of letters is ignored.
+		bool IsSamePath(const std::string& FirstPath, const std::string& SecondPath);
+		// True if path is inside the directory at any depth, directory is not inside itself.
+		bool IsPathInsideDirectory(const std::string& Path, const std::string& DirectoryPath);
 
 		bool DoesDirectoryExist(const std::string& Path);
 		bool RenameDirectory(const std::string& Path, const std::string& NewPath);
 		bool MakeDirectory(const std::string& Path);
 		bool CopyDirectory(const std::string& Path, const std::string& NewPath);
 		bool DeleteDirectory(const std::string& Path);
+		// File or directory, only available on Windows.
+		bool MoveToRecycleBin(const std::string& Path);
+		bool IsRecycleBinSupported() const;
 
 		std::vector<std::string> GetFilesInDirectory(const std::string& Path, bool bRecursive = false);
 		std::vector<std::string> GetFileNamesInDirectory(const std::string& Path, bool bRecursive = false);
