@@ -1,5 +1,6 @@
 #include "FEProfilingManager.h"
 #include <iomanip>
+#include <algorithm>
 using namespace FocalEngine;
 
 #ifdef FEBASICAPPLICATION_SHARED
@@ -116,39 +117,57 @@ void FEProfilingManager::SaveTimelineToJSON(const std::string& Filename)
 	File << "{\n";
 	File << "  \"traceEvents\": [\n";
 
+	struct TimelineEvent
+	{
+		const char* Name = nullptr;
+		// Function that section belongs to, nullptr for function events.
+		const char* SectionFunctionName = nullptr;
+		FE_CHRONO_TIME_POINT Start;
+		FE_CHRONO_TIME_POINT End;
+	};
+
 	bool bFirstEvent = true;
+	std::vector<TimelineEvent> Events;
 	for (auto& [ThreadID, Registry] : ThreadData)
 	{
 		std::lock_guard RegistryLock(Registry.DataMutex);
 
-		std::stringstream ThreadIDString;
-		ThreadIDString << ThreadID;
-
+		Events.clear();
 		for (auto& [FunctionName, Info] : Registry.FunctionsData)
 		{
 			for (const auto& TimeStamp : Info.Timestamps)
-			{
-				if (!bFirstEvent)
-					File << ",\n";
-				bFirstEvent = false;
-
-				File << "    {\"name\": \"" << FunctionName << "\", \"cat\": \"function\", \"ph\": \"X\", \"ts\": " << ToMicroseconds(TimeStamp.first.time_since_epoch())
-					 << ", \"dur\": " << ToMicroseconds(TimeStamp.second - TimeStamp.first) << ", \"pid\": 0, \"tid\": " << ThreadIDString.str() << "}";
-			}
+				Events.push_back({ FunctionName, nullptr, TimeStamp.first, TimeStamp.second });
 
 			for (const auto& [SectionName, SectionTimestamps] : Info.SectionTimestamps)
 			{
 				for (const auto& SectionTimestamp : SectionTimestamps)
-				{
-					if (!bFirstEvent)
-						File << ",\n";
-					bFirstEvent = false;
-
-					File << "    {\"name\": \"" << SectionName << "\", \"cat\": \"section\", \"ph\": \"X\", \"ts\": " << ToMicroseconds(SectionTimestamp.first.time_since_epoch())
-						 << ", \"dur\": " << ToMicroseconds(SectionTimestamp.second - SectionTimestamp.first) << ", \"pid\": 0, \"tid\": " << ThreadIDString.str()
-						 << ", \"args\": {\"function\": \"" << FunctionName << "\"}}";
-				}
+					Events.push_back({ SectionName, FunctionName, SectionTimestamp.first, SectionTimestamp.second });
 			}
+		}
+
+		// Trace viewers nest events that start at the same time in file order, so parent has to be written first.
+		std::sort(Events.begin(), Events.end(), [](const TimelineEvent& First, const TimelineEvent& Second) {
+			if (First.Start != Second.Start)
+				return First.Start < Second.Start;
+
+			return First.End > Second.End;
+		});
+
+		std::stringstream ThreadIDString;
+		ThreadIDString << ThreadID;
+		for (const TimelineEvent& Event : Events)
+		{
+			if (!bFirstEvent)
+				File << ",\n";
+			bFirstEvent = false;
+
+			File << "    {\"name\": \"" << Event.Name << "\", \"cat\": \"" << (Event.SectionFunctionName == nullptr ? "function" : "section") << "\", \"ph\": \"X\", \"ts\": " << ToMicroseconds(Event.Start.time_since_epoch())
+				 << ", \"dur\": " << ToMicroseconds(Event.End - Event.Start) << ", \"pid\": 0, \"tid\": " << ThreadIDString.str();
+
+			if (Event.SectionFunctionName != nullptr)
+				File << ", \"args\": {\"function\": \"" << Event.SectionFunctionName << "\"}";
+
+			File << "}";
 		}
 	}
 

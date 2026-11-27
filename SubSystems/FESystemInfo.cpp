@@ -535,17 +535,28 @@ namespace
 		Memory.PeakUsedBytes = Info.resident_size_max;
 	}
 
+	// host_statistics is rate limited for applications, over the limit it returns the previous result as success.
+	// host_processor_info gives the same ticks per CPU without that limit.
 	void QueryMacOSCPUTimes(FECPUTimes& Times)
 	{
 		const mach_port_t Host = mach_host_self();
-		host_cpu_load_info_data_t Info = {};
-		mach_msg_type_number_t Count = HOST_CPU_LOAD_INFO_COUNT;
-		if (host_statistics(Host, HOST_CPU_LOAD_INFO, reinterpret_cast<host_info_t>(&Info), &Count) == KERN_SUCCESS)
+		natural_t ProcessorCount = 0;
+		processor_info_array_t InfoArray = nullptr;
+		mach_msg_type_number_t InfoCount = 0;
+		if (host_processor_info(Host, PROCESSOR_CPU_LOAD_INFO, &ProcessorCount, &InfoArray, &InfoCount) == KERN_SUCCESS)
 		{
-			for (int State = 0; State < CPU_STATE_MAX; State++)
-				Times.Total += Info.cpu_ticks[State];
+			const processor_cpu_load_info_t LoadInfo = reinterpret_cast<processor_cpu_load_info_t>(InfoArray);
+			for (natural_t i = 0; i < ProcessorCount; i++)
+			{
+				uint64_t ProcessorTotal = 0;
+				for (int State = 0; State < CPU_STATE_MAX; State++)
+					ProcessorTotal += LoadInfo[i].cpu_ticks[State];
 
-			Times.Busy = Times.Total - Info.cpu_ticks[CPU_STATE_IDLE];
+				Times.Total += ProcessorTotal;
+				Times.Busy += ProcessorTotal - LoadInfo[i].cpu_ticks[CPU_STATE_IDLE];
+			}
+
+			vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(InfoArray), InfoCount * sizeof(integer_t));
 		}
 
 		mach_port_deallocate(mach_task_self(), Host);
