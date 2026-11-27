@@ -1,19 +1,19 @@
 #include "FEScopedTimer.h"
 using namespace FocalEngine;
 
-FEScopedTimer::FEScopedTimer(const std::string& EventName, bool bIsSection)
+FEScopedTimer::FEScopedTimer(const char* EventName, bool bIsSection)
 {
-	StartTime = std::chrono::high_resolution_clock::now();
-    this->EventName = EventName;
+	this->EventName = EventName;
 	bIsForSection = bIsSection;
-	if (bIsForSection)
-	{
-		PROFILING.RecordSectionEntry(EventName, StartTime);
-	}
-	else
-	{
-		PROFILING.RecordFunctionEntry(EventName, StartTime);
-	}
+
+	bIsStopped = !PROFILING.IsActive();
+	if (bIsStopped)
+		return;
+
+	if (!bIsForSection)
+		PROFILING.RecordFunctionEntry(EventName);
+
+	StartTime = std::chrono::high_resolution_clock::now();
 }
 
 void FEScopedTimer::Stop()
@@ -25,9 +25,6 @@ void FEScopedTimer::Stop()
 	bIsStopped = true;
 
 	FE_CHRONO_TIME_POINT EndTime = std::chrono::high_resolution_clock::now();
-
-	const auto Start = std::chrono::time_point_cast<std::chrono::nanoseconds>(StartTime).time_since_epoch();
-	const auto End = std::chrono::time_point_cast<std::chrono::nanoseconds>(EndTime).time_since_epoch();
 
 	const auto TimeElapsed = EndTime - StartTime;
 
@@ -52,11 +49,11 @@ void FEScopedTimer::Stop()
 
 	if (bIsForSection)
 	{
-		PROFILING.RecordSectionExit(EventName, EndTime, Result);
+		PROFILING.RecordSectionExit(EventName, StartTime, EndTime);
 	}
 	else
 	{
-		PROFILING.RecordFunctionExit(EventName, EndTime, Result);
+		PROFILING.RecordFunctionExit(EventName, StartTime, EndTime, Result);
 	}
 }
 

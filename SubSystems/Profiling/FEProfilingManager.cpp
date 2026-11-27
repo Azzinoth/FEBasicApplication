@@ -1,4 +1,5 @@
 #include "FEProfilingManager.h"
+#include <iomanip>
 using namespace FocalEngine;
 
 #ifdef FEBASICAPPLICATION_SHARED
@@ -8,89 +9,52 @@ extern "C" __declspec(dllexport) void* GetProfilingManager()
 }
 #endif
 
-FEProfilingManager::FEProfilingManager()
-{
-	RegisterThread(std::this_thread::get_id());
-}
+FEProfilingManager::FEProfilingManager() {}
 
 FEProfilingManager::~FEProfilingManager() {}
 
-bool FEProfilingManager::IsThreadRegistered(const std::thread::id& ThreadID)
+FEProfilingRegistry& FEProfilingManager::GetCurrentThreadRegistry()
 {
-	std::shared_lock Lock(ThreadDataMutex);
-	return ThreadData.find(ThreadID) != ThreadData.end();
+	thread_local FEProfilingRegistry* Registry = nullptr;
+	if (Registry == nullptr)
+	{
+		std::lock_guard Lock(ThreadDataMutex);
+		Registry = &ThreadData[std::this_thread::get_id()];
+		Registry->TimeResolution = TimeResolution;
+	}
+
+	return *Registry;
 }
 
-void FEProfilingManager::RegisterThread(std::thread::id ThreadID)
-{
-	std::unique_lock Lock(ThreadDataMutex);
-	ThreadData[ThreadID] = FEProfilingRegistry();
-	ThreadData[ThreadID].TimeResolution = TimeResolution;
-}
-
-void FEProfilingManager::RecordFunctionEntry(const std::string& FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp)
+void FEProfilingManager::RecordFunctionEntry(const char* FunctionName)
 {
 	if (!bActive)
 		return;
 
-	std::thread::id ThreadID = std::this_thread::get_id();
-	if (!IsThreadRegistered(ThreadID))
-		RegisterThread(ThreadID);
-
-	// Do I need to lock the mutex here?
-	std::unique_lock Lock(ThreadDataMutex);
-	ThreadData[ThreadID].RecordFunctionEntry(FunctionName, StartTimeStamp);
-	Lock.unlock();
+	FEProfilingRegistry& Registry = GetCurrentThreadRegistry();
+	std::lock_guard Lock(Registry.DataMutex);
+	Registry.RecordFunctionEntry(FunctionName);
 }
 
-void FEProfilingManager::RecordFunctionExit(const std::string& FunctionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration)
+void FEProfilingManager::RecordFunctionExit(const char* FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration)
 {
 	if (!bActive)
 		return;
 
-	std::thread::id ThreadID = std::this_thread::get_id();
-	if (!IsThreadRegistered(ThreadID))
-		RegisterThread(ThreadID);
-
-	// Do I need to lock the mutex here?
-	std::unique_lock Lock(ThreadDataMutex);
-	ThreadData[ThreadID].RecordFunctionExit(FunctionName, EndTimeStamp, Duration);
-	Lock.unlock();
-
-	std::unique_lock EventCountLock(EventCountMutex);
+	FEProfilingRegistry& Registry = GetCurrentThreadRegistry();
+	std::lock_guard Lock(Registry.DataMutex);
+	Registry.RecordFunctionExit(FunctionName, StartTimeStamp, EndTimeStamp, Duration);
 	EventCount++;
 }
 
-void FEProfilingManager::RecordSectionEntry(const std::string& SectionName, FE_CHRONO_TIME_POINT StartTimeStamp)
+void FEProfilingManager::RecordSectionExit(const char* SectionName, FE_CHRONO_TIME_POINT StartTimeStamp, FE_CHRONO_TIME_POINT EndTimeStamp)
 {
 	if (!bActive)
 		return;
 
-	std::thread::id ThreadID = std::this_thread::get_id();
-	if (!IsThreadRegistered(ThreadID))
-		RegisterThread(ThreadID);
-
-	// Do I need to lock the mutex here?
-	std::unique_lock Lock(ThreadDataMutex);
-	ThreadData[ThreadID].RecordSectionEntry(SectionName, StartTimeStamp);
-	Lock.unlock();
-}
-
-void FEProfilingManager::RecordSectionExit(const std::string& SectionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration)
-{
-	if (!bActive)
-		return;
-
-	std::thread::id ThreadID = std::this_thread::get_id();
-	if (!IsThreadRegistered(ThreadID))
-		RegisterThread(ThreadID);
-
-	// Do I need to lock the mutex here?
-	std::unique_lock Lock(ThreadDataMutex);
-	ThreadData[ThreadID].RecordSectionExit(SectionName, EndTimeStamp, Duration);
-	Lock.unlock();
-
-	std::unique_lock EventCountLock(EventCountMutex);
+	FEProfilingRegistry& Registry = GetCurrentThreadRegistry();
+	std::lock_guard Lock(Registry.DataMutex);
+	Registry.RecordSectionExit(SectionName, StartTimeStamp, EndTimeStamp);
 	EventCount++;
 }
 
@@ -143,75 +107,48 @@ void FEProfilingManager::SaveTimelineToJSON(const std::string& Filename)
 	if (!File.is_open())
 		return;
 
+	// Fractional microseconds, so short events do not become zero long.
+	File << std::fixed << std::setprecision(3);
+	const auto ToMicroseconds = [](const FE_CHRONO_TIME_POINT::duration Duration) {
+		return std::chrono::duration<double, std::micro>(Duration).count();
+	};
+
 	File << "{\n";
 	File << "  \"traceEvents\": [\n";
 
-	auto ThreadIterator = ThreadData.begin();
-	while (ThreadIterator != ThreadData.end())
+	bool bFirstEvent = true;
+	for (auto& [ThreadID, Registry] : ThreadData)
 	{
-		std::thread::id ThreadID = ThreadIterator->first;
+		std::lock_guard RegistryLock(Registry.DataMutex);
+
 		std::stringstream ThreadIDString;
 		ThreadIDString << ThreadID;
 
-		bool bFirstEvent = true;
-		for (auto& Entry : ThreadData[ThreadID].FunctionsData)
+		for (auto& [FunctionName, Info] : Registry.FunctionsData)
 		{
-			const std::string& FunctionName = Entry.first;
-			const FEProfilingRegistry::FunctionInfo& Info = Entry.second;
-
 			for (const auto& TimeStamp : Info.Timestamps)
 			{
 				if (!bFirstEvent)
 					File << ",\n";
-				
 				bFirstEvent = false;
 
-				File << "    {\n";
-				File << "      \"name\": \"" << FunctionName << "\",\n";
-				File << "      \"cat\": \"function\",\n";
-				File << "      \"ph\": \"X\",\n";
-				File << "      \"ts\": " << std::chrono::duration_cast<std::chrono::microseconds>(TimeStamp.first.time_since_epoch()).count() << ",\n";
-				File << "      \"dur\": " << std::chrono::duration_cast<std::chrono::microseconds>(TimeStamp.second - TimeStamp.first).count() << ",\n";
-				File << "      \"pid\": 0,\n";
-				File << "      \"tid\": " << ThreadIDString.str() << "\n";
-				File << "    }";
+				File << "    {\"name\": \"" << FunctionName << "\", \"cat\": \"function\", \"ph\": \"X\", \"ts\": " << ToMicroseconds(TimeStamp.first.time_since_epoch())
+					 << ", \"dur\": " << ToMicroseconds(TimeStamp.second - TimeStamp.first) << ", \"pid\": 0, \"tid\": " << ThreadIDString.str() << "}";
 			}
 
-			// Section events.
-			for (const auto& SectionEntry : Info.SectionTimestamps) {
-				const std::string& SectionName = SectionEntry.first;
-				const auto& SectionTimestamps = SectionEntry.second;
-
-				for (const auto& SectionTimestamp : SectionTimestamps) {
-					if (!bFirstEvent) {
+			for (const auto& [SectionName, SectionTimestamps] : Info.SectionTimestamps)
+			{
+				for (const auto& SectionTimestamp : SectionTimestamps)
+				{
+					if (!bFirstEvent)
 						File << ",\n";
-					}
 					bFirstEvent = false;
 
-					File << "    {\n";
-					File << "      \"name\": \"" << SectionName << "\",\n";
-					File << "      \"cat\": \"section\",\n";
-					File << "      \"ph\": \"X\",\n";
-					File << "      \"ts\": " << std::chrono::duration_cast<std::chrono::microseconds>(SectionTimestamp.first.time_since_epoch()).count() << ",\n";
-					File << "      \"dur\": " << std::chrono::duration_cast<std::chrono::microseconds>(SectionTimestamp.second - SectionTimestamp.first).count() << ",\n";
-					File << "      \"pid\": 0,\n";
-					File << "      \"tid\": " << ThreadID << ",\n";
-					File << "      \"args\": {\n";
-					File << "        \"function\": \"" << FunctionName << "\"\n";
-					File << "      }\n";
-					File << "    }";
+					File << "    {\"name\": \"" << SectionName << "\", \"cat\": \"section\", \"ph\": \"X\", \"ts\": " << ToMicroseconds(SectionTimestamp.first.time_since_epoch())
+						 << ", \"dur\": " << ToMicroseconds(SectionTimestamp.second - SectionTimestamp.first) << ", \"pid\": 0, \"tid\": " << ThreadIDString.str()
+						 << ", \"args\": {\"function\": \"" << FunctionName << "\"}}";
 				}
 			}
-		}
-
-		ThreadIterator++;
-		if (ThreadIterator != ThreadData.end())
-		{
-			File << ",\n";
-		}
-		else
-		{
-			File << "\n";
 		}
 	}
 
@@ -224,26 +161,17 @@ void FEProfilingManager::SaveTimelineToJSON(const std::string& Filename)
 void FEProfilingManager::ClearData()
 {
 	std::unique_lock Lock(ThreadDataMutex);
-	
-	auto ThreadIterator = ThreadData.begin();
-	while (ThreadIterator != ThreadData.end())
+	for (auto& [ThreadID, Registry] : ThreadData)
 	{
-		ThreadIterator->second.ClearData();
-		ThreadIterator->second.EventCount = 0;
-
-		ThreadIterator++;
+		std::lock_guard RegistryLock(Registry.DataMutex);
+		Registry.ClearData();
 	}
 
-	ThreadData.clear();
-	Lock.unlock();
-
-	std::unique_lock EventCountLock(EventCountMutex);
 	EventCount = 0;
 }
 
 int FEProfilingManager::GetEventCount()
 {
-	std::shared_lock EventCountLock(EventCountMutex);
 	return EventCount;
 }
 
@@ -256,4 +184,9 @@ void FEProfilingManager::StartProfiling()
 void FEProfilingManager::StopProfiling()
 {
 	bActive = false;
+}
+
+bool FEProfilingManager::IsActive() const
+{
+	return bActive;
 }

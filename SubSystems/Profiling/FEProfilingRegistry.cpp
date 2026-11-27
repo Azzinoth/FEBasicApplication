@@ -1,46 +1,32 @@
 #include "FEProfilingRegistry.h"
 using namespace FocalEngine;
 
-void FEProfilingRegistry::RecordFunctionEntry(const std::string& FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp)
+void FEProfilingRegistry::RecordFunctionEntry(const char* FunctionName)
 {
 	CallStack.push_back(FunctionName);
-	FunctionsData[FunctionName].Timestamps.push_back(std::make_pair(StartTimeStamp, StartTimeStamp));
 }
 
-void FEProfilingRegistry::RecordFunctionExit(const std::string& FunctionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration)
+void FEProfilingRegistry::RecordFunctionExit(const char* FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration)
 {
-	if (CallStack.empty() || FunctionsData.empty())
+	if (CallStack.empty())
 	{
-		LOG.Add("CallStack or FunctionsData is empty in FEProfilingRegistry::RecordFunctionExit call.", "FE_LOG_PROFILING", FE_LOG_ERROR);
+		LOG.Add("CallStack is empty in FEProfilingRegistry::RecordFunctionExit call.", "FE_LOG_PROFILING", FE_LOG_ERROR);
 		return;
 	}
-	
+
 	CallStack.pop_back();
-	FunctionsData[FunctionName].Timestamps.back().second = EndTimeStamp;
-	FunctionsData[FunctionName].TotalDuration += Duration;
-	FunctionsData[FunctionName].CallCount++;
+	FunctionInfo& Info = FunctionsData[FunctionName];
+	Info.Timestamps.emplace_back(StartTimeStamp, EndTimeStamp);
+	Info.TotalDuration += Duration;
+	Info.CallCount++;
 
 	if (!CallStack.empty())
-	{
-		const std::string& ParentFunction = CallStack.back();
-		FunctionsData[FunctionName].ParentFunctions[ParentFunction]++;
-	}
+		Info.ParentFunctions[CallStack.back()]++;
 
 	EventCount++;
 }
 
-void FEProfilingRegistry::RecordSectionEntry(const std::string& SectionName, FE_CHRONO_TIME_POINT StartTimeStamp)
-{
-	if (CallStack.empty())
-	{
-		LOG.Add("CallStack is empty in FEProfilingRegistry::RecordSectionEntry call.", "FE_LOG_PROFILING", FE_LOG_ERROR);
-		return;
-	}
-
-	FunctionsData[CallStack.back()].SectionTimestamps[SectionName].push_back(std::make_pair(StartTimeStamp, StartTimeStamp));
-}
-
-void FEProfilingRegistry::RecordSectionExit(const std::string& SectionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration)
+void FEProfilingRegistry::RecordSectionExit(const char* SectionName, FE_CHRONO_TIME_POINT StartTimeStamp, FE_CHRONO_TIME_POINT EndTimeStamp)
 {
 	if (CallStack.empty())
 	{
@@ -48,11 +34,12 @@ void FEProfilingRegistry::RecordSectionExit(const std::string& SectionName, FE_C
 		return;
 	}
 
-	FunctionsData[CallStack.back()].SectionTimestamps[SectionName].back().second = EndTimeStamp;
+	FunctionsData[CallStack.back()].SectionTimestamps[SectionName].emplace_back(StartTimeStamp, EndTimeStamp);
 }
 
 void FEProfilingRegistry::ClearData()
 {
 	FunctionsData.clear();
+	CallStack.clear();
 	EventCount = 0;
 }

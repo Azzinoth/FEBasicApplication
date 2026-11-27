@@ -1,5 +1,6 @@
 #include "FEProfilingRegistry.h"
-#include <shared_mutex>
+#include <atomic>
+#include <mutex>
 #include <sstream>
 #include <fstream>
 
@@ -10,22 +11,20 @@ namespace FocalEngine
         friend class FEScopedTimer;
         SINGLETON_PRIVATE_PART(FEProfilingManager)
 
+        // Registries are never removed, threads keep pointers to their own registry.
         std::unordered_map<std::thread::id, FEProfilingRegistry> ThreadData;
-        std::shared_mutex ThreadDataMutex;
+        std::mutex ThreadDataMutex;
         FE_TIME_RESOLUTION TimeResolution = FE_TIME_RESOLUTION_MICROSECONDS;
 
-        bool bActive = false;
-        int EventCount = 0;
-        std::shared_mutex EventCountMutex;
+        std::atomic<bool> bActive = false;
+        std::atomic<int> EventCount = 0;
 
-        void RegisterThread(std::thread::id ThreadID);
-        bool IsThreadRegistered(const std::thread::id& ThreadID);
+        FEProfilingRegistry& GetCurrentThreadRegistry();
 
-        void RecordFunctionEntry(const std::string& FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp);
-        void RecordFunctionExit(const std::string& FunctionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration);
+        void RecordFunctionEntry(const char* FunctionName);
+        void RecordFunctionExit(const char* FunctionName, FE_CHRONO_TIME_POINT StartTimeStamp, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration);
 
-        void RecordSectionEntry(const std::string& SectionName, FE_CHRONO_TIME_POINT StartTimeStamp);
-        void RecordSectionExit(const std::string& SectionName, FE_CHRONO_TIME_POINT EndTimeStamp, double Duration);
+        void RecordSectionExit(const char* SectionName, FE_CHRONO_TIME_POINT StartTimeStamp, FE_CHRONO_TIME_POINT EndTimeStamp);
 
         void ClearData();
     public:
@@ -33,6 +32,7 @@ namespace FocalEngine
         
         void StartProfiling();
         void StopProfiling();
+        bool IsActive() const;
 
         int GetEventCount();
         //std::string CreateReport();
@@ -74,7 +74,7 @@ namespace FocalEngine
     // That's an empty macro, not to cause any overhead when profiling is disabled.
     #define FE_PROFILE_SECTION_START(SectionName)
     // That's an empty macro, not to cause any overhead when profiling is disabled.
-    #define FE_PROFILE_SECTION_END()
+    #define FE_PROFILE_SECTION_END(SectionName)
     // That's an empty macro, not to cause any overhead when profiling is disabled.
     #define FE_PROFILE_FUNCTION(FunctionDeclaration)    \
     FunctionDeclaration                                 \
