@@ -150,6 +150,8 @@ file(GLOB BasicApplicationSubSystem_SRC
 	"FEThreadPool.h"
 	"FELog.cpp"
 	"FELog.h"
+	"FELogWindow.cpp"
+	"FELogWindow.h"
 	"FETime.cpp"
 	"FETime.h"
 	"FEUniqueID.cpp"

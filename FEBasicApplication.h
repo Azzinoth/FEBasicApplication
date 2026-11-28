@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FEVirtualUI.h"
+#include "FELogWindow.h"
 #include "FEPlatform.h"
 #include "FEOS.h"
 #include "SubSystems/FESystemInfo.h"
